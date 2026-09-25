@@ -4,10 +4,35 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#F2F3F5" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Мой авто" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icons/icon.svg" />
     <title>Мой авто</title>
+    <script>
+      // Тема до первого рендера — без белой вспышки. Та же логика и цвета, что в src/ui/theme.tsx (THEME_BG).
+      ;(function () {
+        var bg = { light: '#F2F3F5', dark: '#0E0F11' }
+        var pref = null
+        try {
+          pref = localStorage.getItem('myauto.theme')
+        } catch (e) {}
+        var theme =
+          pref === 'light' || pref === 'dark'
+            ? pref
+            : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+        var root = document.documentElement
+        root.setAttribute('data-theme', theme)
+        root.style.colorScheme = theme
+        var meta = document.querySelector('meta[name="theme-color"]')
+        if (meta) meta.setAttribute('content', bg[theme])
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

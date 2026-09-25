@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
+import './ui/base.css'
+import { ThemeProvider } from './ui'
 import AppRouter from './app/router'
 
 const updateSW = registerSW({
@@ -12,6 +14,8 @@ const updateSW = registerSW({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppRouter />
+    <ThemeProvider>
+      <AppRouter />
+    </ThemeProvider>
   </StrictMode>,
 )

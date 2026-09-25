@@ -1,0 +1,163 @@
+/*
+ * Токены дизайн-системы «Чистый системный». Светлая тема — :root и [data-theme="light"],
+ * тёмная — [data-theme="dark"]. Тема работает на любом элементе, не только на <html>
+ * (витрина показывает обе рядом). Цвета тем — только здесь; theme.tsx держит копию --color-bg (THEME_BG).
+ *
+ * Контраст проверяет src/ui/contrast.test.ts (WCAG 2.x, текст ≥ 4.5, значки/полоски/рамки ≥ 3).
+ * Отличия от стартовой таблицы спецификации (раздел 8) и почему:
+ *   светлая --color-text-2   #6B7280 → #646B77   на --color-bg было 4.35, стало 4.84
+ *   светлая --color-ok       #16A34A → #15803D   на белом было 3.30, стало 5.02 (4.56 на плашке)
+ *   светлая --color-soon     #B7791F → #A15C07   на белом было 3.64, стало 5.19 (4.64 на плашке)
+ *   светлая --color-overdue  #DC2626 → #C81E1E   на плашке --color-overdue-soft было 4.24, стало 4.87
+ *   тёмная: белый текст на #4C8DFF — 3.2, поэтому заливка кнопок — отдельный --color-accent-fill #2C68D6
+ *   (белый 5.17), а #4C8DFF остаётся акцентом для текста, значков, полосок и фокуса (5.34 на карточке).
+ * Итоги ключевых пар (светлая / тёмная):
+ *   text на bg 16.9 / 17.4 · text-2 на bg 4.84 / 7.92 · text-2 на surface-2 5.05 / 6.34
+ *   accent на surface 5.17 / 5.34 · accent на accent-soft 4.61 / 4.77 · on-accent на accent-fill 5.17 / 5.17
+ *   ok на ok-soft 4.56 / 6.54 · soon на soon-soft 4.64 / 7.80 · overdue на overdue-soft 4.87 / 5.03
+ *   рамка поля border-strong на surface 3.30 / 3.73
+ */
+
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  --color-bg: #F2F3F5;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F7F8FA;
+  --color-surface-pressed: #ECEEF1;
+  --color-text: #15181C;
+  --color-text-2: #646B77;
+  --color-border: #E5E7EB;
+  --color-border-strong: #878E99;
+  --color-track: #E5E7EB;
+
+  --color-accent: #2563EB;
+  --color-accent-fill: #2563EB;
+  --color-accent-pressed: #1D4ED8;
+  --color-accent-soft: #EDF2FE;
+  --color-on-accent: #FFFFFF;
+
+  --color-ok: #15803D;
+  --color-ok-soft: #EBF7EF;
+  --color-soon: #A15C07;
+  --color-soon-soft: #FCF1DE;
+  --color-overdue: #C81E1E;
+  --color-overdue-soft: #FCE8E7;
+
+  --color-inverse-surface: #23272E;
+  --color-on-inverse: #F3F4F6;
+  --color-inverse-accent: #8AB4FF;
+
+  --color-overlay: rgba(15, 18, 24, 0.4);
+  --color-skeleton: #E7E9ED;
+
+  --kind-service: #4453D6;
+  --kind-service-soft: #E9EBFB;
+  --kind-fuel: #0B7F72;
+  --kind-fuel-soft: #DFF3EF;
+  --kind-expense: #B03A83;
+  --kind-expense-soft: #F8E6F1;
+  --kind-odometer: #56606B;
+  --kind-odometer-soft: #EBEEF1;
+  --kind-note: #946200;
+  --kind-note-soft: #F8EFD9;
+
+  --shadow-sheet: 0 -8px 32px rgba(15, 18, 24, 0.12), 0 -1px 0 rgba(15, 18, 24, 0.04);
+  --shadow-fab: 0 6px 16px rgba(37, 99, 235, 0.32), 0 1px 3px rgba(15, 18, 24, 0.12);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-bg: #0E0F11;
+  --color-surface: #1A1C1F;
+  --color-surface-2: #232529;
+  --color-surface-pressed: #26292D;
+  --color-text: #F3F4F6;
+  --color-text-2: #A1A7B0;
+  --color-border: #2C2F34;
+  --color-border-strong: #70767F;
+  --color-track: #2C2F34;
+
+  --color-accent: #4C8DFF;
+  --color-accent-fill: #2C68D6;
+  --color-accent-pressed: #2459BF;
+  --color-accent-soft: #172540;
+  --color-on-accent: #FFFFFF;
+
+  --color-ok: #34C77B;
+  --color-ok-soft: #12301F;
+  --color-soon: #F2B544;
+  --color-soon-soft: #34290E;
+  --color-overdue: #F0625A;
+  --color-overdue-soft: #3A1715;
+
+  --color-inverse-surface: #E6E8EB;
+  --color-on-inverse: #1B1E23;
+  --color-inverse-accent: #1D4ED8;
+
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  --color-skeleton: #26292D;
+
+  --kind-service: #8C97FF;
+  --kind-service-soft: #22264A;
+  --kind-fuel: #3CCBB6;
+  --kind-fuel-soft: #11312D;
+  --kind-expense: #F07BC4;
+  --kind-expense-soft: #3A1830;
+  --kind-odometer: #A9B2BD;
+  --kind-odometer-soft: #2A2E34;
+  --kind-note: #E6B84F;
+  --kind-note-soft: #332910;
+
+  --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5), 0 -1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-fab: 0 6px 16px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Не зависят от темы. */
+:root {
+  --font-sans: 'Onest', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --leading-tight: 1.2;
+  --leading-normal: 1.45;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --tap: 44px;
+  --border-width: 1px;
+  --focus-width: 2px;
+
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --z-appbar: 10;
+  --z-tabbar: 20;
+  --z-sheet: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
