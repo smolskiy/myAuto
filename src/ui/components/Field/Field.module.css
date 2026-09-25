@@ -1,0 +1,118 @@
+.field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.label {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}
+
+.required {
+  color: var(--color-text-2);
+}
+
+.hint {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.live:empty {
+  display: none;
+}
+
+.error,
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
+.error svg,
+.warning svg {
+  margin-top: 0;
+}
+
+.error {
+  color: var(--color-overdue);
+}
+
+.warning {
+  color: var(--color-soon);
+}
+
+/*
+ * Общая «коробка» поля ввода. Её берут TextField, NumberField, Select, Combobox, SearchField.
+ * Рамка 3:1 к карточке (WCAG 1.4.11), фокус — акцентная рамка 2 px.
+ */
+.control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.control:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 var(--border-width) var(--color-accent);
+}
+.control:has([aria-invalid='true']) {
+  border-color: var(--color-overdue);
+}
+.control:has([aria-invalid='true']):focus-within {
+  box-shadow: 0 0 0 var(--border-width) var(--color-overdue);
+}
+
+.input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.input:focus-visible {
+  outline: none;
+}
+.input::placeholder {
+  color: var(--color-text-2);
+  opacity: 1;
+}
+.input:disabled {
+  color: var(--color-text-2);
+}
+
+.affix {
+  flex-shrink: 0;
+  color: var(--color-text-2);
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+}
+
+.adornment {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--color-text-2);
+}

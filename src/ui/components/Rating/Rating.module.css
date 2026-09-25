@@ -1,0 +1,33 @@
+.group {
+  display: inline-flex;
+  margin-left: calc(var(--space-2) * -1);
+}
+
+.star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.star:active {
+  transform: scale(0.9);
+}
+
+.on {
+  color: var(--color-soon);
+}
+
+.off {
+  color: var(--color-border-strong);
+}
+
+.readonly {
+  display: inline-flex;
+  gap: calc(var(--space-1) / 2);
+}
