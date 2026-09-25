@@ -3,14 +3,14 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router'
 import { useDeadlines, useReminderRules, useReminderStatuses } from '../../db/hooks'
 import { upcoming, type ReminderState, type UpcomingItem } from '../../domain/calc/reminders'
-import { NBSP, formatDate, formatKm } from '../../domain/format'
-import type { ReminderRule, Vehicle } from '../../domain/types'
+import type { Vehicle } from '../../domain/types'
 import { saveFile } from '../../sync/saveFile'
 import { Button, EmptyState, ListGroup, ListItem, ReminderCard, useToast } from '../../ui'
-import { Page, VehicleGate, useLookup, useToday, type Lookup } from '../common'
+import { Page, VehicleGate, useLookup, useToday } from '../common'
 import { reminderCardProps } from '../home/reminderText'
 import { CALENDAR_FILE_NAME, remindersToIcs } from './calendar'
 import styles from './RemindersPage.module.css'
+import { ruleSummary, ruleTitle } from './ruleText'
 
 const GROUPS: { state: ReminderState; title: string }[] = [
   { state: 'overdue', title: 'Просрочено' },
@@ -24,22 +24,6 @@ function itemPath(item: UpcomingItem): string {
   if (item.reminder) return `/reminders/${item.reminder.ruleId}`
   const source = item.deadline!.source
   return source.type === 'document' ? `/documents/${source.id}` : `/record/${source.id}`
-}
-
-function ruleTitle(rule: ReminderRule, lookup: Lookup | undefined): string {
-  return rule.title?.trim() || (rule.itemId && lookup?.catalog.get(rule.itemId)?.name) || 'Напоминание'
-}
-
-/** «каждые 15 000 км · 12 мес.» / «к 01.12.2026». */
-function ruleSummary(rule: ReminderRule): string {
-  const every = [
-    rule.intervalKm && formatKm(rule.intervalKm),
-    rule.intervalMonths && `${rule.intervalMonths}${NBSP}мес.`,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-  if (every) return `каждые ${every}`
-  return rule.dueDate ? `к ${formatDate(rule.dueDate)}` : ''
 }
 
 function RemindersContent({ vehicle }: { vehicle: Vehicle }) {
