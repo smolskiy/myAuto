@@ -41,6 +41,13 @@ describe('напоминание по узлу', () => {
     expect(evaluateReminder(rule({}), ctx(recs, 146000)).last?.recordId).toBe('new')
   })
 
+  test('последняя замена без пробега: км — от последней записи с пробегом, время — от последней даты', () => {
+    const noOdo = { ...oilChange('s2', '2026-06-01', 0), odometer: undefined }
+    const s = evaluateReminder(rule({}), ctx([oilChange('s1', '2026-01-15', 140000), noOdo], 148800))
+    expect(s).toMatchObject({ dueKm: 150000, remainingKm: 1200, dueDate: '2027-06-01', last: { date: '2026-06-01', recordId: 's2' } })
+    expect(s.last?.odometer).toBeUndefined()
+  })
+
   test('без записей — точка отсчёта, без неё — unknown', () => {
     const withBaseline = evaluateReminder(rule({ baseline: { date: '2026-01-01', odometer: 139000 } }), ctx([], 148000))
     expect(withBaseline).toMatchObject({ dueKm: 149000, remainingKm: 1000, state: 'soon', last: { source: 'baseline' } })

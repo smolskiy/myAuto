@@ -61,15 +61,27 @@ export const EXPENSE_TITLES: Record<ExpenseCategory, string> = {
 const STATE_RANK: Record<ReminderState, number> = { overdue: 0, soon: 1, ok: 2, unknown: 3 }
 const worst = (a: ReminderState, b: ReminderState): ReminderState => (STATE_RANK[a] <= STATE_RANK[b] ? a : b)
 
-/** Последнее выполнение: самая поздняя по (дата, пробег) живая запись ТО с работой или запчастью этого узла. */
-function lastService(records: CarRecord[], vehicleId: ID, itemId: ID): ServiceRecord | null {
-  let best: ServiceRecord | null = null
+const isLater = (r: ServiceRecord, than: ServiceRecord | null) =>
+  !than || r.date > than.date || (r.date === than.date && (r.odometer ?? -1) > (than.odometer ?? -1))
+
+/**
+ * Последнее выполнение: самая поздняя по (дата, пробег) живая запись ТО с работой или запчастью этого узла,
+ * и самая поздняя из них с пробегом — от неё считается срок по км, если у последней записи пробега нет.
+ */
+function lastService(
+  records: CarRecord[],
+  vehicleId: ID,
+  itemId: ID,
+): { latest: ServiceRecord | null; withOdometer: ServiceRecord | null } {
+  let latest: ServiceRecord | null = null
+  let withOdometer: ServiceRecord | null = null
   for (const r of records) {
     if (r.kind !== 'service' || r.deleted || r.vehicleId !== vehicleId) continue
     if (!r.works.some((w) => w.itemId === itemId) && !r.parts.some((p) => p.itemId === itemId)) continue
-    if (!best || r.date > best.date || (r.date === best.date && (r.odometer ?? -1) > (best.odometer ?? -1))) best = r
+    if (isLater(r, latest)) latest = r
+    if (r.odometer !== undefined && isLater(r, withOdometer)) withOdometer = r
   }
-  return best
+  return { latest, withOdometer }
 }
 
 /**
@@ -89,12 +101,13 @@ export function evaluateReminder(rule: ReminderRule, ctx: ReminderContext): Remi
 
   let lastDate: ISODate | undefined
   let lastOdo: number | undefined
-  const record = rule.itemId ? lastService(ctx.records, rule.vehicleId, rule.itemId) : null
+  const found = rule.itemId ? lastService(ctx.records, rule.vehicleId, rule.itemId) : null
+  const record = found?.latest
   if (record) {
     lastDate = record.date
-    lastOdo = record.odometer
+    lastOdo = found.withOdometer?.odometer
     status.last = { date: record.date, recordId: record.id, source: 'record' }
-    if (lastOdo !== undefined) status.last.odometer = lastOdo
+    if (record.odometer !== undefined) status.last.odometer = record.odometer
   } else if (rule.baseline && (rule.baseline.date || rule.baseline.odometer !== undefined)) {
     lastDate = rule.baseline.date
     lastOdo = rule.baseline.odometer
