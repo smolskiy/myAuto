@@ -1,4 +1,4 @@
-import { IconCloud, IconComponents, IconDatabase } from '@tabler/icons-react'
+import { IconCloud, IconDatabase } from '@tabler/icons-react'
 import { useNavigate } from 'react-router'
 import { version } from '../../../package.json'
 import { useSyncStatus } from '../../sync/react'
@@ -48,12 +48,6 @@ export default function SettingsPage() {
 
       <ListGroup title="О приложении">
         <ListItem title="Версия" value={version} />
-        <ListItem
-          title="Витрина компонентов"
-          leading={<Icon icon={IconComponents} tone="accent" circle />}
-          chevron
-          onClick={() => void navigate('/showcase')}
-        />
       </ListGroup>
     </Page>
   )

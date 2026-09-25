@@ -115,8 +115,10 @@ describe('«Ещё»', () => {
         .getAllByRole('button')
         .map((b) => b.textContent),
     ).toEqual(['Места и мастера', 'Узлы и расходники'])
+    // Витрина компонентов — инструмент разработки: в меню её нет.
     const app = screen.getByRole('list', { name: 'Приложение' })
-    expect(within(app).getByRole('button', { name: /Витрина компонентов/ })).toBeInTheDocument()
+    expect(within(app).getAllByRole('button')).toHaveLength(3)
+    expect(within(app).queryByRole('button', { name: /Витрина компонентов/ })).not.toBeInTheDocument()
     await userEvent.click(within(car).getByRole('button', { name: 'Статистика' }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/stats'))
   })
@@ -134,10 +136,11 @@ describe('настройки', () => {
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull()
   })
 
-  test('«О приложении» — версия из package.json', () => {
+  test('«О приложении» — версия из package.json, ссылки на витрину нет', () => {
     renderAt('/settings', <SettingsPage />)
     const about = screen.getByRole('list', { name: 'О приложении' })
     expect(within(about).getByText('0.1.0')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Витрина компонентов/ })).not.toBeInTheDocument()
   })
 })
 

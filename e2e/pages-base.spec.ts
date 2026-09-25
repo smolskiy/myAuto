@@ -65,3 +65,9 @@ test('oauth.html отвечает из подпапки и не подменяе
   const backHref = await back.getAttribute('href')
   expect(new URL(backHref!, page.url()).pathname).toBe(BASE_PATH)
 })
+
+test('витрины компонентов в опубликованной сборке нет — только при разработке', async ({ page }) => {
+  await page.goto('./#/showcase')
+  await expect(page.getByRole('heading', { level: 1, name: 'Страница не найдена' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Витрина компонентов' })).toHaveCount(0)
+})

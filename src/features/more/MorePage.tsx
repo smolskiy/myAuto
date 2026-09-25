@@ -3,7 +3,6 @@ import {
   IconBuildingWarehouse,
   IconChartBar,
   IconCloud,
-  IconComponents,
   IconDatabase,
   IconFileText,
   IconMapPin,
@@ -45,7 +44,6 @@ const GROUPS: { title: string; entries: Entry[] }[] = [
       { label: 'Настройки', path: '/settings', icon: IconSettings },
       { label: 'Синхронизация', path: '/settings/sync', icon: IconCloud },
       { label: 'Данные и выгрузки', path: '/settings/data', icon: IconDatabase },
-      { label: 'Витрина компонентов', path: '/showcase', icon: IconComponents },
     ],
   },
 ]

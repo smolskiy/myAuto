@@ -121,13 +121,19 @@ export const ROUTES: AppRoute[] = [
     load: () => import('../features/onboarding/OnboardingPage'),
     hideTabBar: true,
   },
-  {
-    path: '/showcase',
-    title: 'Витрина компонентов',
-    load: () => import('../ui/showcase/ShowcasePage'),
-    // В эскизах витрины свои нижние панели — настоящая только мешала бы.
-    hideTabBar: true,
-  },
+  // Витрина компонентов — только при разработке (`npm run dev`, адрес `#/showcase`): в сборке для людей
+  // ни маршрута, ни ссылок, и сам код витрины в сборку не попадает (`import.meta.env.DEV` там — false).
+  ...(import.meta.env.DEV
+    ? [
+        {
+          path: '/showcase',
+          title: 'Витрина компонентов',
+          load: () => import('../ui/showcase/ShowcasePage'),
+          // В эскизах витрины свои нижние панели — настоящая только мешала бы.
+          hideTabBar: true,
+        },
+      ]
+    : []),
 ]
 
 function toRouteObject(r: AppRoute): RouteObject {
