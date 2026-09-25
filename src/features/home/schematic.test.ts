@@ -113,6 +113,40 @@ test('масло и фильтры — двигатель, колодки — с
   expect(zoneOfItem(C.bulbs, catalog)).toBe('lights')
 })
 
+test('расширенный каталог: задняя ось — заднее колесо, фары — свет, охлаждение и тормозная система — свои зоны', () => {
+  for (const id of [
+    C.rearControlArms,
+    C.rearArmBushings,
+    C.rearBeamBushings,
+    C.shockAbsorbersRear,
+    C.rearShockMounts,
+    C.coilSpringsRear,
+    C.hubBearingRear,
+    C.brakeCaliperRear,
+    C.brakeDrumsRear,
+    C.wheelCylindersRear,
+    C.parkingBrakeCable,
+  ])
+    expect(zoneOfItem(id, catalog), id).toBe('wheelRear')
+  for (const id of [
+    C.headlights,
+    C.fogLights,
+    C.tailLights,
+    C.lowBeamBulbs,
+    C.highBeamBulbs,
+    C.headlightPolishing,
+  ])
+    expect(zoneOfItem(id, catalog), id).toBe('lights')
+  for (const id of [C.radiator, C.radiatorFan, C.coolantHoses, C.thermostat, C.acCondenser])
+    expect(zoneOfItem(id, catalog), id).toBe('cooling')
+  for (const id of [C.brakeMasterCylinder, C.brakeBooster, C.brakeHoses, C.brakeLines])
+    expect(zoneOfItem(id, catalog), id).toBe('brakes')
+  expect(zoneOfItem(C.windshield, catalog)).toBe('cabin')
+  expect(zoneOfItem(C.wiperLinkage, catalog)).toBe('cabin')
+  expect(zoneOfItem(C.frontLowerArm, catalog)).toBe('wheelFront')
+  expect(zoneOfItem(C.brakeCaliperFront, catalog)).toBe('wheelFront')
+})
+
 test('свои узлы — по группе; кузов, «Прочее» и неизвестное — без зоны', () => {
   expect(zoneOfItem('u1', catalog)).toBe('transmission')
   expect(zoneOfItem('u3', catalog)).toBe('engine')

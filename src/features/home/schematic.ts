@@ -85,6 +85,38 @@ const ITEM_ZONE: Partial<Record<ID, SchematicZone>> = {
   [C.cabinFilter]: 'cabin',
   [C.wiperBlades]: 'cabin',
   [C.washerFluid]: 'cabin',
+  [C.windshield]: 'cabin',
+  [C.wiperLinkage]: 'cabin',
+  // Охлаждение — у решётки: радиатор, его вентилятор, патрубки, термостат, радиатор кондиционера.
+  [C.radiator]: 'cooling',
+  [C.radiatorFan]: 'cooling',
+  [C.coolantHoses]: 'cooling',
+  [C.thermostat]: 'cooling',
+  [C.acCondenser]: 'cooling',
+  // Тормозная система целиком — бачок и трубки к колёсам.
+  [C.brakeMasterCylinder]: 'brakes',
+  [C.brakeBooster]: 'brakes',
+  [C.brakeHoses]: 'brakes',
+  [C.brakeLines]: 'brakes',
+  // Задняя ось (стояночный тормоз работает на задних колёсах).
+  [C.rearControlArms]: 'wheelRear',
+  [C.rearArmBushings]: 'wheelRear',
+  [C.rearBeamBushings]: 'wheelRear',
+  [C.shockAbsorbersRear]: 'wheelRear',
+  [C.rearShockMounts]: 'wheelRear',
+  [C.coilSpringsRear]: 'wheelRear',
+  [C.hubBearingRear]: 'wheelRear',
+  [C.brakeCaliperRear]: 'wheelRear',
+  [C.brakeDrumsRear]: 'wheelRear',
+  [C.wheelCylindersRear]: 'wheelRear',
+  [C.parkingBrakeCable]: 'wheelRear',
+  // Свет: группа «Электрика» ведёт к аккумулятору, фары — к фаре.
+  [C.headlights]: 'lights',
+  [C.fogLights]: 'lights',
+  [C.tailLights]: 'lights',
+  [C.lowBeamBulbs]: 'lights',
+  [C.highBeamBulbs]: 'lights',
+  [C.headlightPolishing]: 'lights',
 }
 
 /** Зона по группе — для остальных встроенных и своих узлов. Кузов и «Прочее» на чертеже не отмечаются. */

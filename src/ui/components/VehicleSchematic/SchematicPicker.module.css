@@ -76,11 +76,10 @@
   -webkit-mask-repeat: no-repeat;
 }
 
+/* Название модели — в две строки, а не с многоточием: «Skoda Octavia A5» в плитке треть ширины. */
 .text,
 .hint {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   line-height: var(--leading-tight);
 }
 
