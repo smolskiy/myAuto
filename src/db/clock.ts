@@ -1,7 +1,13 @@
 let last = 0
 
-/** Строго возрастающее время правки на этом устройстве (устойчиво к повторному Date.now()). */
-export function tick(): number {
-  last = Math.max(Date.now(), last + 1)
+/**
+ * Строго возрастающее время правки на этом устройстве (устойчиво к повторному Date.now()).
+ * `floor`, если передан (например, updatedAt существующей строки), гарантирует результат
+ * строго больше него — и подтягивает внутренний счётчик, чтобы последующие тики тоже
+ * оставались монотонными даже после рассинхрона часов (свои или синхронизированной строки).
+ */
+export function tick(floor?: number): number {
+  const base = floor === undefined ? last : Math.max(last, floor)
+  last = Math.max(Date.now(), base + 1)
   return last
 }

@@ -47,6 +47,24 @@ test('updatedAt строго растёт даже при одинаковом D
   expect(c.updatedAt).toBeGreaterThan(b.updatedAt)
 })
 
+test('updatedAt не проседает при рассинхроне часов', async () => {
+  const future = Date.now() + 1e9
+  const base = { id: 'skew', createdAt: 1, updatedAt: future, kind: 'service' as const, name: 'СТО' }
+  const { places } = createRepos(db)
+
+  await db.places.put(base)
+  const updated = await places.update('skew', { name: 'СТО 2' })
+  expect(updated.updatedAt).toBeGreaterThan(future)
+
+  await db.places.put(base)
+  await places.remove('skew')
+  expect((await db.places.get('skew'))!.updatedAt).toBeGreaterThan(future)
+
+  await db.places.put({ ...base, deleted: true })
+  await places.restore('skew')
+  expect((await db.places.get('skew'))!.updatedAt).toBeGreaterThan(future)
+})
+
 test('правка отсутствующей записи — ошибка', async () => {
   await expect(createRepos(db).places.update('nope', { name: 'x' } as Partial<Place>)).rejects.toThrow(
     'Запись не найдена',
