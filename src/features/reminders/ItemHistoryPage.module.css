@@ -1,0 +1,75 @@
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.count {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+.fact {
+  color: var(--color-text-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}
+
+/* Строка замены: деталь и цена, затем дата · пробег · место, затем интервал от прошлой замены. */
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.row:active {
+  background: var(--color-surface-pressed);
+}
+@media (hover: hover) {
+  .row:hover {
+    background: var(--color-surface-pressed);
+  }
+}
+.row:focus-visible {
+  outline-offset: -2px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+}
+
+.price {
+  flex-shrink: 0;
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.meta {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+}
