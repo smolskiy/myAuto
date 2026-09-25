@@ -9,7 +9,6 @@ import {
   useCurrentOdometer,
   useFuelStats,
   useRecords,
-  useReminderStatuses,
   useUpcoming,
   useVehicles,
 } from '../../db/hooks'
@@ -85,7 +84,9 @@ function HomeContent({ vehicle }: { vehicle: Vehicle }) {
   const vehicles = useVehicles()
   const odometer = useCurrentOdometer(vehicle.id)
   const photoUrl = useVehiclePhoto(vehicle)
-  const upcoming = useUpcoming(vehicle.id, UPCOMING_LIMIT, today)
+  // Один запрос на «Скоро» и чертёж: список берёт первые три, чертёж — все напоминания.
+  const upcomingAll = useUpcoming(vehicle.id, undefined, today)
+  const upcoming = upcomingAll?.slice(0, UPCOMING_LIMIT)
   const records = useRecords(vehicle.id)
   const lookup = useLookup()
   // Тот же месяц, что «Месяц» в статистике, — числа на главной и в статистике совпадают.
@@ -93,7 +94,7 @@ function HomeContent({ vehicle }: { vehicle: Vehicle }) {
   const fuel = useFuelStats(vehicle.id, { from: addDays(today, -FUEL_WINDOW_DAYS), to: today })
   const [switching, setSwitching] = useState(false)
   const schematicModel = schematicModelFor(vehicle)
-  const statuses = useReminderStatuses(schematicModel ? vehicle.id : undefined, today)
+  const statuses = upcomingAll?.flatMap((u) => (u.reminder ? [u.reminder] : []))
   const catalog = useCatalog({ includeHidden: true })
 
   const go = (path: string) => void navigate(path)

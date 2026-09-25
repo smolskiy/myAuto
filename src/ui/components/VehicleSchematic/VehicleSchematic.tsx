@@ -48,7 +48,7 @@ const calloutBox = ([x, y]: Point, side: CalloutPlacement['side']) =>
   side === 'above' ? { left: `${x}%`, top: 0, height: `${y}%` } : { left: `${x}%`, top: `${y}%`, bottom: 0 }
 
 /** «Рентген» узла: моторный отсек, ремень ГРМ, тормозные трубки, колёса, аккумулятор. */
-function Xray({ zone, art }: { zone: SchematicZone; art: SchematicArt }) {
+function Xray({ zone, art, bay: withBay }: { zone: SchematicZone; art: SchematicArt; bay: boolean }) {
   // viewBox шириной 100: x в процентах как есть, y — в тех же единицах, что x.
   const k = 1 / art.aspect
   const pt = ([x, y]: Point) => `${x},${y * k}`
@@ -68,7 +68,7 @@ function Xray({ zone, art }: { zone: SchematicZone; art: SchematicArt }) {
       // Два шкива и ремень между ними — слева-снизу от точки, чтобы она их не закрывала.
       return (
         <>
-          {bay}
+          {withBay && bay}
           <circle cx={ax - 3.4} cy={cy - 0.8} r={1.6} />
           <circle cx={ax - 4.6} cy={cy + 3.6} r={2.2} />
           <path
@@ -106,6 +106,8 @@ export function VehicleSchematic({ model, marks, counts, label, onClick }: Vehic
   const callouts = marks.filter((m) => m.title).slice(0, MAX_CALLOUTS)
   const placements = placeCallouts(callouts.map((m) => art.anchors[m.zone]))
   const legend = counts ? LEGEND.filter(([state]) => counts[state] > 0) : []
+  // Моторный отсек рисуется один раз: у двигателя, а у ГРМ — только если двигатель не отмечен.
+  const hasEngine = marks.some((m) => m.zone === 'engine')
 
   const body: ReactNode = (
     <>
@@ -124,7 +126,7 @@ export function VehicleSchematic({ model, marks, counts, label, onClick }: Vehic
           <svg className={styles.xray} viewBox={`0 0 100 ${100 / art.aspect}`} preserveAspectRatio="none">
             {marks.map((m) => (
               <g key={m.zone} className={tones[m.state]}>
-                <Xray zone={m.zone} art={art} />
+                <Xray zone={m.zone} art={art} bay={m.zone === 'engine' || !hasEngine} />
               </g>
             ))}
           </svg>

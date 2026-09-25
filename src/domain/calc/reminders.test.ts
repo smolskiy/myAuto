@@ -51,6 +51,18 @@ describe('напоминание по узлу', () => {
     expect(s.progressKm).toBeCloseTo(0.88, 5)
   })
 
+  test('состояние по каждому сроку отдельно — какой из них дал итог', () => {
+    // 800 км до срока (скоро по км), 112 дней (в порядке по времени).
+    const s = evaluateReminder(rule({}), ctx([oilChange('s1', '2026-01-15', 140000)], 149200))
+    expect(s).toMatchObject({ state: 'soon', stateKm: 'soon', stateTime: 'ok' })
+    const onlyTime = evaluateReminder(
+      rule({ intervalKm: undefined }),
+      ctx([oilChange('s1', '2026-01-15', 140000)], 149200),
+    )
+    expect(onlyTime.stateKm).toBeUndefined()
+    expect(onlyTime.stateTime).toBe('ok')
+  })
+
   test('скоро по км: остаток ≤ max(1000 км, 10 %)', () => {
     expect(evaluateReminder(rule({}), ctx([oilChange('s1', '2026-01-15', 140000)], 149200)).state).toBe(
       'soon',

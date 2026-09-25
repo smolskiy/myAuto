@@ -73,7 +73,8 @@ button.root {
 }
 
 .xray .fill {
-  fill: color-mix(in srgb, var(--tone) 12%, transparent);
+  fill: var(--tone);
+  fill-opacity: 0.12;
 }
 
 .dot {
@@ -83,6 +84,7 @@ button.root {
   margin: -6px 0 0 -6px;
   border-radius: 50%;
   background: var(--tone);
+  box-shadow: 0 0 0 2px var(--schematic-bg);
   box-shadow:
     0 0 0 2px var(--schematic-bg),
     0 0 0 5px color-mix(in srgb, var(--tone) 35%, transparent);
@@ -146,7 +148,9 @@ button.root {
   width: max-content;
   max-width: 200px;
   padding: 3px var(--space-2) 4px;
-  border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+  /* Safari до 16.2 не знает color-mix — остаётся рамка цветом тона. */
+  border: 1px solid var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 45%, transparent);
   border-radius: var(--radius-sm);
   background: var(--tone-soft);
   line-height: var(--leading-tight);

@@ -264,7 +264,7 @@ export function ListsSection() {
                     zone: 'brakes',
                     state: 'overdue',
                     title: 'Тормозная жидкость',
-                    detail: 'просрочено на 40 дней',
+                    detail: fmt.nb('просрочено на 40 дней'),
                   },
                   {
                     zone: 'timing',

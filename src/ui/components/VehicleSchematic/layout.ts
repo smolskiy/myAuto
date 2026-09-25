@@ -9,18 +9,19 @@ export interface CalloutPlacement {
 /** Ниже этой линии (колёса, пороги) подпись ставится под точку — там под машиной свободно. */
 const BELOW_FROM_Y = 60
 const EDGE_X = 30
-/** Ближе этого по горизонтали две подписи с одной стороны налезают друг на друга. */
-const CLASH_X = 40
 
-/** Сторона и выравнивание подписей; вторая при столкновении с первой уходит на другую сторону точки. */
+/**
+ * Сторона и выравнивание подписей. Плашки прижаты к полю над или под машиной, и на узкой карточке две плашки
+ * в одном поле налезают друг на друга почти при любом расстоянии между точками, поэтому вторая всегда
+ * уходит на сторону, противоположную первой.
+ */
 export function placeCallouts(points: readonly Point[]): CalloutPlacement[] {
   const placed: CalloutPlacement[] = []
-  points.forEach(([x, y], i) => {
+  for (const [x, y] of points) {
     let side: CalloutPlacement['side'] = y >= BELOW_FROM_Y ? 'below' : 'above'
-    const clash = points.slice(0, i).some(([px], j) => placed[j]?.side === side && Math.abs(px - x) < CLASH_X)
-    if (clash) side = side === 'above' ? 'below' : 'above'
+    if (placed.some((p) => p.side === side)) side = side === 'above' ? 'below' : 'above'
     const align = x < EDGE_X ? 'start' : x > 100 - EDGE_X ? 'end' : 'center'
     placed.push({ side, align })
-  })
+  }
   return placed
 }

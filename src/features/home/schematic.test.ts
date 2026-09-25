@@ -45,6 +45,15 @@ test('другой cee’d — без схемы: хэтчбек, pro_cee’d, X
   expect(schematicModelFor(car('Lada', '2109', { year: 2000 }))).toBeNull()
 })
 
+test('исключения понимают кириллицу: «Про Сид», «ИксСид», «Хэтчбэк», «А7»', () => {
+  expect(schematicModelFor(car('Киа', 'Про Сид'))).toBeNull()
+  expect(schematicModelFor(car('Kia', 'ИксСид'))).toBeNull()
+  expect(schematicModelFor(car('Kia', 'Сид', { bodyType: 'Хэтчбэк' }))).toBeNull()
+  expect(schematicModelFor(car('Шкода', 'Октавия А7'))).toBeNull()
+  expect(schematicModelFor(car('Skoda', 'Octavia', { generation: 'A7' }))).toBeNull()
+  expect(schematicModelFor(car('Skoda', 'Octavia', { generation: 'А5 рестайлинг' }))).toBe('octavia-a5')
+})
+
 const custom = (id: string, group: CatalogItem['group'], name = 'Своё'): CatalogItem => ({
   id,
   name,
@@ -155,6 +164,27 @@ test('в зоне — самое срочное; просроченное ран
   )
 })
 
+test('срок — тот, что дал состояние, даже если по другому пройдено больше', () => {
+  const data = schematicData(
+    [
+      status({
+        ruleId: 'r1',
+        itemId: C.engineOil,
+        title: 'Моторное масло',
+        state: 'soon',
+        remainingKm: 900,
+        progressKm: 0.82,
+        stateKm: 'soon',
+        remainingDays: 31,
+        progressTime: 0.83,
+        stateTime: 'ok',
+      }),
+    ],
+    catalog,
+  )
+  expect(data.marks[0]?.detail).toBe('через 900 км')
+})
+
 test('срок — по тому, что ближе: км или время; своё название напоминания не сокращается', () => {
   const data = schematicData(
     [
@@ -179,7 +209,7 @@ test('срок — по тому, что ближе: км или время; с�
   })
 })
 
-test('проблема без зоны на чертеже — только в счётчике и имени; всё в порядке — так и сказано', () => {
+test('проблема без зоны на чертеже — только в счётчике и имени; узлы в порядке — так и сказано', () => {
   const noZone = schematicData(
     [status({ ruleId: 'r1', title: 'Мойка днища', state: 'soon', remainingDays: 5 })],
     catalog,
@@ -192,6 +222,6 @@ test('проблема без зоны на чертеже — только в �
     [status({ ruleId: 'r1', itemId: C.engineOil, title: 'Моторное масло', state: 'ok' })],
     catalog,
   )
-  expect(fine.label).toBe('Схема машины: всё в порядке')
+  expect(fine.label).toBe('Схема машины: узлы в порядке')
   expect(schematicData([], catalog).label).toBe('Схема машины')
 })

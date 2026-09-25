@@ -15,11 +15,15 @@ const squash = (s = '') =>
 const inYears = (year: number | undefined, from: number, to: number) =>
   year === undefined || (year >= from && year <= to)
 
+/** Универсал, Scout, Tour и другие поколения (A4, A6–A8; «А» — латиницей или кириллицей). */
 const OCTAVIA_OTHER_BODY =
-  /combi|комби|kombi|универсал|wagon|estate|scout|скаут|tour|(^|\s)тур(\s|$)|\ba[4678]\b/
+  /combi|комби|kombi|универсал|wagon|estate|scout|скаут|tour|(^|\s)тур(\s|$)|(^|[^a-zа-я0-9])[aа][4678]([^0-9]|$)/
 
 /** Хэтчбек, купе, седан — у cee’d первого поколения чертёж только универсала. */
-const CEED_OTHER_BODY = /хэтчбек|хетчбек|hatch|купе|coupe|седан|sedan|лифтбек|liftback/
+const CEED_OTHER_BODY = /х[эе]тчб[эе]к|hatch|купе|coupe|седан|sedan|лифтб[эе]к|liftback/
+
+/** pro_cee’d / «Про Сид» и XCeed / «ИксСид» — другие машины. */
+const CEED_OTHER_MODEL = /pro|про|xceed|икс/
 
 /**
  * Для какой машины есть чертёж. Год и кузов проверяются, только если указаны: владелец мог их не заполнить,
@@ -33,7 +37,7 @@ export function schematicModelFor(v: Vehicle): SchematicModel | null {
   if ((make === 'skoda' || make === 'шкода') && /octavia|октавия/.test(model)) {
     return inYears(v.year, 2004, 2013) && !OCTAVIA_OTHER_BODY.test(details) ? 'octavia-a5' : null
   }
-  if ((make === 'kia' || make === 'киа') && /ceed|сид/.test(model) && !/pro|xceed/.test(model)) {
+  if ((make === 'kia' || make === 'киа') && /ceed|сид/.test(model) && !CEED_OTHER_MODEL.test(model)) {
     return inYears(v.year, 2006, 2012) && !CEED_OTHER_BODY.test(details) ? 'ceed-sw-1' : null
   }
   return null
@@ -101,14 +105,15 @@ function shortTitle(s: ReminderStatus, catalog: CatalogItem[]): string {
   return short && item && s.title === item.name ? short : s.title
 }
 
-/** Срок по тому, что ближе к исчерпанию: пробег или время. */
+/** Срок, который дал состояние: по пробегу или по времени; дали оба — тот, что пройден больше. */
 function dueText(s: ReminderStatus): string | undefined {
-  const byKm =
-    s.remainingKm !== undefined &&
-    (s.remainingDays === undefined || (s.progressKm ?? 0) >= (s.progressTime ?? 0))
-  if (byKm && s.remainingKm !== undefined) return kmText(s.remainingKm)
-  if (s.remainingDays !== undefined) return timeText(s.remainingDays)
-  return undefined
+  const km = s.remainingKm !== undefined ? kmText(s.remainingKm) : undefined
+  const time = s.remainingDays !== undefined ? timeText(s.remainingDays) : undefined
+  if (!km || !time) return km ?? time
+  const kmDecides = s.stateKm === s.state
+  const timeDecides = s.stateTime === s.state
+  if (kmDecides !== timeDecides) return kmDecides ? km : time
+  return (s.progressKm ?? 0) >= (s.progressTime ?? 0) ? km : time
 }
 
 const MAX_CALLOUTS = 2
@@ -153,7 +158,7 @@ export function schematicData(statuses: ReminderStatus[], catalog: CatalogItem[]
     parts.length > 0
       ? `Схема машины: ${parts.join('; ')}`
       : counts.ok > 0
-        ? 'Схема машины: всё в порядке'
+        ? 'Схема машины: узлы в порядке'
         : 'Схема машины'
 
   return { marks, counts, label }

@@ -31,6 +31,9 @@ export interface ReminderStatus {
   progressKm?: number
   /** Доля прошедшего интервала по времени, 0…1+. */
   progressTime?: number
+  /** Состояние только по км и только по времени: итог `state` — худшее из них. */
+  stateKm?: ReminderState
+  stateTime?: ReminderState
 }
 
 export interface ReminderContext {
@@ -131,12 +134,14 @@ export function evaluateReminder(rule: ReminderRule, ctx: ReminderContext): Remi
   if (status.remainingKm !== undefined) {
     const soonKm = Math.max(1000, 0.1 * (rule.intervalKm ?? 0))
     state = status.remainingKm <= 0 ? 'overdue' : status.remainingKm <= soonKm ? 'soon' : 'ok'
+    status.stateKm = state
   }
   if (status.remainingDays !== undefined) {
     const span = lastDate && dueDate ? diffDays(lastDate, dueDate) : 0
     const soonDays = Math.max(30, 0.1 * span)
     const byTime: ReminderState =
       status.remainingDays <= 0 ? 'overdue' : status.remainingDays <= soonDays ? 'soon' : 'ok'
+    status.stateTime = byTime
     state = state ? worst(state, byTime) : byTime
   }
   if (state) status.state = state
