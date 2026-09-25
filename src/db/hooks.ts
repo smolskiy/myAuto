@@ -18,14 +18,34 @@ import { averageConsumption, fuelIntervals, type FuelInterval } from '../domain/
 import { itemHistory, lastPartFor, type ItemHistoryEntry, type LastPart } from '../domain/calc/itemHistory'
 import { averageDailyKm, currentOdometer } from '../domain/calc/odometer'
 import {
-  documentDeadlines, evaluateReminders, upcoming, type DeadlineStatus, type ReminderStatus, type UpcomingItem,
+  documentDeadlines,
+  evaluateReminders,
+  upcoming,
+  type DeadlineStatus,
+  type ReminderStatus,
+  type UpcomingItem,
 } from '../domain/calc/reminders'
 import { searchRecords } from '../domain/calc/search'
 import { tireSetMileage } from '../domain/calc/tires'
 import { masterSpend, placeSpend, visitStats, type VisitStats } from '../domain/calc/visits'
 import type {
-  Attachment, CarRecord, CatalogItem, DocumentKind, ID, ISODate, Master, OwnerType, Place, PlaceKind,
-  RecordKind, ReminderRule, Row, TireSet, TireSetStatus, Vehicle, VehicleDocument,
+  Attachment,
+  CarRecord,
+  CatalogItem,
+  DocumentKind,
+  ID,
+  ISODate,
+  Master,
+  OwnerType,
+  Place,
+  PlaceKind,
+  RecordKind,
+  ReminderRule,
+  Row,
+  TireSet,
+  TireSetStatus,
+  Vehicle,
+  VehicleDocument,
 } from '../domain/types'
 
 type Range = { from?: ISODate; to?: ISODate }
@@ -73,11 +93,16 @@ export function useVehicle(id?: ID): Vehicle | null | undefined {
 }
 
 /** Активная машина: выбранная в настройках устройства, иначе первая неархивная по порядку, иначе null. */
-export function useActiveVehicle(): { vehicle: Vehicle | null | undefined; setActive(id: ID): Promise<void> } {
+export function useActiveVehicle(): {
+  vehicle: Vehicle | null | undefined
+  setActive(id: ID): Promise<void>
+} {
   const vehicle = useLiveQuery(async () => {
     const activeId = await getMeta<ID | null>(db, META_KEYS.activeVehicleId, null)
     const rows = live(await db.vehicles.orderBy('order').toArray())
-    return (activeId ? rows.find((v) => v.id === activeId) : undefined) ?? rows.find((v) => !v.archived) ?? null
+    return (
+      (activeId ? rows.find((v) => v.id === activeId) : undefined) ?? rows.find((v) => !v.archived) ?? null
+    )
   }, [])
   const setActive = useCallback((id: ID) => setMeta(db, META_KEYS.activeVehicleId, id), [])
   return { vehicle, setActive }
@@ -101,7 +126,8 @@ function matchesFilter(r: CarRecord, f: RecordFilter): boolean {
   if (f.to && r.date > f.to) return false
   if (f.itemId) {
     if (r.kind !== 'service') return false
-    if (!r.works.some((w) => w.itemId === f.itemId) && !r.parts.some((p) => p.itemId === f.itemId)) return false
+    if (!r.works.some((w) => w.itemId === f.itemId) && !r.parts.some((p) => p.itemId === f.itemId))
+      return false
   }
   // то же правило, что и в статистике места/мастера (domain/calc/visits)
   if (f.placeId && placeSpend(r, f.placeId) === null) return false
@@ -128,7 +154,11 @@ export function useRecords(vehicleId?: ID | 'all', filter?: RecordFilter): CarRe
     const source = vehicleId === 'all' ? await allRecords() : await vehicleRecords(vehicleId)
     let rows = source.filter((r) => matchesFilter(r, f))
     if (f.query?.trim()) {
-      const [places, masters, catalog] = await Promise.all([db.places.toArray(), db.masters.toArray(), loadCatalog()])
+      const [places, masters, catalog] = await Promise.all([
+        db.places.toArray(),
+        db.masters.toArray(),
+        loadCatalog(),
+      ])
       rows = searchRecords(rows, f.query, {
         places: new Map(live(places).map((p) => [p.id, p])),
         masters: new Map(live(masters).map((m) => [m.id, m])),
@@ -176,8 +206,9 @@ export function useCatalog(opts: { includeHidden?: boolean } = {}): CatalogItem[
   const includeHidden = opts.includeHidden ?? false
   return useLiveQuery(async () => {
     const rows = await loadCatalog()
-    return (includeHidden ? rows : rows.filter((i) => !i.hidden))
-      .sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group) || byName(a, b))
+    return (includeHidden ? rows : rows.filter((i) => !i.hidden)).sort(
+      (a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group) || byName(a, b),
+    )
   }, [includeHidden])
 }
 
@@ -223,7 +254,10 @@ function reminderStatuses(s: VehicleSnapshot, today: ISODate): ReminderStatus[] 
   })
 }
 
-export function useReminderStatuses(vehicleId?: ID, today: ISODate = todayISO()): ReminderStatus[] | undefined {
+export function useReminderStatuses(
+  vehicleId?: ID,
+  today: ISODate = todayISO(),
+): ReminderStatus[] | undefined {
   return useLiveQuery(async () => {
     if (!vehicleId) return undefined
     return reminderStatuses(await loadVehicleSnapshot(vehicleId), today)
@@ -239,7 +273,11 @@ export function useDeadlines(vehicleId?: ID, today: ISODate = todayISO()): Deadl
 }
 
 /** Список «Скоро»: напоминания и сроки документов машины в одном порядке. */
-export function useUpcoming(vehicleId?: ID, limit?: number, today: ISODate = todayISO()): UpcomingItem[] | undefined {
+export function useUpcoming(
+  vehicleId?: ID,
+  limit?: number,
+  today: ISODate = todayISO(),
+): UpcomingItem[] | undefined {
   return useLiveQuery(async () => {
     if (!vehicleId) return undefined
     const s = await loadVehicleSnapshot(vehicleId)
@@ -255,7 +293,9 @@ export function useDocuments(vehicleId?: ID): VehicleDocument[] | undefined {
   return useLiveQuery(async () => {
     if (!vehicleId) return undefined
     const rows = live(await db.documents.where('vehicleId').equals(vehicleId).toArray())
-    return rows.sort((a, b) => DOCUMENT_ORDER.indexOf(a.kind) - DOCUMENT_ORDER.indexOf(b.kind) || a.createdAt - b.createdAt)
+    return rows.sort(
+      (a, b) => DOCUMENT_ORDER.indexOf(a.kind) - DOCUMENT_ORDER.indexOf(b.kind) || a.createdAt - b.createdAt,
+    )
   }, [vehicleId])
 }
 
@@ -269,7 +309,11 @@ export function useTireSets(vehicleId?: ID): TireSet[] | undefined {
   return useLiveQuery(async () => {
     if (!vehicleId) return undefined
     const rows = live(await db.tireSets.where('vehicleId').equals(vehicleId).toArray())
-    return rows.sort((a, b) => TIRE_STATUS_ORDER.indexOf(a.status) - TIRE_STATUS_ORDER.indexOf(b.status) || a.createdAt - b.createdAt)
+    return rows.sort(
+      (a, b) =>
+        TIRE_STATUS_ORDER.indexOf(a.status) - TIRE_STATUS_ORDER.indexOf(b.status) ||
+        a.createdAt - b.createdAt,
+    )
   }, [vehicleId])
 }
 
@@ -283,7 +327,10 @@ export function useTireSetMileage(setId?: ID): number | undefined {
     if (!setId) return undefined
     const set = await getLive(db.tireSets, setId)
     if (!set) return 0
-    const [vehicle, records] = await Promise.all([getLive(db.vehicles, set.vehicleId), vehicleRecords(set.vehicleId)])
+    const [vehicle, records] = await Promise.all([
+      getLive(db.vehicles, set.vehicleId),
+      vehicleRecords(set.vehicleId),
+    ])
     return tireSetMileage(records, setId, currentOdometer(records, vehicle ?? undefined))
   }, [setId])
 }
@@ -291,7 +338,9 @@ export function useTireSetMileage(setId?: ID): number | undefined {
 export function useAttachments(ownerType: OwnerType, ownerId?: ID): Attachment[] | undefined {
   return useLiveQuery(async () => {
     if (!ownerId) return undefined
-    const rows = live(await db.attachments.where('[ownerType+ownerId]').equals([ownerType, ownerId]).toArray())
+    const rows = live(
+      await db.attachments.where('[ownerType+ownerId]').equals([ownerType, ownerId]).toArray(),
+    )
     return rows.sort((a, b) => a.createdAt - b.createdAt)
   }, [ownerType, ownerId])
 }
@@ -330,8 +379,9 @@ export function useFuelStats(
   return useLiveQuery(async () => {
     if (!vehicleId) return undefined
     const r = JSON.parse(rangeKey) as Range
-    const intervals = fuelIntervals(await vehicleRecords(vehicleId))
-      .filter((i) => (!r.from || i.toDate >= r.from) && (!r.to || i.toDate <= r.to))
+    const intervals = fuelIntervals(await vehicleRecords(vehicleId)).filter(
+      (i) => (!r.from || i.toDate >= r.from) && (!r.to || i.toDate <= r.to),
+    )
     return { intervals, average: averageConsumption(intervals) }
   }, [vehicleId, rangeKey])
 }
@@ -354,15 +404,19 @@ export function useLastPart(vehicleId?: ID, itemId?: ID): LastPart | null | unde
 
 /** Подсказки бренда: своя история (все машины, новые записи первыми) + справочник. */
 export function useBrandSuggestions(query: string, limit?: number): string[] {
-  const history = useLiveQuery(async () => {
-    const rows = (await allRecords()).sort(compareRecords)
-    const brands: string[] = []
-    for (const r of rows) {
-      if (r.kind !== 'service') continue
-      for (const p of r.parts) if (p.brand?.trim()) brands.push(p.brand.trim())
-    }
-    return brands
-  }, [], [] as string[])
+  const history = useLiveQuery(
+    async () => {
+      const rows = (await allRecords()).sort(compareRecords)
+      const brands: string[] = []
+      for (const r of rows) {
+        if (r.kind !== 'service') continue
+        for (const p of r.parts) if (p.brand?.trim()) brands.push(p.brand.trim())
+      }
+      return brands
+    },
+    [],
+    [] as string[],
+  )
   return useMemo(() => suggestBrands(query, history, limit), [query, history, limit])
 }
 

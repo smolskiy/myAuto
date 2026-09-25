@@ -12,7 +12,14 @@ describe('офлайн-декодер', () => {
 
   test('Honda США с верной контрольной цифрой', () => {
     const v = decodeVin('1HGCM82633A004352', NOW)
-    expect(v).toMatchObject({ valid: true, wmi: '1HG', make: 'Honda', region: 'Северная Америка', modelYear: 2003, checkDigitValid: true })
+    expect(v).toMatchObject({
+      valid: true,
+      wmi: '1HG',
+      make: 'Honda',
+      region: 'Северная Америка',
+      modelYear: 2003,
+      checkDigitValid: true,
+    })
     expect(v.errors).toEqual([])
   })
 
@@ -25,7 +32,13 @@ describe('офлайн-декодер', () => {
 
   test('Lada: производитель и год по 10-му символу, контрольная цифра не проверяется', () => {
     const v = decodeVin('XTA210990Y2765432', NOW)
-    expect(v).toMatchObject({ valid: true, make: 'Lada', country: 'Россия', modelYear: 2000, checkDigitValid: null })
+    expect(v).toMatchObject({
+      valid: true,
+      make: 'Lada',
+      country: 'Россия',
+      modelYear: 2000,
+      checkDigitValid: null,
+    })
   })
 
   test('год выбирается ближайший не позже следующего года', () => {
@@ -76,7 +89,10 @@ describe('справочник WMI и стран', () => {
   })
 
   test('сборка нескольких марок на одном заводе — без марки', () => {
-    expect(decodeVin('Z94CB41AAER000001', NOW)).toMatchObject({ country: 'Россия', manufacturer: 'Hyundai Motor Manufacturing Rus' })
+    expect(decodeVin('Z94CB41AAER000001', NOW)).toMatchObject({
+      country: 'Россия',
+      manufacturer: 'Hyundai Motor Manufacturing Rus',
+    })
     expect(decodeVin('Z94CB41AAER000001', NOW).make).toBeUndefined()
   })
 })
@@ -84,12 +100,18 @@ describe('справочник WMI и стран', () => {
 describe('применение к машине', () => {
   test('заполняет только пустые поля', () => {
     const draft = { make: 'Лада', model: '', year: undefined as number | undefined }
-    expect(applyVinToVehicle(draft, { make: 'Lada', model: '2109', year: 2000 })).toEqual({ make: 'Лада', model: '2109', year: 2000 })
+    expect(applyVinToVehicle(draft, { make: 'Lada', model: '2109', year: 2000 })).toEqual({
+      make: 'Лада',
+      model: '2109',
+      year: 2000,
+    })
   })
 
   test('двигатель дополняется по полям, введённое остаётся', () => {
     const draft = { engine: { powerHp: 150 } }
-    expect(applyVinToVehicle(draft, { engine: { displacementCc: 2400, powerHp: 160, fuel: 'petrol' } })).toEqual({
+    expect(
+      applyVinToVehicle(draft, { engine: { displacementCc: 2400, powerHp: 160, fuel: 'petrol' } }),
+    ).toEqual({
       engine: { displacementCc: 2400, powerHp: 150, fuel: 'petrol' },
     })
   })
@@ -99,12 +121,29 @@ describe('NHTSA', () => {
   const ok = (body: unknown) => vi.fn(async () => new Response(JSON.stringify(body), { status: 200 }))
 
   test('разбирает ответ', async () => {
-    const fetchImpl = ok({ Results: [{ Make: 'HONDA', Model: 'Accord', ModelYear: '2003', DisplacementL: '2.4',
-      FuelTypePrimary: 'Gasoline', BodyClass: 'Coupe', EngineHP: '160', TransmissionStyle: 'Automatic', DriveType: 'FWD/Front-Wheel Drive' }] })
+    const fetchImpl = ok({
+      Results: [
+        {
+          Make: 'HONDA',
+          Model: 'Accord',
+          ModelYear: '2003',
+          DisplacementL: '2.4',
+          FuelTypePrimary: 'Gasoline',
+          BodyClass: 'Coupe',
+          EngineHP: '160',
+          TransmissionStyle: 'Automatic',
+          DriveType: 'FWD/Front-Wheel Drive',
+        },
+      ],
+    })
     await expect(fetchNhtsa('1HGCM82633A004352', { fetchImpl })).resolves.toEqual({
-      make: 'Honda', model: 'Accord', year: 2003,
+      make: 'Honda',
+      model: 'Accord',
+      year: 2003,
       engine: { displacementCc: 2400, powerHp: 160, fuel: 'petrol' },
-      transmission: 'at', drive: 'fwd', bodyType: 'Coupe',
+      transmission: 'at',
+      drive: 'fwd',
+      bodyType: 'Coupe',
     })
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/1HGCM82633A004352?format=json',
@@ -113,18 +152,42 @@ describe('NHTSA', () => {
   })
 
   test('гибрид, вариатор, полный привод, марка-аббревиатура', async () => {
-    const fetchImpl = ok({ Results: [{ Make: 'BMW', FuelTypePrimary: 'Gasoline', ElectrificationLevel: 'Strong HEV (Hybrid Electric Vehicle)',
-      TransmissionStyle: 'Continuously Variable Transmission (CVT)', DriveType: 'AWD/All-Wheel Drive' }] })
+    const fetchImpl = ok({
+      Results: [
+        {
+          Make: 'BMW',
+          FuelTypePrimary: 'Gasoline',
+          ElectrificationLevel: 'Strong HEV (Hybrid Electric Vehicle)',
+          TransmissionStyle: 'Continuously Variable Transmission (CVT)',
+          DriveType: 'AWD/All-Wheel Drive',
+        },
+      ],
+    })
     await expect(fetchNhtsa('X', { fetchImpl })).resolves.toEqual({
-      make: 'BMW', engine: { fuel: 'hybrid' }, transmission: 'cvt', drive: 'awd',
+      make: 'BMW',
+      engine: { fuel: 'hybrid' },
+      transmission: 'cvt',
+      drive: 'awd',
     })
   })
 
   test('пустой ответ, сетевая ошибка и таймаут → null', async () => {
     await expect(fetchNhtsa('X', { fetchImpl: ok({ Results: [{ Make: '' }] }) })).resolves.toBeNull()
-    await expect(fetchNhtsa('X', { fetchImpl: vi.fn(async () => { throw new TypeError('network') }) })).resolves.toBeNull()
-    const never = vi.fn((_u: string, init?: RequestInit) => new Promise<Response>((_, rej) =>
-      init?.signal?.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError')))))
-    await expect(fetchNhtsa('X', { fetchImpl: never as unknown as typeof fetch, timeoutMs: 10 })).resolves.toBeNull()
+    await expect(
+      fetchNhtsa('X', {
+        fetchImpl: vi.fn(async () => {
+          throw new TypeError('network')
+        }),
+      }),
+    ).resolves.toBeNull()
+    const never = vi.fn(
+      (_u: string, init?: RequestInit) =>
+        new Promise<Response>((_, rej) =>
+          init?.signal?.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError'))),
+        ),
+    )
+    await expect(
+      fetchNhtsa('X', { fetchImpl: never as unknown as typeof fetch, timeoutMs: 10 }),
+    ).resolves.toBeNull()
   })
 })

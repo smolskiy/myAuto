@@ -18,10 +18,14 @@ const UPPERCASE_MAKES = new Set(['BMW', 'GMC', 'MINI', 'MG'])
 function titleCase(s: string): string {
   const upper = s.trim().toUpperCase()
   if (UPPERCASE_MAKES.has(upper)) return upper
-  return s.trim().toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase())
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/(^|[\s-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase())
 }
 
-const text = (v: string | null | undefined) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined)
+const text = (v: string | null | undefined) =>
+  typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined
 
 function positive(v: string | null | undefined): number | undefined {
   const n = Number(text(v))

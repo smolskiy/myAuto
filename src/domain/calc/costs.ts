@@ -32,7 +32,11 @@ function recordGroups(r: CarRecord): [CostGroup, Kopecks][] {
     case 'service': {
       const parts = r.parts.reduce((s, p) => s + lineTotal(p), 0)
       const labor = r.works.reduce((s, w) => s + lineTotal(w), 0)
-      return [['parts', parts], ['labor', labor], ['serviceOther', r.total - parts - labor]]
+      return [
+        ['parts', parts],
+        ['labor', labor],
+        ['serviceOther', r.total - parts - labor],
+      ]
     }
     case 'fuel':
       return [['fuel', r.total]]

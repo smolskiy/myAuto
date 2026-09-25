@@ -16,8 +16,15 @@ test('каталог: стабильные уникальные id и нулев
 
 test('ключевые позиции и интервалы', () => {
   const byId = new Map(BUILTIN_CATALOG.map((i) => [i.id, i]))
-  expect(byId.get(CATALOG_ID.engineOil)).toMatchObject({ name: 'Моторное масло', defaultIntervalKm: 10000, defaultIntervalMonths: 12 })
-  expect(byId.get(CATALOG_ID.oilFilter)).toMatchObject({ defaultIntervalKm: 10000, defaultIntervalMonths: 12 })
+  expect(byId.get(CATALOG_ID.engineOil)).toMatchObject({
+    name: 'Моторное масло',
+    defaultIntervalKm: 10000,
+    defaultIntervalMonths: 12,
+  })
+  expect(byId.get(CATALOG_ID.oilFilter)).toMatchObject({
+    defaultIntervalKm: 10000,
+    defaultIntervalMonths: 12,
+  })
   expect(byId.get(CATALOG_ID.brakeFluid)).toMatchObject({ defaultIntervalMonths: 24 })
   for (const id of STARTER_REMINDER_ITEM_IDS) expect(byId.has(id)).toBe(true)
 })

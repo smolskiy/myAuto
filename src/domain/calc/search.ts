@@ -23,7 +23,15 @@ function haystack(r: CarRecord, lookup: SearchLookup): string {
       parts.push(r.title, master(r.masterId))
       for (const w of r.works) parts.push(w.name, w.note, item(w.itemId), master(w.masterId))
       for (const p of r.parts) {
-        parts.push(p.name, p.brand, p.partNumber, p.supplierName, p.note, item(p.itemId), place(p.supplierPlaceId))
+        parts.push(
+          p.name,
+          p.brand,
+          p.partNumber,
+          p.supplierName,
+          p.note,
+          item(p.itemId),
+          place(p.supplierPlaceId),
+        )
       }
       break
     case 'expense':

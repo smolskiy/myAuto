@@ -47,7 +47,15 @@ export function fuelIntervals(records: CarRecord[]): FuelInterval[] {
       }
       const km = f.odometer! - start.odometer!
       if (km > 0) {
-        out.push({ fromId: start.id, toId: f.id, fromDate: start.date, toDate: f.date, km, liters, lPer100km: (liters / km) * 100 })
+        out.push({
+          fromId: start.id,
+          toId: f.id,
+          fromDate: start.date,
+          toDate: f.date,
+          km,
+          liters,
+          lPer100km: (liters / km) * 100,
+        })
       }
       start = f
       liters = 0
@@ -83,7 +91,8 @@ export function solveFuelTriple(input: {
   const pos = (v?: number): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0
   const { liters, pricePerLiter, total } = input
   if (pos(liters) && pos(pricePerLiter) && pos(total)) return { liters, pricePerLiter, total }
-  if (pos(liters) && pos(pricePerLiter)) return { liters, pricePerLiter, total: Math.round(liters * pricePerLiter) }
+  if (pos(liters) && pos(pricePerLiter))
+    return { liters, pricePerLiter, total: Math.round(liters * pricePerLiter) }
   if (pos(total) && pos(pricePerLiter)) return { liters: round2(total / pricePerLiter), pricePerLiter, total }
   if (pos(liters) && pos(total)) return { liters, pricePerLiter: Math.round(total / liters), total }
   return null

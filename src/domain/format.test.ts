@@ -1,6 +1,14 @@
 import { expect, test } from 'vitest'
 import {
-  NBSP, formatConsumption, formatDate, formatDaysLeft, formatKm, formatLiters, formatMoney, formatMonth, pluralize,
+  NBSP,
+  formatConsumption,
+  formatDate,
+  formatDaysLeft,
+  formatKm,
+  formatLiters,
+  formatMoney,
+  formatMonth,
+  pluralize,
 } from './format'
 
 const s = (x: string) => x.replaceAll(' ', NBSP)
@@ -28,7 +36,15 @@ test('даты', () => {
 test('склонения', () => {
   const f: [string, string, string] = ['день', 'дня', 'дней']
   expect([1, 2, 5, 11, 12, 21, 22, 25, 111].map((n) => pluralize(n, f))).toEqual([
-    'день', 'дня', 'дней', 'дней', 'дней', 'день', 'дня', 'дней', 'дней',
+    'день',
+    'дня',
+    'дней',
+    'дней',
+    'дней',
+    'день',
+    'дня',
+    'дней',
+    'дней',
   ])
   expect(formatDaysLeft(12)).toBe(s('12 дней'))
   expect(formatDaysLeft(1)).toBe(s('1 день'))

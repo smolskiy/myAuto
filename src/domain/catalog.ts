@@ -61,7 +61,12 @@ export const ITEM_GROUP_LABELS: Record<ItemGroup, string> = {
 
 function item(id: ID, name: string, group: ItemGroup, km?: number, months?: number): CatalogItem {
   return {
-    id, name, group, builtin: true, createdAt: 0, updatedAt: 0,
+    id,
+    name,
+    group,
+    builtin: true,
+    createdAt: 0,
+    updatedAt: 0,
     ...(km !== undefined && { defaultIntervalKm: km }),
     ...(months !== undefined && { defaultIntervalMonths: months }),
   }
@@ -113,5 +118,12 @@ export const BUILTIN_CATALOG: CatalogItem[] = [
 
 /** Позиции, для которых мастер новой машины предлагает включить напоминания. */
 export const STARTER_REMINDER_ITEM_IDS: ID[] = [
-  C.engineOil, C.oilFilter, C.airFilter, C.cabinFilter, C.sparkPlugs, C.brakeFluid, C.coolant, C.timingBelt,
+  C.engineOil,
+  C.oilFilter,
+  C.airFilter,
+  C.cabinFilter,
+  C.sparkPlugs,
+  C.brakeFluid,
+  C.coolant,
+  C.timingBelt,
 ]

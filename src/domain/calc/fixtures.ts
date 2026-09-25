@@ -1,16 +1,28 @@
 /** Фабрики записей для тестов расчётов. Только для тестов. */
-import type {
-  ExpenseRecord, FuelRecord, NoteRecord, OdometerRecord, ServiceRecord, Vehicle,
-} from '../types'
+import type { ExpenseRecord, FuelRecord, NoteRecord, OdometerRecord, ServiceRecord, Vehicle } from '../types'
 
 let seq = 0
 const nextId = () => `r${++seq}`
 
-const base = () => ({ id: nextId(), createdAt: 1, updatedAt: 1, vehicleId: 'v1', date: '2026-01-01', total: 0 })
+const base = () => ({
+  id: nextId(),
+  createdAt: 1,
+  updatedAt: 1,
+  vehicleId: 'v1',
+  date: '2026-01-01',
+  total: 0,
+})
 
 export function service(p: Partial<Omit<ServiceRecord, 'kind'>> = {}): ServiceRecord {
   return {
-    ...base(), kind: 'service', title: 'ТО', serviceType: 'maintenance', diy: false, works: [], parts: [], ...p,
+    ...base(),
+    kind: 'service',
+    title: 'ТО',
+    serviceType: 'maintenance',
+    diy: false,
+    works: [],
+    parts: [],
+    ...p,
   }
 }
 
@@ -32,7 +44,15 @@ export function note(p: Partial<Omit<NoteRecord, 'kind'>> = {}): NoteRecord {
 
 export function vehicle(p: Partial<Vehicle> = {}): Vehicle {
   return {
-    id: 'v1', createdAt: 1, updatedAt: 1, name: 'Машина', make: 'Skoda', model: 'Octavia',
-    archived: false, fluids: [], order: 0, ...p,
+    id: 'v1',
+    createdAt: 1,
+    updatedAt: 1,
+    name: 'Машина',
+    make: 'Skoda',
+    model: 'Octavia',
+    archived: false,
+    fluids: [],
+    order: 0,
+    ...p,
   }
 }

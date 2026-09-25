@@ -54,9 +54,21 @@ test('заправки одного дня — в порядке ввода, п�
 })
 
 test('два из трёх', () => {
-  expect(solveFuelTriple({ liters: 40, pricePerLiter: 5690 })).toEqual({ liters: 40, pricePerLiter: 5690, total: 227600 })
-  expect(solveFuelTriple({ total: 227600, pricePerLiter: 5690 })).toEqual({ liters: 40, pricePerLiter: 5690, total: 227600 })
-  expect(solveFuelTriple({ liters: 42.37, total: 250000 })).toEqual({ liters: 42.37, pricePerLiter: 5900, total: 250000 })
+  expect(solveFuelTriple({ liters: 40, pricePerLiter: 5690 })).toEqual({
+    liters: 40,
+    pricePerLiter: 5690,
+    total: 227600,
+  })
+  expect(solveFuelTriple({ total: 227600, pricePerLiter: 5690 })).toEqual({
+    liters: 40,
+    pricePerLiter: 5690,
+    total: 227600,
+  })
+  expect(solveFuelTriple({ liters: 42.37, total: 250000 })).toEqual({
+    liters: 42.37,
+    pricePerLiter: 5900,
+    total: 250000,
+  })
   expect(solveFuelTriple({ liters: 40 })).toBeNull()
   expect(solveFuelTriple({ liters: 0, pricePerLiter: 5690 })).toBeNull()
 })

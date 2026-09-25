@@ -1,7 +1,15 @@
 import { addDays, addMonths, diffDays } from '../dates'
 import { DOCUMENT_KIND_LABELS, EXPENSE_CATEGORY_LABELS } from '../labels'
 import type {
-  CarRecord, CatalogItem, DocumentKind, ExpenseCategory, ExpenseRecord, ID, ISODate, ReminderRule, ServiceRecord,
+  CarRecord,
+  CatalogItem,
+  DocumentKind,
+  ExpenseCategory,
+  ExpenseRecord,
+  ID,
+  ISODate,
+  ReminderRule,
+  ServiceRecord,
   VehicleDocument,
 } from '../types'
 
@@ -127,14 +135,16 @@ export function evaluateReminder(rule: ReminderRule, ctx: ReminderContext): Remi
   if (status.remainingDays !== undefined) {
     const span = lastDate && dueDate ? diffDays(lastDate, dueDate) : 0
     const soonDays = Math.max(30, 0.1 * span)
-    const byTime: ReminderState = status.remainingDays <= 0 ? 'overdue' : status.remainingDays <= soonDays ? 'soon' : 'ok'
+    const byTime: ReminderState =
+      status.remainingDays <= 0 ? 'overdue' : status.remainingDays <= soonDays ? 'soon' : 'ok'
     state = state ? worst(state, byTime) : byTime
   }
   if (state) status.state = state
 
-  const byKm = status.remainingKm !== undefined && ctx.avgDailyKm !== null && ctx.avgDailyKm > 0
-    ? addDays(ctx.today, Math.ceil(status.remainingKm / ctx.avgDailyKm))
-    : undefined
+  const byKm =
+    status.remainingKm !== undefined && ctx.avgDailyKm !== null && ctx.avgDailyKm > 0
+      ? addDays(ctx.today, Math.ceil(status.remainingKm / ctx.avgDailyKm))
+      : undefined
   const predicted = [byKm, dueDate].filter((d): d is ISODate => d !== undefined).sort()[0]
   if (predicted) status.predictedDate = predicted
 
@@ -168,14 +178,24 @@ const EXPENSE_TO_DOCUMENT: Partial<Record<ExpenseCategory, DocumentKind>> = {
  * ОСАГО/КАСКО/диагностическая карта из расходов и из документов — один вид. «Скоро» — за 30 дней,
  * «просрочено» — после последнего дня действия. Прочие документы (`other`) не объединяются между собой.
  */
-export function documentDeadlines(docs: VehicleDocument[], records: CarRecord[], today: ISODate): DeadlineStatus[] {
+export function documentDeadlines(
+  docs: VehicleDocument[],
+  records: CarRecord[],
+  today: ISODate,
+): DeadlineStatus[] {
   const groups = new Map<string, Omit<DeadlineStatus, 'remainingDays' | 'state'>>()
   const offer = (
-    vehicleId: ID, kind: DocumentKind, validUntil: ISODate, title: string, source: DeadlineStatus['source'],
+    vehicleId: ID,
+    kind: DocumentKind,
+    validUntil: ISODate,
+    title: string,
+    source: DeadlineStatus['source'],
   ) => {
-    const key = kind === 'other' ? `deadline:other:${vehicleId}:${source.id}` : `deadline:${kind}:${vehicleId}`
+    const key =
+      kind === 'other' ? `deadline:other:${vehicleId}:${source.id}` : `deadline:${kind}:${vehicleId}`
     const current = groups.get(key)
-    if (!current || validUntil > current.validUntil) groups.set(key, { key, vehicleId, kind, title, validUntil, source })
+    if (!current || validUntil > current.validUntil)
+      groups.set(key, { key, vehicleId, kind, title, validUntil, source })
   }
 
   for (const d of docs) {
@@ -213,10 +233,20 @@ export interface UpcomingItem {
 }
 
 /** Общий список «Скоро»: просроченные → скоро → в порядке → без данных; внутри — по ближайшей дате. */
-export function upcoming(reminders: ReminderStatus[], deadlines: DeadlineStatus[], limit?: number): UpcomingItem[] {
+export function upcoming(
+  reminders: ReminderStatus[],
+  deadlines: DeadlineStatus[],
+  limit?: number,
+): UpcomingItem[] {
   const items: { item: UpcomingItem; date?: ISODate }[] = []
   for (const r of reminders) {
-    const item: UpcomingItem = { key: `reminder:${r.ruleId}`, type: 'reminder', title: r.title, state: r.state, reminder: r }
+    const item: UpcomingItem = {
+      key: `reminder:${r.ruleId}`,
+      type: 'reminder',
+      title: r.title,
+      state: r.state,
+      reminder: r,
+    }
     if (r.remainingKm !== undefined) item.remainingKm = r.remainingKm
     if (r.remainingDays !== undefined) item.remainingDays = r.remainingDays
     if (r.predictedDate) item.predictedDate = r.predictedDate
@@ -224,7 +254,14 @@ export function upcoming(reminders: ReminderStatus[], deadlines: DeadlineStatus[
   }
   for (const d of deadlines) {
     items.push({
-      item: { key: d.key, type: 'deadline', title: d.title, state: d.state, remainingDays: d.remainingDays, deadline: d },
+      item: {
+        key: d.key,
+        type: 'deadline',
+        title: d.title,
+        state: d.state,
+        remainingDays: d.remainingDays,
+        deadline: d,
+      },
       date: d.validUntil,
     })
   }

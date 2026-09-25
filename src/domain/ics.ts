@@ -38,7 +38,10 @@ function fold(line: string): string {
 const icsDate = (d: ISODate) => d.replaceAll('-', '')
 
 function icsStamp(now: Date): string {
-  return now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  return now
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '')
 }
 
 /** Календарь .ics: события на весь день с напоминанием за день. */

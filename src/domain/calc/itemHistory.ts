@@ -22,8 +22,12 @@ export interface ItemHistoryEntry {
 /** Живые записи ТО с этим узлом, новые сверху (по дате, затем по пробегу). */
 function serviceRecordsWith(records: CarRecord[], itemId: ID): ServiceRecord[] {
   return records
-    .filter((r): r is ServiceRecord => r.kind === 'service' && !r.deleted
-      && (r.parts.some((p) => p.itemId === itemId) || r.works.some((w) => w.itemId === itemId)))
+    .filter(
+      (r): r is ServiceRecord =>
+        r.kind === 'service' &&
+        !r.deleted &&
+        (r.parts.some((p) => p.itemId === itemId) || r.works.some((w) => w.itemId === itemId)),
+    )
     .sort((a, b) => b.date.localeCompare(a.date) || (b.odometer ?? -1) - (a.odometer ?? -1))
 }
 
@@ -33,8 +37,12 @@ export function itemHistory(records: CarRecord[], itemId: ID): ItemHistoryEntry[
   const out: ItemHistoryEntry[] = []
   recs.forEach((r, index) => {
     const prev = recs[index + 1]
-    const common: Pick<ItemHistoryEntry, 'recordId' | 'date' | 'odometer' | 'placeId' | 'sinceKm' | 'sinceDays'> = {
-      recordId: r.id, date: r.date,
+    const common: Pick<
+      ItemHistoryEntry,
+      'recordId' | 'date' | 'odometer' | 'placeId' | 'sinceKm' | 'sinceDays'
+    > = {
+      recordId: r.id,
+      date: r.date,
     }
     if (r.odometer !== undefined) common.odometer = r.odometer
     if (r.placeId) common.placeId = r.placeId

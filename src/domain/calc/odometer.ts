@@ -11,7 +11,8 @@ interface Point {
 function points(records: CarRecord[]): Point[] {
   const out: Point[] = []
   for (const r of records) {
-    if (!r.deleted && typeof r.odometer === 'number') out.push({ id: r.id, date: r.date, odometer: r.odometer })
+    if (!r.deleted && typeof r.odometer === 'number')
+      out.push({ id: r.id, date: r.date, odometer: r.odometer })
   }
   return out
 }

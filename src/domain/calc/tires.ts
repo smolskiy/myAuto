@@ -7,7 +7,10 @@ import type { CarRecord, ID, ServiceRecord } from '../types'
  */
 export function tireSetMileage(records: CarRecord[], setId: ID, currentOdometer: number | null): number {
   const swaps = records
-    .filter((r): r is ServiceRecord => r.kind === 'service' && !r.deleted && !!r.tireSwap && typeof r.odometer === 'number')
+    .filter(
+      (r): r is ServiceRecord =>
+        r.kind === 'service' && !r.deleted && !!r.tireSwap && typeof r.odometer === 'number',
+    )
     .sort((a, b) => a.date.localeCompare(b.date) || a.odometer! - b.odometer!)
   let total = 0
   let start: number | null = null

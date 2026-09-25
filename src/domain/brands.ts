@@ -176,7 +176,10 @@ export const PART_BRANDS: { name: string; aliases?: string[] }[] = [
 
 /** Нормализация для сравнения: нижний регистр, ё → е, без пробелов, дефисов, апострофов и точек. */
 function norm(s: string): string {
-  return s.toLowerCase().replaceAll('ё', 'е').replace(/[\s\-'’.]/g, '')
+  return s
+    .toLowerCase()
+    .replaceAll('ё', 'е')
+    .replace(/[\s\-'’.]/g, '')
 }
 
 const BRAND_KEYS = new Map(
@@ -214,8 +217,7 @@ export function suggestBrands(query: string, history: string[], limit = 8): stri
   if (q === '') return fromHistory.slice(0, limit)
 
   const seen = new Set(fromHistory.map(norm))
-  const fromCatalog = PART_BRANDS
-    .filter((b) => !seen.has(norm(b.name)) && matches(b.name, q))
+  const fromCatalog = PART_BRANDS.filter((b) => !seen.has(norm(b.name)) && matches(b.name, q))
     .map((b) => b.name)
     .sort((a, b) => a.localeCompare(b))
 
