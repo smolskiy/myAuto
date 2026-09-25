@@ -254,7 +254,11 @@ describe('форма напоминания', () => {
     renderAt('/reminders/new')
     await userEvent.type(await screen.findByRole('textbox', { name: 'Своё название' }), 'Антифриз')
     await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
-    expect((await screen.findAllByText('Укажите интервал')).length).toBeGreaterThan(0)
+    // Ошибка — у поля интервала; уведомления нет, форма остаётся.
+    const km = screen.getByRole('textbox', { name: 'Каждые … км' })
+    await waitFor(() => expect(km).toHaveAccessibleDescription(/Укажите интервал/))
+    expect(screen.getAllByText('Укажите интервал')).toHaveLength(1)
+    expect(screen.queryByRole('status')).not.toHaveTextContent(/сохранить/i)
     expect(await repos.reminders.list()).toHaveLength(0)
   })
 

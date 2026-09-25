@@ -149,12 +149,11 @@ function RuleForm({ rule, vehicleId, initial }: { rule?: ReminderRule; vehicleId
       setErrors((prev) => ({ ...prev, ...Object.fromEntries(clear.map((k) => [k, undefined])) }))
   }
 
-  const save = async () => {
+  const save = async (): Promise<false | void> => {
     const found = validate(s)
     setErrors(found)
-    const first = found.name ?? found.interval ?? found.dueDate
-    // TODO после слияния оболочки: `return false` — ошибка уже у поля, уведомление не нужно.
-    if (first) throw new Error(first)
+    // Ошибки уже у полей — форма остаётся без уведомления.
+    if (Object.keys(found).length > 0) return false
     const fields = toFields(s)
     if (rule) await repos.reminders.update(rule.id, fields)
     else await repos.reminders.create(compact({ vehicleId, ...fields }) as Draft<ReminderRule>)
