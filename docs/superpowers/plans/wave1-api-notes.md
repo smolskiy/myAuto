@@ -31,7 +31,8 @@
 - `checkOdometer` → `lessThanEarlier` | `greaterThanLater` | `sameDayGap` (разница > 2000 км в тот же день).
 - Заправки одного дня упорядочены по времени ввода (`createdAt`).
 - `lineTotal(line)` (`src/domain/calc/lines.ts`) — сумма строки с тем же округлением, что в статистике.
-- Подписи категорий расходов и документов — `src/domain/labels.ts` (единый источник).
+- Подписи категорий расходов, документов, топлива, коробки и привода — `src/domain/labels.ts` (единый источник
+  для экранов, статистики и выгрузки в Excel).
 - Репозитории: `create/update/remove/restore` сами ставят `updatedAt` и запускают синхронизацию; `remove` — мягкое.
 
 ## sync

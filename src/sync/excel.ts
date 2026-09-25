@@ -1,15 +1,11 @@
-import { EXPENSE_CATEGORY_LABELS } from '../domain/labels'
+import {
+  DRIVE_LABELS,
+  EXPENSE_CATEGORY_LABELS,
+  FUEL_TYPE_LABELS,
+  TRANSMISSION_LABELS,
+} from '../domain/labels'
 import type { Snapshot } from '../domain/snapshot'
-import type {
-  CarRecord,
-  ID,
-  PartUnit,
-  RecordKind,
-  Row,
-  ServiceRecord,
-  Transmission,
-  Drive,
-} from '../domain/types'
+import type { CarRecord, ID, PartUnit, RecordKind, Row, ServiceRecord } from '../domain/types'
 
 /**
  * Выгрузка в Excel: по листу на тип данных, только живые строки, суммы — в рублях числами,
@@ -29,14 +25,6 @@ const KIND: Record<RecordKind, string> = {
   note: 'Заметка',
 }
 const UNIT: Record<PartUnit, string> = { pcs: 'шт', l: 'л', set: 'компл', m: 'м', kg: 'кг' }
-const TRANSMISSION: Record<Transmission, string> = {
-  mt: 'МКПП',
-  at: 'АКПП',
-  cvt: 'Вариатор',
-  amt: 'Робот',
-  dct: 'Робот DSG',
-}
-const DRIVE: Record<Drive, string> = { fwd: 'Передний', rwd: 'Задний', awd: 'Полный' }
 
 const rub = (kopecks: number | undefined): number | null => (kopecks === undefined ? null : kopecks / 100)
 const yesNo = (v: boolean): string => (v ? 'Да' : 'Нет')
@@ -87,6 +75,7 @@ export function buildSheets(snapshot: Snapshot): Sheet[] {
         'VIN',
         'Госномер',
         'Цвет',
+        'Топливо',
         'Коробка',
         'Привод',
         'Дата покупки',
@@ -104,8 +93,9 @@ export function buildSheets(snapshot: Snapshot): Sheet[] {
         v(x.vin),
         v(x.plate),
         v(x.color),
-        x.transmission ? TRANSMISSION[x.transmission] : null,
-        x.drive ? DRIVE[x.drive] : null,
+        x.engine?.fuel ? FUEL_TYPE_LABELS[x.engine.fuel] : null,
+        x.transmission ? TRANSMISSION_LABELS[x.transmission] : null,
+        x.drive ? DRIVE_LABELS[x.drive] : null,
         v(x.purchase?.date),
         v(x.purchase?.odometer),
         rub(x.purchase?.price),

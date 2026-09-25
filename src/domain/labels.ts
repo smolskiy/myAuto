@@ -1,4 +1,4 @@
-import type { DocumentKind, ExpenseCategory } from './types'
+import type { DocumentKind, Drive, ExpenseCategory, FuelType, Transmission } from './types'
 
 /** Подписи категорий расходов — единственный источник для статистики, сроков, поиска и экранов. */
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
@@ -26,4 +26,28 @@ export const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
   diagCard: 'Диагностическая карта',
   license: 'Водительское удостоверение',
   other: 'Документ',
+}
+
+/** Подписи машины — единственный источник для экранов и выгрузки в Excel. */
+export const FUEL_TYPE_LABELS: Record<FuelType, string> = {
+  petrol: 'Бензин',
+  diesel: 'Дизель',
+  hybrid: 'Гибрид',
+  electric: 'Электро',
+  lpg: 'Газ (пропан)',
+  cng: 'Газ (метан)',
+}
+
+export const TRANSMISSION_LABELS: Record<Transmission, string> = {
+  mt: 'Механика',
+  at: 'Автомат',
+  cvt: 'Вариатор',
+  amt: 'Робот',
+  dct: 'Робот с двумя сцеплениями',
+}
+
+export const DRIVE_LABELS: Record<Drive, string> = {
+  fwd: 'Передний',
+  rwd: 'Задний',
+  awd: 'Полный',
 }
