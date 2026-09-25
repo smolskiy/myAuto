@@ -41,7 +41,27 @@ test('applyRows не откатывает более новую локальну
 test('полная замена сохраняет blobs и meta', async () => {
   await db.places.put({ ...place, id: 'old', deleted: false })
   await db.meta.put({ key: 'theme', value: 'dark' })
+  const blobRow = {
+    key: 'att1:orig',
+    attachmentId: 'att1',
+    variant: 'orig' as const,
+    blob: new Blob(['x']),
+    pending: 1 as const,
+    size: 1,
+    lastAccess: 1,
+  }
+  await db.blobs.put(blobRow)
   await replaceAll(db, { ...emptySnapshot(), tables: { ...emptySnapshot().tables, places: [place] } })
   expect(await db.places.toArray()).toEqual([place])
   expect(await db.meta.get('theme')).toEqual({ key: 'theme', value: 'dark' })
+  const storedBlob = await db.blobs.get('att1:orig')
+  expect(storedBlob).toMatchObject({
+    key: 'att1:orig',
+    attachmentId: 'att1',
+    variant: 'orig',
+    pending: 1,
+    size: 1,
+    lastAccess: 1,
+  })
+  expect(storedBlob?.blob).toBeTruthy()
 })

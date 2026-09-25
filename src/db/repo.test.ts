@@ -81,6 +81,26 @@ test('каждая правка сообщает о локальном изме�
   expect(seen).toEqual(['masters', 'masters'])
 })
 
+test('update и restore тоже сообщают о локальном изменении', async () => {
+  const { masters } = createRepos(db)
+  const m = await masters.create({ name: 'Иван' })
+  await masters.remove(m.id)
+
+  const seen: string[] = []
+  const off = subscribeLocalChanges((t) => seen.push(t))
+  await masters.restore(m.id)
+  await masters.update(m.id, { name: 'Иван П.' })
+  off()
+  expect(seen).toEqual(['masters', 'masters'])
+})
+
+test('правка мягко удалённой записи — ошибка', async () => {
+  const { places } = createRepos(db)
+  const created = await places.create({ kind: 'service', name: 'СТО' })
+  await places.remove(created.id)
+  await expect(places.update(created.id, { name: 'x' })).rejects.toThrow('Запись не найдена')
+})
+
 test('повтор записи — копия с новыми id строк, без пробега, гарантии и переобувки', async () => {
   const { records } = createRepos(db)
   const src = await records.create({
@@ -139,4 +159,20 @@ test('сид добавляет каталог один раз и не воск�
   await ensureSeed(db, CATALOG)
   expect((await db.catalogItems.get('item.a'))?.deleted).toBe(true)
   expect(await db.catalogItems.count()).toBe(3)
+})
+
+test('сид не сообщает о локальном изменении', async () => {
+  const seen: string[] = []
+  const off = subscribeLocalChanges((t) => seen.push(t))
+  await ensureSeed(db, CATALOG)
+  off()
+  expect(seen).toEqual([])
+})
+
+test('nextOrder — 0 для пустой таблицы, max(order)+1 после', async () => {
+  const { vehicles } = createRepos(db)
+  expect(await vehicles.nextOrder()).toBe(0)
+  await vehicles.create({ name: 'A', make: 'M', model: 'X', archived: false, fluids: [], order: 0 })
+  await vehicles.create({ name: 'B', make: 'M', model: 'Y', archived: false, fluids: [], order: 5 })
+  expect(await vehicles.nextOrder()).toBe(6)
 })
