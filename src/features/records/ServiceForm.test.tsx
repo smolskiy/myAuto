@@ -336,6 +336,71 @@ test('смена шин с комплектом требует пробег', as
   expect((await savedServices())[0]).toMatchObject({ odometer: 150000, tireSwap: { mountedSetId: set.id } })
 })
 
+describe('смена шин обновляет состояние комплектов', () => {
+  const tireSet = (status: 'installed' | 'stored' | 'retired', brand: string, vehicleId = vehicle.id) =>
+    repos.tireSets.create({ vehicleId, season: 'winter', brand, count: 4, status })
+
+  test('установленный — «Установлены», прежний установленный и снятый — «На хранении»', async () => {
+    const winter = await tireSet('stored', 'Nokian')
+    const summer = await tireSet('installed', 'Michelin')
+    const spare = await tireSet('installed', 'Cordiant')
+    const retired = await tireSet('retired', 'Kama')
+    const other = await repos.vehicles.create({
+      name: 'Рапид',
+      make: 'Skoda',
+      model: 'Rapid',
+      archived: false,
+      fluids: [],
+      order: 1,
+    })
+    const foreign = await tireSet('installed', 'Pirelli', other.id)
+
+    const router = renderAt('/record/new/service')
+    await typeTitle('Переобувка')
+    await userEvent.selectOptions(screen.getByLabelText('Тип работ'), 'tires')
+    await userEvent.selectOptions(screen.getByLabelText('Установлен комплект'), winter.id)
+    await userEvent.selectOptions(screen.getByLabelText('Снят комплект'), summer.id)
+    await userEvent.type(screen.getByLabelText('Пробег'), '150000')
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\//))
+
+    const status = async (id: string) => (await repos.tireSets.get(id))?.status
+    expect(await status(winter.id)).toBe('installed')
+    expect(await status(summer.id)).toBe('stored')
+    expect(await status(spare.id)).toBe('stored')
+    expect(await status(retired.id)).toBe('retired')
+    expect(await status(foreign.id)).toBe('installed')
+  })
+
+  test('без выбранных комплектов состояния не трогаются', async () => {
+    const summer = await tireSet('installed', 'Michelin')
+    const router = renderAt('/record/new/service')
+    await typeTitle('Шиномонтаж')
+    await userEvent.selectOptions(screen.getByLabelText('Тип работ'), 'tires')
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\//))
+    const set = await repos.tireSets.get(summer.id)
+    expect(set?.status).toBe('installed')
+    expect(set?.updatedAt).toBe(summer.updatedAt)
+  })
+
+  test('правка записи со сменой шин тоже обновляет комплекты', async () => {
+    const winter = await tireSet('stored', 'Nokian')
+    const summer = await tireSet('installed', 'Michelin')
+    const rec = await pastService({ title: 'Переобувка', serviceType: 'tires', date: '2026-09-20' })
+    renderAt(`/record/${rec.id}/edit`)
+    const mounted = await screen.findByLabelText('Установлен комплект')
+    await within(mounted).findByRole('option', { name: /Nokian/ })
+    await userEvent.selectOptions(mounted, winter.id)
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(async () => expect((await repos.tireSets.get(winter.id))?.status).toBe('installed'))
+    expect((await repos.tireSets.get(summer.id))?.status).toBe('stored')
+    expect((await repos.records.get(rec.id)) as ServiceRecord).toMatchObject({
+      tireSwap: { mountedSetId: winter.id },
+    })
+  })
+})
+
 test('гарантия сохраняется датой и пробегом', async () => {
   const router = renderAt('/record/new/service')
   await typeTitle('Замена помпы')

@@ -19,6 +19,7 @@ import { CommonFields, type FormContext } from './form/CommonFields'
 import { ExpenseFields } from './form/ExpenseFields'
 import { FuelFields } from './form/FuelFields'
 import { rememberDate } from './form/lastDate'
+import { saveRecord } from './form/saveRecord'
 import { isCopyState } from './repeat'
 import { NoteFields } from './form/NoteFields'
 import { ServiceFields } from './form/ServiceFields'
@@ -65,8 +66,7 @@ function RecordForm({ title, initial, ctx, recordId, mode, onCancel }: RecordFor
       return false
     }
     const draft = toDraft(values)
-    if (mode === 'new') await repos.records.create({ ...draft, id: recordId })
-    else await repos.records.update(recordId, draft)
+    await saveRecord(draft, recordId, mode === 'new' ? 'create' : 'update')
     rememberDate(draft.date)
     // Новая запись и копия заменяются своей карточкой; правка возвращается туда, откуда пришли.
     if (mode !== 'edit') return `/record/${recordId}`
