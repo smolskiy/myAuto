@@ -12,7 +12,7 @@
 | 2b | [05a-screens-records](2026-09-25-05a-screens-records.md) — формы записей, карточка, журнал, форма машины, онбординг | `feature-screens` | 2a |
 | 2b | [05b-screens-overview](2026-09-25-05b-screens-overview.md) — главная, ТО, история узла, статистика, настройки, данные | `feature-screens` | 2a |
 | 2b | [05c-screens-directory](2026-09-25-05c-screens-directory.md) — гараж, машина, места и мастера, документы, шины, каталог | `feature-screens` | 2a |
-| 3 | 05-release — подключение синхронизации к экранам, OAuth-приложение, репозиторий, деплой, e2e | лидер + `qa-release` | 2 |
+| 3 | [06-release](2026-09-25-06-release.md) — слияние, сквозные e2e, сборка под Pages, отложенные мелочи, выпуск | лидер + `qa-release` | 2 |
 
 **Порядок исполнения.** Волна 0 — лидер в основной ветке. Волна 1 — три агента параллельно, каждый в своём
 git worktree и своей ветке (`wave1/domain-data`, `wave1/ui-system`, `wave1/sync-storage`); зоны файлов не пересекаются,
