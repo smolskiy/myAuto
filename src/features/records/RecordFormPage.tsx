@@ -19,6 +19,7 @@ import { CommonFields, type FormContext } from './form/CommonFields'
 import { ExpenseFields } from './form/ExpenseFields'
 import { rememberDate } from './form/lastDate'
 import { NoteFields } from './form/NoteFields'
+import { ServiceFields } from './form/ServiceFields'
 import {
   newRecordValues,
   recordToValues,
@@ -72,6 +73,7 @@ function RecordForm({ title, initial, ctx, recordId, isNew, onCancel }: RecordFo
   const fields = { form, ctx, suggestDate: isNew }
   return (
     <FormPage title={title} onSave={onSave} onCancel={onCancel}>
+      {values.kind === 'service' && <ServiceFields {...fields} />}
       {values.kind === 'expense' && <ExpenseFields {...fields} />}
       {values.kind === 'note' && <NoteFields {...fields} />}
       {values.kind === 'odometer' && <CommonFields {...fields} />}

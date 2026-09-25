@@ -111,7 +111,7 @@ test('новая запись предзаполняет текущий проб
     total: 0,
   })
   renderAt('/record/new/expense')
-  expect(await screen.findByLabelText('Пробег')).toHaveValue('148 320')
+  expect(await screen.findByLabelText('Пробег')).toHaveValue('148\u00a0320')
   cleanup()
   renderAt('/record/new/note')
   expect(await screen.findByLabelText('Пробег')).toHaveValue('')
