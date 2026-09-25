@@ -1,0 +1,95 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Как подпись поля (Field). */
+.label {
+  padding: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.tile {
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  cursor: pointer;
+}
+
+.checked {
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+
+.tile:focus-within {
+  outline: var(--focus-width) solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Настоящая радиокнопка — для клавиатуры и скринридера; видна плитка. */
+.radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 2;
+  margin-bottom: var(--space-1);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--schematic-bg);
+  color: var(--color-text-2);
+}
+
+.art {
+  width: 100%;
+  height: 100%;
+  background: var(--schematic-line);
+  mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+}
+
+.text,
+.hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: var(--leading-tight);
+}
+
+.text {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.hint {
+  color: var(--color-text-2);
+  font-size: var(--text-xs);
+}

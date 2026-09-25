@@ -2,7 +2,19 @@ import { useEffect, useId, useState, type ReactNode } from 'react'
 import { useActiveVehicle, useAttachments } from '../../../db/hooks'
 import { repos } from '../../../db/repos'
 import type { Drive, FuelType, ID, Transmission, Vehicle } from '../../../domain/types'
-import { Combobox, DateField, MoneyField, NumberField, Select, TextArea, TextField } from '../../../ui'
+import {
+  Combobox,
+  DateField,
+  MoneyField,
+  NumberField,
+  SCHEMATIC_ART,
+  SCHEMATIC_MODELS,
+  SchematicPicker,
+  Select,
+  TextArea,
+  TextField,
+  type SchematicPickerOption,
+} from '../../../ui'
 import {
   AttachmentsField,
   DRIVE_LABELS,
@@ -12,6 +24,7 @@ import {
   useDraftAttachments,
   useToday,
 } from '../../common'
+import { autoSchematic } from '../../home/schematic'
 import { FUEL_GRADES } from '../../records/labels'
 import { FluidsEditor } from './FluidsEditor'
 import styles from './VehicleForm.module.css'
@@ -55,6 +68,30 @@ const FUEL_OPTIONS = options<FuelType>(FUEL_TYPE_LABELS)
 const TRANSMISSION_OPTIONS = options<Transmission>(TRANSMISSION_LABELS)
 const DRIVE_OPTIONS = options<Drive>(DRIVE_LABELS)
 const fromNone = <T extends string>(v: string) => (v === NONE ? undefined : (v as T))
+
+/** «Автоматически» в выборе чертежа; в машине — отсутствие поля. */
+const AUTO = 'auto'
+
+/** Плитки чертежа: «Автоматически» с тем, что подобралось по введённым полям, все картинки, «Без чертежа». */
+function schematicOptions(v: VehicleValues): SchematicPickerOption[] {
+  const auto = autoSchematic({
+    make: v.make,
+    model: v.model,
+    year: v.year ? Number(v.year) : undefined,
+    generation: v.generation,
+    bodyType: v.bodyType,
+  })
+  return [
+    {
+      value: AUTO,
+      label: 'Автоматически',
+      hint: auto ? SCHEMATIC_ART[auto].label : 'Нет для модели',
+      ...(auto && { model: auto }),
+    },
+    ...SCHEMATIC_MODELS.map((model) => ({ value: model, label: SCHEMATIC_ART[model].label, model })),
+    { value: NONE, label: 'Без чертежа' },
+  ]
+}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
@@ -198,6 +235,12 @@ export function VehicleForm({
           onChange={(e) => set({ bodyType: e.target.value })}
         />
       </div>
+      <SchematicPicker
+        label="Чертёж на главной"
+        value={values.schematic || AUTO}
+        options={schematicOptions(values)}
+        onChange={(v) => set({ schematic: v === AUTO ? '' : v })}
+      />
 
       <Section title="Двигатель и трансмиссия">
         <Select

@@ -23,6 +23,9 @@ import {
   Switch,
   VehicleCard,
   VehicleSchematic,
+  SCHEMATIC_ART,
+  SCHEMATIC_MODELS,
+  SchematicPicker,
   type SchematicMark,
   type SchematicZone,
 } from '../../index'
@@ -45,6 +48,7 @@ const allZones = ALL_ZONES.map((zone, i): SchematicMark => ({ zone, state: i % 2
 
 export function ListsSection() {
   const [autoSync, setAutoSync] = useState(true)
+  const [schematic, setSchematic] = useState('auto')
   return (
     <Section title="Списки" lead="Белые карточки-группы строк, как в системных настройках.">
       <Demo name="ListGroup и ListItem" plain>
@@ -303,8 +307,29 @@ export function ListsSection() {
             }
           />
           <Caption>Все зоны сразу — для сверки точек с картинкой</Caption>
-          <VehicleSchematic model="octavia-a5" marks={allZones} label="Все зоны Октавии" />
-          <VehicleSchematic model="ceed-sw-1" marks={allZones} label="Все зоны Сида" />
+          {SCHEMATIC_MODELS.map((model) => (
+            <VehicleSchematic
+              key={model}
+              model={model}
+              marks={allZones}
+              label={`Все зоны: ${SCHEMATIC_ART[model].label}`}
+            />
+          ))}
+          <Caption>Выбор чертежа на форме машины</Caption>
+          <SchematicPicker
+            label="Чертёж на главной"
+            value={schematic}
+            options={[
+              { value: 'auto', label: 'Автоматически', hint: 'Skoda Octavia A5', model: 'octavia-a5' },
+              ...SCHEMATIC_MODELS.map((model) => ({
+                value: model,
+                label: SCHEMATIC_ART[model].label,
+                model,
+              })),
+              { value: 'none', label: 'Без чертежа' },
+            ]}
+            onChange={setSchematic}
+          />
         </Stack>
       </Demo>
 

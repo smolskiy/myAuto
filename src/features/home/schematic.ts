@@ -1,7 +1,13 @@
 import { type ReminderStatus, upcoming } from '../../domain/calc/reminders'
 import { CATALOG_ID as C } from '../../domain/catalog'
 import type { CatalogItem, ID, ItemGroup, Vehicle } from '../../domain/types'
-import type { SchematicMark, SchematicModel, SchematicZone, VehicleSchematicProps } from '../../ui'
+import {
+  isSchematicModel,
+  type SchematicMark,
+  type SchematicModel,
+  type SchematicZone,
+  type VehicleSchematicProps,
+} from '../../ui'
 import { kmText, timeText } from './reminderText'
 
 /** Нижний регистр без диакритики, пробелов, апострофов и дефисов: «cee’d SW» → «ceedsw», «ŠKODA» → «skoda». */
@@ -25,11 +31,26 @@ const CEED_OTHER_BODY = /х[эе]тчб[эе]к|hatch|купе|coupe|седан|
 /** pro_cee’d / «Про Сид» и XCeed / «ИксСид» — другие машины. */
 const CEED_OTHER_MODEL = /pro|про|xceed|икс/
 
+/** BMW X5 другого поколения: E53, E70 (до 2013) и G05 (с 2018) выглядят иначе, чем F15. */
+const X5_OTHER_GENERATION = /e53|e70|g05/
+
+/** Чертёж, выбранный на форме машины, важнее подбора; 'none' — без чертежа, неизвестный id — как подбор. */
+export function schematicModelFor(
+  v: Pick<Vehicle, 'make' | 'model' | 'year' | 'generation' | 'bodyType' | 'schematic'>,
+): SchematicModel | null {
+  if (v.schematic === 'none') return null
+  if (isSchematicModel(v.schematic)) return v.schematic
+  return autoSchematic(v)
+}
+
 /**
- * Для какой машины есть чертёж. Год и кузов проверяются, только если указаны: владелец мог их не заполнить,
- * а похожий чертёж лучше, чем никакого. Octavia A5 — 2004–2013 (лифтбек), cee’d первого поколения — 2006–2012.
+ * Подбор чертежа по марке и модели. Год и кузов проверяются, только если указаны: владелец мог их не заполнить,
+ * а похожий чертёж лучше, чем никакого. Octavia A5 — 2004–2013 (лифтбек), cee’d первого поколения — 2006–2012
+ * (универсал), Lanos / Sens / Chance — любые годы, BMW X5 F15 — 2013–2018.
  */
-export function schematicModelFor(v: Vehicle): SchematicModel | null {
+export function autoSchematic(
+  v: Pick<Vehicle, 'make' | 'model' | 'year' | 'generation' | 'bodyType'>,
+): SchematicModel | null {
   const make = squash(v.make)
   const model = squash(v.model)
   const details = [v.model, v.generation, v.bodyType].filter(Boolean).join(' ').toLowerCase()
@@ -39,6 +60,15 @@ export function schematicModelFor(v: Vehicle): SchematicModel | null {
   }
   if ((make === 'kia' || make === 'киа') && /ceed|сид/.test(model) && !CEED_OTHER_MODEL.test(model)) {
     return inYears(v.year, 2006, 2012) && !CEED_OTHER_BODY.test(details) ? 'ceed-sw-1' : null
+  }
+  if (
+    ['daewoo', 'дэу', 'деу', 'chevrolet', 'шевроле', 'zaz', 'заз'].includes(make) &&
+    /lanos|ланос|sens|сенс|chance|шанс/.test(model)
+  ) {
+    return 'lanos'
+  }
+  if ((make === 'bmw' || make === 'бмв') && /^[xх]5(?!\d)/.test(model)) {
+    return inYears(v.year, 2013, 2018) && !X5_OTHER_GENERATION.test(squash(v.generation)) ? 'x5-f15' : null
   }
   return null
 }

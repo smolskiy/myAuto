@@ -2,7 +2,7 @@ import { expect, test } from 'vitest'
 import type { ReminderStatus } from '../../domain/calc/reminders'
 import { BUILTIN_CATALOG, CATALOG_ID as C } from '../../domain/catalog'
 import type { CatalogItem, Vehicle } from '../../domain/types'
-import { schematicData, schematicModelFor, zoneOfItem } from './schematic'
+import { autoSchematic, schematicData, schematicModelFor, zoneOfItem } from './schematic'
 
 const car = (make: string, model: string, extra: Partial<Vehicle> = {}): Vehicle => ({
   id: 'v1',
@@ -52,6 +52,27 @@ test('исключения понимают кириллицу: «Про Сид�
   expect(schematicModelFor(car('Шкода', 'Октавия А7'))).toBeNull()
   expect(schematicModelFor(car('Skoda', 'Octavia', { generation: 'A7' }))).toBeNull()
   expect(schematicModelFor(car('Skoda', 'Octavia', { generation: 'А5 рестайлинг' }))).toBe('octavia-a5')
+})
+
+test('Lanos (Daewoo, Chevrolet, ЗАЗ Sens/Chance) и BMW X5 F15 — свои чертежи', () => {
+  expect(schematicModelFor(car('Daewoo', 'Lanos'))).toBe('lanos')
+  expect(schematicModelFor(car('Chevrolet', 'Ланос', { year: 2008 }))).toBe('lanos')
+  expect(schematicModelFor(car('ЗАЗ', 'Шанс'))).toBe('lanos')
+  expect(schematicModelFor(car('ZAZ', 'Sens'))).toBe('lanos')
+  expect(schematicModelFor(car('BMW', 'X5', { year: 2016 }))).toBe('x5-f15')
+  expect(schematicModelFor(car('БМВ', 'Х5'))).toBe('x5-f15')
+  expect(schematicModelFor(car('BMW', 'X5 xDrive30d', { year: 2015 }))).toBe('x5-f15')
+  expect(schematicModelFor(car('BMW', 'X5', { year: 2008 }))).toBeNull()
+  expect(schematicModelFor(car('BMW', 'X5', { generation: 'G05' }))).toBeNull()
+  expect(schematicModelFor(car('BMW', 'X3', { year: 2016 }))).toBeNull()
+})
+
+test('выбор владельца важнее подбора: другой чертёж или «без чертежа»', () => {
+  expect(schematicModelFor(car('Lada', '2109', { schematic: 'lanos' }))).toBe('lanos')
+  expect(schematicModelFor(car('Skoda', 'Octavia', { year: 2011, schematic: 'none' }))).toBeNull()
+  // Неизвестный id (чертёж убрали из новой версии) — как «автоматически».
+  expect(schematicModelFor(car('Skoda', 'Octavia', { year: 2011, schematic: 'old-art' }))).toBe('octavia-a5')
+  expect(autoSchematic(car('Skoda', 'Octavia', { year: 2011, schematic: 'none' }))).toBe('octavia-a5')
 })
 
 const custom = (id: string, group: CatalogItem['group'], name = 'Своё'): CatalogItem => ({

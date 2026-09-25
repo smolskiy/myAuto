@@ -32,6 +32,8 @@ export interface VehicleValues {
   fluids: Fluid[]
   tireSizeFront: string
   tireSizeRear: string
+  /** Чертёж на главной: '' — подобрать по модели, 'none' — без чертежа, иначе id картинки. */
+  schematic: string
   note: string
 }
 
@@ -65,6 +67,7 @@ export function vehicleToValues(v?: Vehicle): VehicleValues {
     fluids: v?.fluids ?? [],
     tireSizeFront: v?.tireSizeFront ?? '',
     tireSizeRear: v?.tireSizeRear ?? '',
+    schematic: v?.schematic ?? '',
     note: v?.note ?? '',
   }
 }
@@ -172,6 +175,7 @@ export function valuesToDraft(
     tireSizeFront: text(v.tireSizeFront),
     tireSizeRear: text(v.tireSizeRear),
     photoAttachmentId: extra.photoAttachmentId,
+    schematic: v.schematic || undefined,
     note: text(v.note),
     order: extra.order,
   }

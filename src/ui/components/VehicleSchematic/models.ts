@@ -1,8 +1,10 @@
 import ceedArt from './art/ceed-sw-1.webp'
+import lanosArt from './art/lanos.webp'
 import octaviaArt from './art/octavia-a5.webp'
+import x5Art from './art/x5-f15.webp'
 
 /** Модели, для которых есть чертёж. Ракурс у всех один: 3/4 спереди слева, перед смотрит влево. */
-export type SchematicModel = 'octavia-a5' | 'ceed-sw-1'
+export type SchematicModel = 'octavia-a5' | 'ceed-sw-1' | 'lanos' | 'x5-f15'
 
 /**
  * Зоны на чертеже. Узлы, которых снаружи не видно, стоят там, где они под капотом у поперечного мотора:
@@ -32,6 +34,8 @@ export interface Wheel {
 }
 
 export interface SchematicArt {
+  /** Подпись в выборе чертежа. */
+  label: string
   src: string
   /** Ширина / высота картинки. */
   aspect: number
@@ -46,6 +50,7 @@ export interface SchematicArt {
 /** Координаты сняты по сетке с самих картинок (`tools/schematic-mask.py` печатает aspect). */
 export const SCHEMATIC_ART: Record<SchematicModel, SchematicArt> = {
   'octavia-a5': {
+    label: 'Skoda Octavia A5',
     src: octaviaArt,
     aspect: 2.0492,
     anchors: {
@@ -85,6 +90,7 @@ export const SCHEMATIC_ART: Record<SchematicModel, SchematicArt> = {
     },
   },
   'ceed-sw-1': {
+    label: "Kia cee'd SW",
     src: ceedArt,
     aspect: 2.0367,
     anchors: {
@@ -123,4 +129,90 @@ export const SCHEMATIC_ART: Record<SchematicModel, SchematicArt> = {
       rear: { center: [90, 64], rx: 6, ry: 18 },
     },
   },
+  lanos: {
+    label: 'Daewoo Lanos',
+    src: lanosArt,
+    aspect: 2.0325,
+    anchors: {
+      engine: [27, 40],
+      timing: [10, 45],
+      battery: [34, 45],
+      brakes: [45, 35],
+      cooling: [15, 56],
+      lights: [29, 57],
+      transmission: [37, 68],
+      cabin: [42, 27],
+      wheelFront: [46.5, 79],
+      wheelRear: [90.5, 64.5],
+    },
+    engineBay: [
+      [10, 46],
+      [25, 36],
+      [45, 38],
+      [31, 49],
+    ],
+    brakeLines: [
+      [
+        [45, 35],
+        [46, 57],
+        [46.5, 79],
+      ],
+      [
+        [46, 57],
+        [57, 74],
+        [84, 67],
+        [90.5, 64.5],
+      ],
+    ],
+    wheels: {
+      front: { center: [46.5, 79], rx: 8.5, ry: 20 },
+      rear: { center: [90.3, 64.5], rx: 6, ry: 17 },
+    },
+  },
+  'x5-f15': {
+    label: 'BMW X5',
+    src: x5Art,
+    aspect: 1.9841,
+    anchors: {
+      engine: [27, 38],
+      timing: [10, 43],
+      battery: [34, 42],
+      brakes: [45, 34],
+      cooling: [15, 55],
+      lights: [29, 53],
+      transmission: [36, 68],
+      cabin: [41, 26],
+      wheelFront: [45.5, 78.4],
+      wheelRear: [90, 67.5],
+    },
+    engineBay: [
+      [9, 44],
+      [24, 34],
+      [45, 36],
+      [30, 47],
+    ],
+    brakeLines: [
+      [
+        [45, 34],
+        [45, 57],
+        [45.5, 78.4],
+      ],
+      [
+        [45, 57],
+        [56, 76],
+        [82, 71],
+        [90, 67.5],
+      ],
+    ],
+    wheels: {
+      front: { center: [45.5, 78.4], rx: 9.5, ry: 20.5 },
+      rear: { center: [89.5, 67.5], rx: 7, ry: 17.5 },
+    },
+  },
 }
+
+/** Все чертежи в порядке выбора. */
+export const SCHEMATIC_MODELS = Object.keys(SCHEMATIC_ART) as SchematicModel[]
+
+export const isSchematicModel = (s: string | undefined): s is SchematicModel =>
+  SCHEMATIC_MODELS.includes(s as SchematicModel)

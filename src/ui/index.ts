@@ -34,6 +34,12 @@ export {
   type SchematicModel,
   type SchematicZone,
 } from './components/VehicleSchematic/VehicleSchematic'
+export {
+  SchematicPicker,
+  type SchematicPickerProps,
+  type SchematicPickerOption,
+} from './components/VehicleSchematic/SchematicPicker'
+export { SCHEMATIC_ART, SCHEMATIC_MODELS, isSchematicModel } from './components/VehicleSchematic/models'
 
 // Поля ввода
 export { Field, type FieldProps } from './components/Field/Field'

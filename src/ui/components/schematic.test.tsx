@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
-import { VehicleCard, VehicleSchematic } from '../index'
+import { SchematicPicker, VehicleCard, VehicleSchematic } from '../index'
 
 test('схема — кнопка с именем для скринридера, нажатие уходит наружу', async () => {
   const onClick = vi.fn()
@@ -65,4 +65,24 @@ test('карточка машины со схемой не рисует загл
   )
   expect(screen.getByRole('img', { name: 'Схема машины' })).toBeInTheDocument()
   expect(container.querySelector('svg.tabler-icon-car')).toBeNull()
+})
+
+test('выбор чертежа — радиогруппа: подписи, отмеченный вариант, смена', async () => {
+  const onChange = vi.fn()
+  render(
+    <SchematicPicker
+      label="Чертёж на главной"
+      value="auto"
+      options={[
+        { value: 'auto', label: 'Автоматически', hint: 'Skoda Octavia A5', model: 'octavia-a5' },
+        { value: 'lanos', label: 'Daewoo Lanos', model: 'lanos' },
+        { value: 'none', label: 'Без чертежа' },
+      ]}
+      onChange={onChange}
+    />,
+  )
+  const group = screen.getByRole('radiogroup', { name: 'Чертёж на главной' })
+  expect(within(group).getByRole('radio', { name: /Автоматически/ })).toBeChecked()
+  await userEvent.click(within(group).getByRole('radio', { name: 'Daewoo Lanos' }))
+  expect(onChange).toHaveBeenCalledWith('lanos')
 })

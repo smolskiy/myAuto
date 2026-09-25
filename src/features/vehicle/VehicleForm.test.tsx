@@ -173,3 +173,34 @@ test('правка несуществующей машины — «Машина 
   renderAt('/vehicle/nope/edit')
   expect(await screen.findByText('Машина не найдена')).toBeInTheDocument()
 })
+
+test('чертёж на главной: «Автоматически» показывает подобранный, другой выбор сохраняется', async () => {
+  await repos.vehicles.update(vehicle.id, { make: 'Skoda', model: 'Octavia', year: 2011 })
+  renderAt(`/vehicle/${vehicle.id}/edit`)
+  const group = await screen.findByRole('radiogroup', { name: 'Чертёж на главной' })
+  const auto = within(group).getByRole('radio', { name: /Автоматически/ })
+  expect(auto).toBeChecked()
+  expect(auto.closest('label')).toHaveTextContent('Skoda Octavia A5')
+  await userEvent.click(within(group).getByRole('radio', { name: 'BMW X5' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(async () => expect((await repos.vehicles.get(vehicle.id))?.schematic).toBe('x5-f15'))
+})
+
+test('«Без чертежа» сохраняется как none', async () => {
+  await repos.vehicles.update(vehicle.id, { schematic: 'lanos' })
+  renderAt(`/vehicle/${vehicle.id}/edit`)
+  const group = await screen.findByRole('radiogroup', { name: 'Чертёж на главной' })
+  expect(within(group).getByRole('radio', { name: 'Daewoo Lanos' })).toBeChecked()
+  await userEvent.click(within(group).getByRole('radio', { name: 'Без чертежа' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(async () => expect((await repos.vehicles.get(vehicle.id))?.schematic).toBe('none'))
+})
+
+test('снова «Автоматически» — выбор снимается', async () => {
+  await repos.vehicles.update(vehicle.id, { schematic: 'none' })
+  renderAt(`/vehicle/${vehicle.id}/edit`)
+  const group = await screen.findByRole('radiogroup', { name: 'Чертёж на главной' })
+  await userEvent.click(within(group).getByRole('radio', { name: /Автоматически/ }))
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(async () => expect((await repos.vehicles.get(vehicle.id))?.schematic).toBeUndefined())
+})
