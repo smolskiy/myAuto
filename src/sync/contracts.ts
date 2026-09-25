@@ -35,6 +35,10 @@ export interface YandexAuth {
   connectWithToken(token: string): Promise<void>
   connectWithCode(code: string): Promise<void>
   disconnect(): Promise<void>
+  /** Текст последней неудачи входа (через oauth.html или по коду) для экрана; null — ошибки нет. Сбрасывается новым входом. */
+  getLoginError(): string | null
+  /** Сообщает об изменении подключения и ошибки входа — для экранов и движка синхронизации. */
+  subscribe(cb: () => void): () => void
 }
 
 export interface AttachmentStore {
