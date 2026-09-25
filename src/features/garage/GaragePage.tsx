@@ -46,7 +46,8 @@ export default function GaragePage() {
     <VehicleRow
       key={v.id}
       vehicle={v}
-      active={v.id === active?.id}
+      // Архивная машина активной не бывает (useActiveVehicle), отметка у неё не ставится никогда.
+      active={!v.archived && v.id === active?.id}
       onOpen={() => void navigate(`/vehicle/${v.id}`)}
     />
   )

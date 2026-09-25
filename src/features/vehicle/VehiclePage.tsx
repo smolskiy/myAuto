@@ -8,6 +8,7 @@ import {
   IconPencil,
   IconWheel,
 } from '@tabler/icons-react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import {
   useActiveVehicle,
@@ -18,7 +19,7 @@ import {
 } from '../../db/hooks'
 import { repos } from '../../db/repos'
 import { formatDate, formatKm, formatNumber, NBSP, pluralize } from '../../domain/format'
-import type { Vehicle } from '../../domain/types'
+import type { CarRecord, Vehicle } from '../../domain/types'
 import {
   Badge,
   Button,
@@ -32,7 +33,7 @@ import {
   VehicleCard,
   useToast,
 } from '../../ui'
-import { Page, recordRowProps, useLookup } from '../common'
+import { Page, recordRowProps, useLookup, type Lookup } from '../common'
 import { failureText } from '../garage/kit'
 import { OwnershipList } from './details/OwnershipList'
 import { FluidsList, SpecsList } from './details/SpecsList'
@@ -41,13 +42,19 @@ import { makeModelYear, shownOdometer } from './details/vehicleText'
 import styles from './details/VehiclePage.module.css'
 
 const RECENT = 3
+/** Журнал архивной машины в карточке: столько строк сразу, остальные — по «Показать все». */
+const ARCHIVE_PAGE = 10
 const RECORD_FORMS: [string, string, string] = ['запись', 'записи', 'записей']
 
-/** Карточка машины: фото и паспорт, владение и расходы, архив, переходы в разделы машины. */
+/**
+ * Карточка машины: фото и паспорт, владение и расходы, архив, переходы в разделы машины.
+ * Архивная машина активной не становится: её журнал — прямо в карточке, разделов для ввода нет.
+ */
 export default function VehiclePage() {
   const { id } = useParams()
   const vehicle = useVehicle(id)
-  if (vehicle === undefined) return <Page title="Машина" back="/garage" />
+  // Пока грузится — ничего: оболочка ждёт h1 экрана, чтобы перевести на него фокус.
+  if (vehicle === undefined) return null
   if (vehicle === null) {
     return (
       <Page title="Машина" back="/garage">
@@ -87,9 +94,10 @@ function VehicleDetails({ vehicle }: { vehicle: Vehicle }) {
 
   const unarchive = () => run(() => repos.vehicles.update(vehicle.id, { archived: false }).then(() => {}))
 
-  /** Разделы «Журнал», «Документы»… показывают активную машину: сначала делаем активной эту. */
+  /** Разделы «Журнал», «Документы»… показывают активную машину: сначала делаем активной эту (только неархивную). */
   const openSection = (path: string) =>
     run(async () => {
+      if (vehicle.archived) return
       if (!isActive) await setActive(vehicle.id)
       await navigate(path)
     })
@@ -149,45 +157,54 @@ function VehicleDetails({ vehicle }: { vehicle: Vehicle }) {
             </div>
           )}
         </div>
+        {vehicle.archived && (
+          <p className={styles.hint}>Машина в архиве — верните её из архива, чтобы вести записи</p>
+        )}
       </section>
 
-      <ListGroup title="Разделы">
-        <ListItem
-          leading={<Icon icon={IconList} tone="accent" circle />}
-          title="Журнал"
-          value={records ? `${formatNumber(count)}${NBSP}${pluralize(count, RECORD_FORMS)}` : undefined}
-          chevron
-          onClick={() => openSection('/journal')}
-        />
-        <ListItem
-          leading={<Icon icon={IconChartBar} tone="accent" circle />}
-          title="Статистика"
-          chevron
-          onClick={() => openSection('/stats')}
-        />
-        <ListItem
-          leading={<Icon icon={IconFileText} tone="accent" circle />}
-          title="Документы"
-          chevron
-          onClick={() => openSection('/documents')}
-        />
-        <ListItem
-          leading={<Icon icon={IconWheel} tone="accent" circle />}
-          title="Шины"
-          chevron
-          onClick={() => openSection('/tires')}
-        />
-      </ListGroup>
-
-      {records && records.length > 0 && (
-        <ListGroup title="Последние записи">
-          {records.slice(0, RECENT).map((r) => (
-            <RecordRow
-              key={r.id}
-              {...recordRowProps(r, lookup, { onClick: () => void navigate(`/record/${r.id}`) })}
+      {vehicle.archived ? (
+        <ArchivedJournal records={records} lookup={lookup} />
+      ) : (
+        <>
+          <ListGroup title="Разделы">
+            <ListItem
+              leading={<Icon icon={IconList} tone="accent" circle />}
+              title="Журнал"
+              value={records ? `${formatNumber(count)}${NBSP}${pluralize(count, RECORD_FORMS)}` : undefined}
+              chevron
+              onClick={() => openSection('/journal')}
             />
-          ))}
-        </ListGroup>
+            <ListItem
+              leading={<Icon icon={IconChartBar} tone="accent" circle />}
+              title="Статистика"
+              chevron
+              onClick={() => openSection('/stats')}
+            />
+            <ListItem
+              leading={<Icon icon={IconFileText} tone="accent" circle />}
+              title="Документы"
+              chevron
+              onClick={() => openSection('/documents')}
+            />
+            <ListItem
+              leading={<Icon icon={IconWheel} tone="accent" circle />}
+              title="Шины"
+              chevron
+              onClick={() => openSection('/tires')}
+            />
+          </ListGroup>
+
+          {records && records.length > 0 && (
+            <ListGroup title="Последние записи">
+              {records.slice(0, RECENT).map((r) => (
+                <RecordRow
+                  key={r.id}
+                  {...recordRowProps(r, lookup, { onClick: () => void navigate(`/record/${r.id}`) })}
+                />
+              ))}
+            </ListGroup>
+          )}
+        </>
       )}
 
       {records && costs && <OwnershipList vehicle={vehicle} records={records} expenses={costs.total} />}
@@ -201,5 +218,30 @@ function VehicleDetails({ vehicle }: { vehicle: Vehicle }) {
         </Card>
       )}
     </Page>
+  )
+}
+
+/** Журнал архивной машины прямо в карточке: первые записи и «Показать все». */
+function ArchivedJournal({ records, lookup }: { records?: CarRecord[]; lookup?: Lookup }) {
+  const navigate = useNavigate()
+  const [all, setAll] = useState(false)
+  if (!records || records.length === 0) return null
+  const shown = all ? records : records.slice(0, ARCHIVE_PAGE)
+  return (
+    <ListGroup title="Журнал">
+      {shown.map((r) => (
+        <RecordRow
+          key={r.id}
+          {...recordRowProps(r, lookup, { onClick: () => void navigate(`/record/${r.id}`) })}
+        />
+      ))}
+      {shown.length < records.length && (
+        <ListItem
+          title="Показать все"
+          value={`${formatNumber(records.length)}${NBSP}${pluralize(records.length, RECORD_FORMS)}`}
+          onClick={() => setAll(true)}
+        />
+      )}
+    </ListGroup>
   )
 }

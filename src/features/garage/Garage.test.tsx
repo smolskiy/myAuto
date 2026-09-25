@@ -114,6 +114,20 @@ describe('гараж', () => {
     await waitFor(() => expect(archive.textContent).toContain(`112${NBSP}000${NBSP}км`))
   })
 
+  test('архивная машина не помечается «Активная», даже если выбрана на устройстве', async () => {
+    await addVehicle({ name: 'Рапид' })
+    const sold = await addVehicle({ name: 'Старая Лада', archived: true })
+    await setMeta(db, META_KEYS.activeVehicleId, sold.id)
+    renderAt('/garage')
+
+    const mine = await screen.findByRole('list', { name: 'Мои машины' })
+    await waitFor(() =>
+      expect(within(mine).getByRole('button', { name: /Рапид/ })).toHaveTextContent('Активная'),
+    )
+    const archive = screen.getByRole('list', { name: 'Архив' })
+    expect(within(archive).getByRole('button', { name: /Старая Лада/ })).not.toHaveTextContent('Активная')
+  })
+
   test('строка машины открывает её карточку, «Добавить машину» — форму', async () => {
     const v = await addVehicle()
     const router = renderAt('/garage')
@@ -205,6 +219,35 @@ describe('карточка машины', () => {
     expect(screen.getByRole('button', { name: 'Вернуть из архива' })).toBeInTheDocument()
     expect(await activeId()).not.toBe(sold.id)
     expect(screen.queryByText('Активная')).not.toBeInTheDocument()
+  })
+
+  test('архивная машина: журнал прямо в карточке, без перехода в разделы и без смены активной', async () => {
+    const current = await addVehicle({ name: 'Рапид' })
+    await setMeta(db, META_KEYS.activeVehicleId, current.id)
+    const sold = await addVehicle({ name: 'Старая Лада', archived: true })
+    for (let day = 1; day <= 12; day++) {
+      await repos.records.create({
+        vehicleId: sold.id,
+        kind: 'note',
+        date: `2019-01-${String(day).padStart(2, '0')}`,
+        total: 0,
+        title: `Заметка ${day}`,
+      })
+    }
+    renderAt(`/vehicle/${sold.id}`)
+
+    const journal = await screen.findByRole('list', { name: 'Журнал' })
+    await waitFor(() => expect(within(journal).getAllByText(/^Заметка \d+$/)).toHaveLength(10))
+    expect(within(journal).getByText('Заметка 12')).toBeInTheDocument()
+    expect(within(journal).queryByText('Заметка 2')).not.toBeInTheDocument()
+    await userEvent.click(within(journal).getByRole('button', { name: /Показать все/ }))
+    await waitFor(() => expect(within(journal).getAllByText(/^Заметка \d+$/)).toHaveLength(12))
+
+    expect(screen.getByText('Машина в архиве — верните её из архива, чтобы вести записи')).toBeInTheDocument()
+    for (const name of [/Документы/, /Шины/, /Статистика/, /^Журнал/]) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    }
+    expect(await activeId()).toBe(current.id)
   })
 
   test('«Сделать активной» меняет активную машину', async () => {
