@@ -135,6 +135,29 @@ test('вложение удалили, пока оно грузилось, — u
   expect(row.uploadedAt).toBeUndefined()
 })
 
+test('удалили во время загрузки и вернули «Отменить» — следующая загрузка ставит uploadedAt', async () => {
+  const s = store()
+  const att = await s.addFile(owner, new File(['raw'], 'check.jpg', { type: 'image/jpeg' }))
+  let deleted = false
+  const deletingDisk: DiskClient = Object.assign(Object.create(disk) as FakeDisk, {
+    uploadBlob: async (path: string, blob: Blob) => {
+      await disk.uploadBlob(path, blob)
+      if (!deleted) await createRepos(db).attachments.remove(att.id)
+      deleted = true
+    },
+  })
+  await s.uploadPending(deletingDisk)
+  expect((await db.attachments.get(att.id))?.uploadedAt).toBeUndefined()
+
+  await createRepos(db).attachments.restore(att.id)
+  expect(await s.pendingCount()).toBe(2)
+  await s.uploadPending(disk)
+  expect((await db.attachments.get(att.id))?.uploadedAt).toBeTypeOf('number')
+  expect(await s.pendingCount()).toBe(0)
+  expect(disk.files.has(remotePaths(att).orig)).toBe(true)
+  expect(disk.files.has(remotePaths(att).thumb!)).toBe(true)
+})
+
 test('кеш вытесняет старые загруженные оригиналы, но не неотправленные', async () => {
   const s = store()
   const a = await s.addFile(owner, new File(['1'], 'a.jpg', { type: 'image/jpeg' }))

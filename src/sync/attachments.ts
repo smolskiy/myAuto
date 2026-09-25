@@ -179,9 +179,11 @@ export function createAttachmentStore(deps: AttachmentStoreDeps): AttachmentServ
           await db.blobs.update(row.key, { pending: 0 })
         }
         // Проверка и правка — одной транзакцией: строку могли удалить, пока грузились её файлы.
-        await db.transaction('rw', db.attachments, async () => {
+        // Удалили — файлы снова ждут загрузки: «Отменить» вернёт строку, и следующий цикл поставит uploadedAt.
+        await db.transaction('rw', db.attachments, db.blobs, async () => {
           const current = await db.attachments.get(id)
           if (current && !current.deleted) await repo.update(id, { uploadedAt: now() })
+          else if (current) await db.blobs.where('attachmentId').equals(id).modify({ pending: 1 })
         })
         changed()
       }
