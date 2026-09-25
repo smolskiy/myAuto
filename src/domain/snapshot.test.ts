@@ -39,6 +39,20 @@ describe('snapshot', () => {
     expect(() => parseSnapshot('text')).toThrow('Это не файл «Мой авто»')
   })
 
+  test('нет таблиц или они не объект — не файл «Мой авто» (а не пустая копия)', () => {
+    const head = { format: 'myauto-garage', schemaVersion: 1, exportedAt: 1 }
+    for (const tables of [undefined, null, [], 'vehicles', 42]) {
+      const file = tables === undefined ? head : { ...head, tables }
+      expect(() => parseSnapshot(file), JSON.stringify(tables)).toThrow(SnapshotError)
+      expect(() => parseSnapshot(file), JSON.stringify(tables)).toThrow('Это не файл «Мой авто»')
+    }
+  })
+
+  test('пустой объект таблиц — пустая, но настоящая копия', () => {
+    const parsed = parseSnapshot({ format: 'myauto-garage', schemaVersion: 1, exportedAt: 1, tables: {} })
+    for (const name of TABLE_NAMES) expect(parsed.tables[name]).toEqual([])
+  })
+
   test('снимок из будущей версии — отказ', () => {
     const future = { ...emptySnapshot(), schemaVersion: SCHEMA_VERSION + 1 }
     expect(() => parseSnapshot(future)).toThrow(
