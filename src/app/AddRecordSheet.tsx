@@ -1,16 +1,10 @@
-import { IconGasStation, IconGauge, IconNote, IconReceipt, IconTool } from '@tabler/icons-react'
-import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import type { RecordKind } from '../domain/types'
+import { RECORD_KIND_LABELS } from '../features/common/labels'
+import { RECORD_KIND_ICON } from '../features/common/recordPresentation'
 import { ActionSheet } from '../ui'
 
-const KINDS: { kind: RecordKind; label: string; icon: ReactNode }[] = [
-  { kind: 'service', label: 'ТО и ремонт', icon: <IconTool /> },
-  { kind: 'fuel', label: 'Заправка', icon: <IconGasStation /> },
-  { kind: 'expense', label: 'Расход', icon: <IconReceipt /> },
-  { kind: 'odometer', label: 'Пробег', icon: <IconGauge /> },
-  { kind: 'note', label: 'Заметка', icon: <IconNote /> },
-]
+const KINDS = Object.keys(RECORD_KIND_LABELS) as RecordKind[]
 
 export interface AddRecordSheetProps {
   open: boolean
@@ -25,13 +19,16 @@ export function AddRecordSheet({ open, onClose }: AddRecordSheetProps) {
       open={open}
       onClose={onClose}
       title="Новая запись"
-      actions={KINDS.map(({ kind, label, icon }) => ({
-        key: kind,
-        label,
-        icon,
-        tone: kind,
-        onSelect: () => navigate(`/record/new/${kind}`),
-      }))}
+      actions={KINDS.map((kind) => {
+        const Glyph = RECORD_KIND_ICON[kind]
+        return {
+          key: kind,
+          label: RECORD_KIND_LABELS[kind],
+          icon: <Glyph />,
+          tone: kind,
+          onSelect: () => navigate(`/record/new/${kind}`),
+        }
+      })}
     />
   )
 }
