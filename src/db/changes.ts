@@ -8,5 +8,11 @@ export function subscribeLocalChanges(cb: (table: TableName) => void): () => voi
 }
 
 export function emitLocalChange(table: TableName): void {
-  for (const cb of listeners) cb(table)
+  for (const cb of listeners) {
+    try {
+      cb(table)
+    } catch (err) {
+      console.warn('Ошибка в обработчике subscribeLocalChanges', err)
+    }
+  }
 }

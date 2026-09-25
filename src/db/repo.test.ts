@@ -6,12 +6,21 @@ import { ensureSeed } from './seed'
 import type { CatalogItem, Place } from '../domain/types'
 
 const CATALOG: CatalogItem[] = ['a', 'b', 'c'].map((k) => ({
-  id: `item.${k}`, createdAt: 0, updatedAt: 0, name: k, group: 'other', builtin: true,
+  id: `item.${k}`,
+  createdAt: 0,
+  updatedAt: 0,
+  name: k,
+  group: 'other',
+  builtin: true,
 }))
 
 let db: MyAutoDB
-beforeEach(() => { db = new MyAutoDB(`t-${crypto.randomUUID()}`) })
-afterEach(async () => { await db.delete() })
+beforeEach(() => {
+  db = new MyAutoDB(`t-${crypto.randomUUID()}`)
+})
+afterEach(async () => {
+  await db.delete()
+})
 
 test('создание, правка, мягкое удаление и восстановление', async () => {
   const { places } = createRepos(db)
@@ -38,8 +47,28 @@ test('updatedAt строго растёт даже при одинаковом D
   expect(c.updatedAt).toBeGreaterThan(b.updatedAt)
 })
 
+test('updatedAt не проседает при рассинхроне часов', async () => {
+  const future = Date.now() + 1e9
+  const base = { id: 'skew', createdAt: 1, updatedAt: future, kind: 'service' as const, name: 'СТО' }
+  const { places } = createRepos(db)
+
+  await db.places.put(base)
+  const updated = await places.update('skew', { name: 'СТО 2' })
+  expect(updated.updatedAt).toBeGreaterThan(future)
+
+  await db.places.put(base)
+  await places.remove('skew')
+  expect((await db.places.get('skew'))!.updatedAt).toBeGreaterThan(future)
+
+  await db.places.put({ ...base, deleted: true })
+  await places.restore('skew')
+  expect((await db.places.get('skew'))!.updatedAt).toBeGreaterThan(future)
+})
+
 test('правка отсутствующей записи — ошибка', async () => {
-  await expect(createRepos(db).places.update('nope', { name: 'x' } as Partial<Place>)).rejects.toThrow('Запись не найдена')
+  await expect(createRepos(db).places.update('nope', { name: 'x' } as Partial<Place>)).rejects.toThrow(
+    'Запись не найдена',
+  )
 })
 
 test('каждая правка сообщает о локальном изменении', async () => {
@@ -52,15 +81,75 @@ test('каждая правка сообщает о локальном изме�
   expect(seen).toEqual(['masters', 'masters'])
 })
 
-test('повтор записи — копия с новыми id строк и без пробега', async () => {
+test('update и restore тоже сообщают о локальном изменении', async () => {
+  const { masters } = createRepos(db)
+  const m = await masters.create({ name: 'Иван' })
+  await masters.remove(m.id)
+
+  const seen: string[] = []
+  const off = subscribeLocalChanges((t) => seen.push(t))
+  await masters.restore(m.id)
+  await masters.update(m.id, { name: 'Иван П.' })
+  off()
+  expect(seen).toEqual(['masters', 'masters'])
+})
+
+test('правка мягко удалённой записи — ошибка', async () => {
+  const { places } = createRepos(db)
+  const created = await places.create({ kind: 'service', name: 'СТО' })
+  await places.remove(created.id)
+  await expect(places.update(created.id, { name: 'x' })).rejects.toThrow('Запись не найдена')
+})
+
+test('повтор записи — копия с новыми id строк, без пробега, гарантии и переобувки', async () => {
   const { records } = createRepos(db)
-  const src = await records.create({ vehicleId: 'v1', kind: 'service', date: '2026-01-01', odometer: 1000, total: 500,
-    title: 'ТО', serviceType: 'maintenance', diy: false, works: [{ id: 'w1', name: 'Работа' }], parts: [] })
+  const src = await records.create({
+    vehicleId: 'v1',
+    kind: 'service',
+    date: '2026-01-01',
+    odometer: 1000,
+    total: 500,
+    title: 'ТО',
+    serviceType: 'maintenance',
+    diy: false,
+    works: [{ id: 'w1', name: 'Работа' }],
+    parts: [],
+    warrantyUntilDate: '2027-01-01',
+    warrantyUntilKm: 50000,
+    tireSwap: { mountedSetId: 'ts1', removedSetId: 'ts2' },
+  })
   const copy = await records.duplicate(src.id, '2026-09-25')
   expect(copy.id).not.toBe(src.id)
   expect(copy).toMatchObject({ date: '2026-09-25', total: 500, title: 'ТО' })
   expect(copy.odometer).toBeUndefined()
-  expect(copy.kind === 'service' && copy.works[0]!.id).not.toBe('w1')
+  expect(copy.kind).toBe('service')
+  if (copy.kind === 'service') {
+    expect(copy.works[0]!.id).not.toBe('w1')
+    expect(copy.warrantyUntilDate).toBeUndefined()
+    expect(copy.warrantyUntilKm).toBeUndefined()
+    expect(copy.tireSwap).toBeUndefined()
+  }
+})
+
+test('повтор записи заправки', async () => {
+  const { records } = createRepos(db)
+  const src = await records.create({
+    vehicleId: 'v1',
+    kind: 'fuel',
+    date: '2026-01-01',
+    odometer: 1000,
+    total: 3000,
+    liters: 40,
+    pricePerLiter: 75,
+    fullTank: true,
+    missedBefore: false,
+  })
+  const copy = await records.duplicate(src.id, '2026-09-25')
+  expect(copy.id).not.toBe(src.id)
+  expect(copy.kind).toBe('fuel')
+  expect(copy.date).toBe('2026-09-25')
+  expect(copy.odometer).toBeUndefined()
+  if (copy.kind === 'fuel') expect(copy.liters).toBe(40)
 })
 
 test('сид добавляет каталог один раз и не воскрешает удалённое', async () => {
@@ -70,4 +159,20 @@ test('сид добавляет каталог один раз и не воск�
   await ensureSeed(db, CATALOG)
   expect((await db.catalogItems.get('item.a'))?.deleted).toBe(true)
   expect(await db.catalogItems.count()).toBe(3)
+})
+
+test('сид не сообщает о локальном изменении', async () => {
+  const seen: string[] = []
+  const off = subscribeLocalChanges((t) => seen.push(t))
+  await ensureSeed(db, CATALOG)
+  off()
+  expect(seen).toEqual([])
+})
+
+test('nextOrder — 0 для пустой таблицы, max(order)+1 после', async () => {
+  const { vehicles } = createRepos(db)
+  expect(await vehicles.nextOrder()).toBe(0)
+  await vehicles.create({ name: 'A', make: 'M', model: 'X', archived: false, fluids: [], order: 0 })
+  await vehicles.create({ name: 'B', make: 'M', model: 'Y', archived: false, fluids: [], order: 5 })
+  expect(await vehicles.nextOrder()).toBe(6)
 })

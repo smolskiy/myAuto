@@ -1,5 +1,5 @@
 import type { Row } from './types'
-import { TABLE_NAMES, type Snapshot, type SnapshotTables } from './snapshot'
+import { SCHEMA_VERSION, SNAPSHOT_FORMAT, TABLE_NAMES, type Snapshot, type SnapshotTables } from './snapshot'
 
 /**
  * Слияние двух копий базы — локальной и той, что лежит на Яндекс.Диске.
@@ -23,8 +23,7 @@ export function pickRow<T extends Row>(a: T, b: T): T {
 
 export function mergeRows<T extends Row>(a: T[], b: T[]): T[] {
   const map = new Map<string, T>()
-  for (const r of a) map.set(r.id, r)
-  for (const r of b) {
+  for (const r of [...a, ...b]) {
     const cur = map.get(r.id)
     map.set(r.id, cur ? pickRow(cur, r) : r)
   }
@@ -38,8 +37,8 @@ export function mergeSnapshots(a: Snapshot, b: Snapshot): Snapshot {
     ;(tables[name] as unknown[]) = merged
   }
   return {
-    format: a.format,
-    schemaVersion: a.schemaVersion,
+    format: SNAPSHOT_FORMAT,
+    schemaVersion: SCHEMA_VERSION,
     exportedAt: Math.max(a.exportedAt, b.exportedAt),
     tables,
   }
@@ -54,7 +53,9 @@ function fingerprint(rows: Row[]): string {
 }
 
 export function sameSnapshot(a: Snapshot, b: Snapshot): boolean {
-  return TABLE_NAMES.every((name) => fingerprint(a.tables[name] as Row[]) === fingerprint(b.tables[name] as Row[]))
+  return TABLE_NAMES.every(
+    (name) => fingerprint(a.tables[name] as Row[]) === fingerprint(b.tables[name] as Row[]),
+  )
 }
 
 /** Строки, которые нужно записать локально: новые или изменившиеся после слияния. */
@@ -62,7 +63,12 @@ export function changedRows<T extends Row>(local: T[], merged: T[]): T[] {
   const cur = new Map(local.map((r) => [r.id, r]))
   return merged.filter((r) => {
     const l = cur.get(r.id)
-    return !l || l.updatedAt !== r.updatedAt || !!l.deleted !== !!r.deleted || JSON.stringify(l) !== JSON.stringify(r)
+    return (
+      !l ||
+      l.updatedAt !== r.updatedAt ||
+      !!l.deleted !== !!r.deleted ||
+      JSON.stringify(l) !== JSON.stringify(r)
+    )
   })
 }
 

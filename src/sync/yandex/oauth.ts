@@ -41,8 +41,6 @@ export type YandexAuthService = YandexAuth & {
   getToken(): string | null
   /** Забирает токен, оставленный oauth.html. true — вход состоялся. */
   consumeRedirect(): Promise<boolean>
-  /** Сообщает о входе, выходе и чтении токена из meta (для useYandexConnected). */
-  subscribe(cb: () => void): () => void
 }
 
 export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
@@ -77,6 +75,8 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
         subscribers.delete(cb)
       }
     },
+
+    getLoginError: () => null,
 
     getToken: () => token,
 
