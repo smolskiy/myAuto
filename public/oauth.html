@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex" />
+    <title>Мой авто — вход в Яндекс</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f2f3f5;
+        --card: #ffffff;
+        --text: #1c1c1e;
+        --muted: #6b6f76;
+        --accent: #2f6fed;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111214;
+          --card: #1c1d20;
+          --text: #f2f3f5;
+          --muted: #9a9ea6;
+          --accent: #5b8ff5;
+        }
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        box-sizing: border-box;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      main {
+        max-width: 360px;
+        width: 100%;
+        background: var(--card);
+        border-radius: 16px;
+        padding: 24px 20px;
+        text-align: center;
+      }
+      p {
+        margin: 0 0 16px;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p id="msg">Завершаем вход…</p>
+      <a href="./#/settings/sync">Вернуться в приложение</a>
+    </main>
+    <script>
+      // Приём ответа Яндекса (implicit flow). Токен или ошибка уходят в localStorage вместе со state,
+      // приложение само сверяет state, сохраняет токен или показывает ошибку. Фрагмент сразу стираем из адреса.
+      ;(function () {
+        var params = new URLSearchParams(location.hash.replace(/^#/, ''))
+        var token = params.get('access_token')
+        var state = params.get('state') || ''
+        var error = params.get('error')
+        var description = params.get('error_description') || ''
+        var msg = document.getElementById('msg')
+        history.replaceState(null, '', location.pathname + location.search)
+        if (!token && !error) {
+          msg.textContent = 'Яндекс не вернул данные входа. Попробуйте войти ещё раз.'
+          return
+        }
+        var handoff = error
+          ? { error: error, errorDescription: description, state: state }
+          : { token: token, state: state }
+        try {
+          localStorage.setItem('myauto.oauth.token', JSON.stringify(handoff))
+        } catch (e) {
+          msg.textContent = error
+            ? 'Яндекс не выдал доступ: ' + (description || error)
+            : 'Браузер не дал сохранить вход. Войдите по коду подтверждения в настройках синхронизации.'
+          return
+        }
+        location.replace('./#/settings/sync')
+      })()
+    </script>
+  </body>
+</html>
