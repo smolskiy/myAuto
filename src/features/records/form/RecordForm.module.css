@@ -1,0 +1,28 @@
+/* Поле и его быстрые кнопки — как единое поле ui (тот же зазор, что внутри Field). */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Два коротких поля в ряд: «Действует с / до», литры и цена. На узком экране — друг под другом. */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+
+@media (max-width: 340px) {
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+}
