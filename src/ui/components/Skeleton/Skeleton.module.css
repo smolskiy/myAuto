@@ -1,0 +1,22 @@
+.skeleton {
+  display: block;
+  max-width: 100%;
+  background: var(--color-skeleton);
+  animation: pulse 1400ms ease-in-out infinite;
+}
+
+.sm {
+  border-radius: var(--radius-sm);
+}
+.md {
+  border-radius: var(--radius-md);
+}
+.full {
+  border-radius: var(--radius-full);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}

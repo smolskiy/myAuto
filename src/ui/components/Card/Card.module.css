@@ -1,0 +1,10 @@
+.card {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.padded {
+  padding: var(--space-4);
+}

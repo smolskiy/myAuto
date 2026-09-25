@@ -1,0 +1,47 @@
+.picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 88px;
+  padding: var(--space-2);
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-accent);
+  text-align: center;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.picker:active {
+  background: var(--color-accent-soft);
+}
+@media (hover: hover) {
+  .picker:hover {
+    background: var(--color-accent-soft);
+  }
+}
+.picker:has(.input:focus-visible) {
+  outline: var(--focus-width) solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Настоящее поле выбора файла — прозрачное поверх плитки. */
+.input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}

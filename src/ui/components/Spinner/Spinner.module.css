@@ -1,0 +1,38 @@
+.wrap {
+  display: inline-flex;
+}
+
+.spinner {
+  color: inherit;
+  animation: spin 800ms linear infinite;
+}
+
+.track {
+  stroke: currentColor;
+  opacity: 0.2;
+}
+
+.arc {
+  stroke: currentColor;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Без вращения дуга всё равно видна как «занято»; мягкая пульсация вместо поворота. */
+  .spinner {
+    animation: pulse 1600ms ease-in-out infinite;
+    animation-duration: 1600ms !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}

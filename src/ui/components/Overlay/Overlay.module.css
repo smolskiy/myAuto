@@ -1,0 +1,92 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  display: flex;
+  justify-content: center;
+}
+.layer[data-state='closed'] {
+  pointer-events: none;
+}
+
+.bottom {
+  align-items: flex-end;
+}
+
+.center {
+  z-index: var(--z-dialog);
+  align-items: center;
+  padding: var(--space-6);
+}
+
+.fullscreen {
+  z-index: var(--z-dialog);
+  align-items: stretch;
+  background: transparent;
+}
+.fullscreen .panel {
+  width: 100%;
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+.fullscreen .panel[data-state='closed'] {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.fullscreen .backdrop {
+  background: var(--color-bg);
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--color-overlay);
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+.backdrop[data-state='closed'] {
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+.panel {
+  position: relative;
+  color: var(--color-text);
+  outline: none;
+}
+
+.bottom .panel {
+  animation: slide-up var(--dur-slow) var(--ease-out);
+}
+.bottom .panel[data-state='closed'] {
+  transform: translateY(100%);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.center .panel {
+  animation: pop-in var(--dur-base) var(--ease-out);
+}
+.center .panel[data-state='closed'] {
+  opacity: 0;
+  transform: scale(0.96);
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}

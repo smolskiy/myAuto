@@ -1,0 +1,133 @@
+.swipe {
+  position: relative;
+  overflow: hidden;
+}
+
+.under {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-5);
+  background: var(--tone-soft);
+  color: var(--tone);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.underLeft {
+  justify-content: flex-start;
+}
+.underRight {
+  justify-content: flex-end;
+}
+.accent {
+  --tone: var(--color-accent);
+  --tone-soft: var(--color-accent-soft);
+}
+.danger {
+  --tone: var(--color-overdue);
+  --tone-soft: var(--color-overdue-soft);
+}
+
+.underAction {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.underAction svg {
+  width: 24px;
+  height: 24px;
+}
+.armed {
+  transform: scale(1.12);
+}
+
+.content {
+  position: relative;
+  background: var(--color-surface);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.settled {
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.menuWrap {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
+  z-index: 1;
+  transform: translateY(-50%);
+}
+
+/* Кнопка меню видна при наведении и фокусе; для скринридера доступна всегда. */
+.more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.swipe:hover .more,
+.more:focus-visible,
+.more[aria-expanded='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* Во время свайпа кнопка не закрывает подпись действия под строкой. */
+.swipe[data-swiping] .more {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.menu {
+  z-index: var(--z-sheet);
+  min-width: 200px;
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sheet);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--tone);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  text-align: left;
+}
+.menuItem:focus-visible {
+  outline-offset: -2px;
+}
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: var(--color-surface-pressed);
+}
+
+.menuIcon {
+  display: inline-flex;
+}
+.menuIcon svg {
+  width: 20px;
+  height: 20px;
+}

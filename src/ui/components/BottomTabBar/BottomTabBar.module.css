@@ -1,0 +1,104 @@
+/* Липнет к низу своего контейнера прокрутки: в оболочке — к низу экрана, в витрине — к низу макета. */
+.bar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-tabbar);
+  padding-bottom: var(--safe-bottom);
+  border-top: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: stretch;
+  height: var(--tabbar-height);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.tab {
+  display: flex;
+  min-width: 0;
+}
+
+/* Ссылка вкладки — <a> или Link/NavLink роутера из renderLink. */
+.tab > * {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+  padding: var(--space-1) calc(var(--space-1) / 2);
+  border-radius: var(--radius-md);
+  color: var(--color-text-2);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.tab > *:focus-visible {
+  outline-offset: -4px;
+}
+
+.tab[data-active] > * {
+  color: var(--color-accent);
+}
+
+.icon {
+  display: inline-flex;
+}
+.icon svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 1.75;
+}
+.tab[data-active] .icon svg {
+  stroke-width: 2.1;
+}
+
+.label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}
+.tab[data-active] .label {
+  font-weight: var(--weight-semibold);
+}
+
+.addSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-top: calc(var(--space-3) * -1);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-fill);
+  box-shadow: var(--shadow-fab);
+  color: var(--color-on-accent);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+.add:active {
+  background: var(--color-accent-pressed);
+  transform: scale(0.94);
+}
+@media (hover: hover) {
+  .add:hover {
+    background: var(--color-accent-pressed);
+  }
+}
