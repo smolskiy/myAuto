@@ -49,8 +49,9 @@
   `/record/:id/edit`; `lastDate.ts`: `rememberDate(d: ISODate)`, `suggestedDate(today: ISODate): ISODate | null`
   (sessionStorage `myauto.lastDate`; только если отличается от `today`).
 - Поведение: дата по умолчанию — сегодня, чипы «Сегодня», «Вчера» и (если есть) «Как в прошлой записи: ДД.ММ.ГГГГ»;
-  пробег предзаполнен текущим (`useCurrentOdometer`) для новых записей, кроме заметки; предупреждение хронологии —
-  «Раньше, 01.02.2026, было 1 500 км» / «Позже, 01.03.2026, было 2 000 км»; сохранение → `navigate('/record/<id>', { replace: true })`.
+  пробег предзаполнен текущим (`useCurrentOdometer`) для новых записей, кроме заметки; предупреждение хронологии
+  (`checkOdometer`) — «Раньше, 01.02.2026, было 1 500 км» (`lessThanEarlier`) / «Позже, 01.03.2026, было 2 000 км»
+  (`greaterThanLater`) / «В тот же день, 01.02.2026, было 150 000 км» (`sameDayGap`); сохранение → `navigate('/record/<id>', { replace: true })`.
   Расход: категория (все `ExpenseCategory`), название, сумма (обяз.), место, для `osago|kasko|inspection` — «Действует с/до»
   и номер полиса. Заметка: название (обяз.), текст, пробег необязателен. Пробег: только дата, пробег (обяз.), заметка.
 
@@ -118,7 +119,8 @@ test('дата прошлой записи предлагается следую
 **Interfaces:**
 - Consumes: `RepeatableList`, `LineItemRow`, `BottomSheet`, `Combobox`, `MoneyField`, `NumberField`, `Switch`, `Select` (ui);
   `CatalogItemPicker`, `MasterPicker`, `PlacePicker` (common); `useLastPart`, `useBrandSuggestions`, `useRecords`, `useTireSets` (hooks).
-- Produces: `serviceTotals.ts`: `linesTotal(works: WorkLine[], parts: PartLine[]): Kopecks`.
+- Produces: `serviceTotals.ts`: `linesTotal(works: WorkLine[], parts: PartLine[]): Kopecks` — сумма `lineTotal` из
+  `src/domain/calc/lines.ts` (то же округление, что в статистике и истории узла).
 - Поведение:
   - Название — комбобокс: прошлые названия ТО этой машины по частоте + «ТО-N» (N = число прошлых записей `maintenance` + 1).
   - Тип работ, место (виды `service`, `tire`), мастер (мастера места), «Делал сам» (скрывает мастера).
@@ -130,7 +132,8 @@ test('дата прошлой записи предлагается следую
     кнопка «Считать по строкам».
   - «Повторить прошлое ТО» (если есть прошлая запись `service` этой машины): копирует строки последней записи с тем же
     названием, иначе последней того же типа; id строк новые; цены сохраняются.
-  - Тип «Шины» показывает «Установлен комплект» / «Снят комплект» (`useTireSets`).
+  - Тип «Шины» показывает «Установлен комплект» / «Снят комплект» (`useTireSets`); если выбран хотя бы один комплект,
+    пробег обязателен («Укажите пробег — без него не посчитать пробег шин»).
   - Гарантия: до даты и/или до пробега.
   - Фото: `AttachmentsField` с `useDraftAttachments('record')`; «Назад» без сохранения → `discard()`.
   - Сохранение: название обязательно («Добавьте название»).

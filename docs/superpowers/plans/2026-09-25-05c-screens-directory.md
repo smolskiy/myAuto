@@ -46,7 +46,8 @@ Create `src/features/vehicle/details/SpecsList.tsx`, `src/features/garage/Garage
 - Гараж: «Мои машины» (активная помечена) и «Архив» (проданные) — строка: фото/значок, название, «Skoda Octavia 2016 · А123ВС 77»,
   пробег; «Добавить машину» → `/vehicle/new`.
 - Карточка: фото, название, характеристики (марка, модель, поколение, год, VIN моноширинным, госномер, двигатель, КПП,
-  привод, бак, топливо, размеры шин); «Жидкости» — вид, спецификация, объём; «Владение» — куплена (дата, пробег, цена),
+  привод, бак, топливо, размеры шин); «Жидкости» — вид, спецификация, объём; «В архив» для активной машины делает
+  активной первую неархивную (если есть); «Владение» — куплена (дата, пробег, цена),
   продана (дата, пробег, цена), «Расходы за всё время», «Итого с покупкой и продажей» (расходы + покупка − продажа),
   «Проехал» (км за время владения); действия: «Изменить» → `/vehicle/:id/edit`, «Сделать активной», «В архив» / «Вернуть
   из архива», ссылки «Документы», «Шины», «Журнал».
@@ -60,8 +61,9 @@ Create `src/features/vehicle/details/SpecsList.tsx`, `src/features/garage/Garage
 
 **Files:** Modify `src/features/places/PlacesPage.tsx`, `PlacePage.tsx`, `MasterPage.tsx`; Create `src/features/places/Places.test.tsx`
 
-**Interfaces:** Consumes `usePlaces`, `usePlace`, `useMasters`, `useMaster`, `usePlaceStats`, `useMasterStats`, `useRecords`
-(по всем машинам — `vehicleId` не задан), `useVehicles`, `recordRowProps`, `useSoftDelete`; `Rating`, `SegmentedControl`.
+**Interfaces:** Consumes `usePlaces`, `usePlace`, `useMasters`, `useMaster`, `usePlaceStats`, `useMasterStats`,
+`useRecords('all', { placeId })` / `useRecords('all', { masterId })` (визиты по всем машинам; место совпадает и как место
+записи, и как «где купил» у запчасти), `useVehicles`, `recordRowProps`, `useSoftDelete`; `Rating`, `SegmentedControl`.
 - Список: «Места / Мастера»; места группами по виду (`PLACE_KIND_LABELS`), строка: название, «12 визитов · 84 300 ₽», оценка;
   мастера: имя, место, специализация; «Добавить».
 - Карточка места (`/places/new`, `/places/:id`): поля (вид, название — обяз., адрес, телефон, ссылка, оценка, заметка),
