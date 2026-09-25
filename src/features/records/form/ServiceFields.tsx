@@ -1,5 +1,5 @@
 import { IconCopy } from '@tabler/icons-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useLastPart, useTireSets } from '../../../db/hooks'
 import { lineTotal } from '../../../domain/calc/lines'
 import { formatDate, formatMoney } from '../../../domain/format'
@@ -48,7 +48,8 @@ const tireSetLabel = (s: TireSet) =>
 
 const normalize = (s: string) => s.trim().toLowerCase().replaceAll('ё', 'е')
 
-type Sheet<T> = { line: T; isNew: boolean; open: boolean } | null
+/** Открытая шторка строки; `seq` растёт с каждым открытием — ключ шторки, чтобы черновик брался из строки заново. */
+type Sheet<T> = { line: T; isNew: boolean; open: boolean; seq: number } | null
 
 /** Строка запчасти в списке: без бренда и цены, но с узлом — подсказка «в прошлый раз» одним касанием. */
 function PartRow({
@@ -86,6 +87,11 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
   const tireSets = useTireSets(values.serviceType === 'tires' ? values.vehicleId : undefined)
   const [workSheet, setWorkSheet] = useState<Sheet<WorkLine>>(null)
   const [partSheet, setPartSheet] = useState<Sheet<PartDraft>>(null)
+  const openSeq = useRef(0)
+  const openWork = (line: WorkLine, isNew: boolean) =>
+    setWorkSheet({ line, isNew, open: true, seq: ++openSeq.current })
+  const openPart = (line: PartDraft, isNew: boolean) =>
+    setPartSheet({ line, isNew, open: true, seq: ++openSeq.current })
 
   // ——— Название: «ТО-N» и прошлые ———
   const titles = useMemo(() => titleOptions(ctx.records, ctx.editingId), [ctx.records, ctx.editingId])
@@ -193,7 +199,7 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
       <RepeatableList
         title="Работы"
         addLabel="Добавить работу"
-        onAdd={() => setWorkSheet({ line: blankWork(), isNew: true, open: true })}
+        onAdd={() => openWork(blankWork(), true)}
         total={worksSum ? formatMoney(worksSum) : undefined}
       >
         {values.works.map((w) => (
@@ -202,7 +208,7 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
             title={w.name}
             meta={w.masterId ? lookup?.masters.get(w.masterId)?.name : undefined}
             amount={w.price !== undefined ? formatMoney(w.price) : undefined}
-            onEdit={() => setWorkSheet({ line: w, isNew: false, open: true })}
+            onEdit={() => openWork(w, false)}
             onRemove={() => update((v) => ({ works: v.works.filter((x) => x.id !== w.id) }))}
           />
         ))}
@@ -211,7 +217,7 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
       <RepeatableList
         title="Запчасти"
         addLabel="Добавить запчасть"
-        onAdd={() => setPartSheet({ line: blankPart(values.diy), isNew: true, open: true })}
+        onAdd={() => openPart(blankPart(values.diy), true)}
         total={partsSum ? formatMoney(partsSum) : undefined}
       >
         {values.parts.map((p) => (
@@ -219,7 +225,7 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
             key={p.id}
             line={p}
             vehicleId={values.vehicleId}
-            onEdit={() => setPartSheet({ line: p, isNew: false, open: true })}
+            onEdit={() => openPart(p, false)}
             onRemove={() => update((v) => ({ parts: v.parts.filter((x) => x.id !== p.id) }))}
             onApply={(last) =>
               update((v) => ({
@@ -290,7 +296,7 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
 
       {workSheet && (
         <WorkSheet
-          key={workSheet.line.id}
+          key={workSheet.seq}
           open={workSheet.open}
           line={workSheet.line}
           placeId={values.placeId}
@@ -300,7 +306,7 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
       )}
       {partSheet && (
         <PartSheet
-          key={partSheet.line.id}
+          key={partSheet.seq}
           open={partSheet.open}
           line={partSheet.line}
           vehicleId={values.vehicleId}

@@ -151,6 +151,42 @@ test('ТО с двумя запчастями и работой: итог — с
   })
 })
 
+test('подсказка на строке, потом повторное открытие строки: шторка показывает заполненное и сохраняет его', async () => {
+  await pastService({
+    parts: [
+      part({
+        itemId: CATALOG_ID.oilFilter,
+        name: 'Фильтр масляный',
+        brand: 'Mann-Filter',
+        partNumber: 'W 712/95',
+        unitPrice: 65000,
+      }),
+    ],
+  })
+  const router = renderAt('/record/new/service')
+  await typeTitle('ТО-2')
+  let sheet = await openPart()
+  await pickNode(sheet, 'Масляный', 'Масляный фильтр')
+  await closeSheet(sheet)
+  await userEvent.click(
+    await screen.findByRole('button', { name: 'В прошлый раз: Mann-Filter W 712/95, 650\u00a0₽' }),
+  )
+  await userEvent.click(screen.getByRole('button', { name: /^Масляный фильтр/ }))
+  sheet = await screen.findByRole('dialog', { name: 'Запчасть' })
+  expect(within(sheet).getByRole('combobox', { name: 'Бренд' })).toHaveValue('Mann-Filter')
+  expect(within(sheet).getByLabelText('Артикул')).toHaveValue('W 712/95')
+  expect(within(sheet).getByLabelText('Цена за шт')).toHaveValue('650')
+  await closeSheet(sheet)
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\/[0-9a-f-]{36}$/))
+  expect((await savedServices())[0]!.parts[0]).toMatchObject({
+    itemId: CATALOG_ID.oilFilter,
+    brand: 'Mann-Filter',
+    partNumber: 'W 712/95',
+    unitPrice: 65000,
+  })
+})
+
 test('подсказка «в прошлый раз» для узла с историей заполняет бренд, артикул и цену', async () => {
   await pastService({
     parts: [
