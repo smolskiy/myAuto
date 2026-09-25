@@ -1,0 +1,42 @@
+/* Строка «название — значение»: те же поля и высота, что у ListItem, но значение переносится. */
+.spec {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 52px;
+  padding: 15px var(--space-4);
+  font-size: var(--text-md);
+  line-height: var(--leading-tight);
+}
+
+.specLabel {
+  flex-shrink: 0;
+  max-width: 55%;
+  color: var(--color-text);
+}
+
+.specValue {
+  min-width: 0;
+  color: var(--color-text-2);
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+  font-size: var(--text-sm);
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+}
+
+/* Фото машины в строке списка — размер значка ListItem (40 px). */
+.thumb {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--color-skeleton);
+}
