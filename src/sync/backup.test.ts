@@ -3,7 +3,11 @@ import * as XLSX from 'xlsx'
 import { MyAutoDB } from '../db/schema'
 import { createRepos } from '../db/repos'
 import { subscribeLocalChanges } from '../db/changes'
+import { ensureSeed } from '../db/seed'
+import type { Snapshot } from '../domain/snapshot'
 import { createBackupService } from './backup'
+import { GARAGE_PATH, createSyncEngine } from './engine'
+import { FakeDisk } from './yandex/fakeDisk'
 import { backupFileName } from './saveFile'
 
 let db: MyAutoDB
@@ -22,7 +26,29 @@ test('выгрузка → предпросмотр → замена', async () 
   expect(preview.counts.records).toBe(0)
   await repos.places.create({ kind: 'fuel', name: 'АЗС' })
   await svc.importJson(file, 'replace')
-  expect((await db.places.toArray()).map((p) => p.name)).toEqual(['СТО'])
+  expect((await db.places.toArray()).filter((p) => !p.deleted).map((p) => p.name)).toEqual(['СТО'])
+})
+
+test('«Заменить всё» переживает синхронизацию: остаются ровно живые строки файла', async () => {
+  const repos = createRepos(db)
+  const sto = await repos.places.create({ kind: 'service', name: 'СТО' })
+  const svc = createBackupService({ db })
+  const file = await asFile(await svc.exportJson())
+  // После выгрузки: СТО переименовано, добавлена АЗС, досеян встроенный каталог — всё это уже на Диске.
+  await repos.places.update(sto.id, { name: 'СТО после бэкапа' })
+  await repos.places.create({ kind: 'fuel', name: 'АЗС' })
+  await ensureSeed(db, [{ id: 'builtin-oil', name: 'Моторное масло', group: 'fluids', builtin: true, createdAt: 0, updatedAt: 0 }])
+  const disk = new FakeDisk()
+  const engine = createSyncEngine({ db, getDisk: () => disk, today: () => '2026-09-25', isOnline: () => true })
+  await engine.syncNow()
+
+  await svc.importJson(file, 'replace')
+  await engine.syncNow()
+
+  const liveNames = (rows: { name: string; deleted?: boolean }[]) => rows.filter((r) => !r.deleted).map((r) => r.name).sort()
+  expect(liveNames(await db.places.toArray())).toEqual(['СТО'])
+  expect(liveNames(disk.peekJson<Snapshot>(GARAGE_PATH)!.tables.places)).toEqual(['СТО'])
+  expect((await db.catalogItems.get('builtin-oil'))?.deleted).toBeFalsy()
 })
 
 test('объединение не затирает более новые локальные правки и запускает синхронизацию', async () => {
