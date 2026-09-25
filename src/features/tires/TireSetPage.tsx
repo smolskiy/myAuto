@@ -57,6 +57,7 @@ const STATUSES = (Object.keys(TIRE_STATUS_LABELS) as TireSetStatus[]).map((s) =>
 }))
 
 const DOT_ERROR = 'Четыре цифры: неделя и год, например 2423'
+const COUNT_ERROR = 'Укажите количество'
 
 /** Новый комплект активной машины (`/tires/new`) или карточка комплекта: пробег, история, правка, установка. */
 export default function TireSetPage() {
@@ -123,14 +124,17 @@ function TireSetForm({ set, vehicleId, defaults }: TireSetFormProps) {
   const [treadMm, setTreadMm] = useState<number | undefined>(set?.treadMm)
   const [note, setNote] = useState(set?.note ?? '')
   const [dotError, setDotError] = useState<string>()
+  const [countError, setCountError] = useState<string>()
 
   const dotText = formatDot(dot)
 
   const save = async (): Promise<false | void> => {
-    if (dot.trim() && !dotText) {
-      setDotError(DOT_ERROR)
-      return false
-    }
+    const badDot = !!dot.trim() && !dotText
+    // Стёртое количество — не «4 по умолчанию»: владелец мог иметь в виду 2 колеса.
+    const noCount = count === undefined || count < 1
+    if (badDot) setDotError(DOT_ERROR)
+    if (noCount) setCountError(COUNT_ERROR)
+    if (badDot || noCount) return false
     const data = {
       season,
       brand: optional(brand),
@@ -138,7 +142,7 @@ function TireSetForm({ set, vehicleId, defaults }: TireSetFormProps) {
       size: optional(size),
       dot: optional(dot),
       studded: season === 'summer' ? undefined : studded,
-      count: count && count > 0 ? Math.round(count) : 4,
+      count: Math.round(count),
       purchaseDate: purchaseDate || undefined,
       price,
       storage: optional(storage),
@@ -193,7 +197,18 @@ function TireSetForm({ set, vehicleId, defaults }: TireSetFormProps) {
         </ListGroup>
       )}
       <div className={styles.pair}>
-        <NumberField label="Количество" value={count} onChange={setCount} decimals={0} min={1} unit="шт" />
+        <NumberField
+          label="Количество"
+          value={count}
+          onChange={(v) => {
+            setCount(v)
+            if (countError) setCountError(undefined)
+          }}
+          decimals={0}
+          min={1}
+          unit="шт"
+          error={countError}
+        />
         <NumberField
           label="Остаток протектора"
           value={treadMm}

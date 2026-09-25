@@ -237,6 +237,25 @@ describe('карточка комплекта', () => {
     expect(await repos.tireSets.list()).toHaveLength(0)
   })
 
+  test('пустое «Количество» — ошибка у поля, комплект не сохраняется (а не молча 4)', async () => {
+    await addVehicle()
+    const router = renderAt('/tires/new', ['/tires'])
+    const count = await screen.findByRole('textbox', { name: 'Количество' })
+    await userEvent.clear(count)
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(count).toHaveAttribute('aria-invalid', 'true'))
+    expect(count).toHaveAccessibleDescription('Укажите количество')
+    expect(await repos.tireSets.list()).toHaveLength(0)
+    expect(router.state.location.pathname).toBe('/tires/new')
+
+    // Ввели — ошибка уходит, комплект сохраняется с этим количеством.
+    await userEvent.type(count, '2')
+    expect(count).not.toHaveAttribute('aria-invalid', 'true')
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/tires'))
+    expect((await repos.tireSets.list())[0]).toMatchObject({ count: 2 })
+  })
+
   test('удаление комплекта — с «Отменить»', async () => {
     const v = await addVehicle()
     const set = await addSet(v.id, { brand: 'Nokian' })
