@@ -31,6 +31,9 @@ export interface ComboboxProps {
 
 type Item = { type: 'option'; option: ComboboxOption } | { type: 'create'; label: string }
 
+/** Для сравнения с набранным: без пробелов по краям, без регистра, «ё» — как «е». */
+const sameText = (s: string) => s.trim().toLowerCase().replaceAll('ё', 'е')
+
 /** Поле с подсказками по ARIA 1.2: стрелки выбирают, Enter подтверждает, Escape закрывает. */
 export function Combobox(props: ComboboxProps) {
   const { label, value, options, query, onQueryChange, onSelect, onCreate, placeholder, hint, error } = props
@@ -41,7 +44,7 @@ export function Combobox(props: ComboboxProps) {
   const [active, setActive] = useState(-1)
 
   const trimmed = query.trim()
-  const exact = options.some((o) => o.label.trim().toLowerCase() === trimmed.toLowerCase())
+  const exact = options.some((o) => sameText(o.label) === sameText(trimmed))
   const items: Item[] = [
     ...options.map((option): Item => ({ type: 'option', option })),
     ...(onCreate && trimmed && !exact ? [{ type: 'create', label: trimmed } as Item] : []),

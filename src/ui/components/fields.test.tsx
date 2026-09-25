@@ -161,6 +161,25 @@ test('комбобокс: создание нового, когда подска
   expect(onCreate).toHaveBeenCalledWith('Новое место')
 })
 
+test('комбобокс: «Создать» не предлагается для уже существующего — ё и е, регистр и пробелы не в счёт', async () => {
+  const options = (q: string) => (q ? [{ id: 'p1', label: 'Ёлкин гараж' }] : [])
+  render(<ComboWrap options={options} onSelect={() => {}} onCreate={() => {}} />)
+  const input = screen.getByRole('combobox', { name: 'Место' })
+  await userEvent.type(input, '  елкин ГАРАЖ ')
+  expect(screen.getByRole('option', { name: 'Ёлкин гараж' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: /^Создать/ })).not.toBeInTheDocument()
+  await userEvent.clear(input)
+  await userEvent.type(input, 'Ёлкин')
+  expect(screen.getByRole('option', { name: 'Создать «Ёлкин»' })).toBeInTheDocument()
+})
+
+test('комбобокс: подсказка с «е» совпадает с набранным «ё»', async () => {
+  const options = (q: string) => (q ? [{ id: 'p1', label: 'Шиномонтаж Федорова' }] : [])
+  render(<ComboWrap options={options} onSelect={() => {}} onCreate={() => {}} />)
+  await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'шиномонтаж фёдорова')
+  expect(screen.queryByRole('option', { name: /^Создать/ })).not.toBeInTheDocument()
+})
+
 test('комбобокс: Escape закрывает список, активный пункт объявляется', async () => {
   render(
     <ComboWrap options={() => [{ id: 'a', label: 'Автосервис' }]} onSelect={() => {}} onCreate={() => {}} />,
