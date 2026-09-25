@@ -29,6 +29,15 @@ test('применение строк с Диска не считается ло
   expect(await db.places.get('p1')).toEqual(place)
 })
 
+test('applyRows не откатывает более новую локальную строку', async () => {
+  const current = { id: 'p1', createdAt: 1, updatedAt: 10, kind: 'service' as const, name: 'СТО новое' }
+  await db.places.put(current)
+  await applyRows(db, { places: [{ ...current, updatedAt: 5, name: 'СТО старое' }] })
+  const row = await db.places.get('p1')
+  expect(row!.updatedAt).toBe(10)
+  expect(row!.name).toBe('СТО новое')
+})
+
 test('полная замена сохраняет blobs и meta', async () => {
   await db.places.put({ ...place, id: 'old', deleted: false })
   await db.meta.put({ key: 'theme', value: 'dark' })
