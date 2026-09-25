@@ -3,8 +3,8 @@ import { MyAutoDB } from '../db/schema'
 import { createRepos } from '../db/repos'
 import { META_KEYS, getMeta } from '../db/meta'
 import { FakeDisk } from './yandex/fakeDisk'
-import { NoSpace, Offline, Unauthorized, createDiskClient } from './yandex/api'
-import { GARAGE_PATH, createSyncEngine } from './engine'
+import { NoSpace, Offline, Unauthorized, createDiskClient, type DiskClient } from './yandex/api'
+import { GARAGE_PATH, SYNC_STALL_MS, createSyncEngine, type SyncLocks } from './engine'
 import type { Snapshot } from '../domain/snapshot'
 
 const dbs: MyAutoDB[] = []
@@ -186,14 +186,18 @@ describe('цикл синхронизации', () => {
   test('цикл идёт под общей блокировкой myauto-sync (вкладки и окна PWA не пересекаются)', async () => {
     const inside: boolean[] = []
     const locks = {
-      request: vi.fn(async (_name: string, cb: () => Promise<void>) => {
+      request: vi.fn(async (_name: string, _options: LockOptions, cb: () => Promise<void>) => {
         const before = disk.calls.length
         await cb()
         inside.push(disk.calls.length > before)
       }),
     }
     await engineFor(newDb(), disk, { locks }).syncNow()
-    expect(locks.request).toHaveBeenCalledWith('myauto-sync', expect.any(Function))
+    expect(locks.request).toHaveBeenCalledWith(
+      'myauto-sync',
+      { signal: expect.any(AbortSignal) },
+      expect.any(Function),
+    )
     expect(inside).toEqual([true])
   })
 
@@ -277,5 +281,168 @@ describe('цикл синхронизации', () => {
     engine.start()
     await vi.waitFor(() => expect(disk.peekJson<Snapshot>(GARAGE_PATH)?.tables.places).toHaveLength(1))
     engine.stop()
+  })
+})
+
+/**
+ * navigator.locks в миниатюре: одна блокировка на имя, очередь ожидающих, отмена ожидания по `signal`.
+ * `holdForever()` — блокировку держит другая вкладка, чей цикл завис.
+ */
+class FakeLocks implements SyncLocks {
+  held = false
+  requests = 0
+  private queue: (() => void)[] = []
+
+  holdForever(): void {
+    this.held = true
+  }
+
+  // Как у настоящего API: `request(name, callback)` и `request(name, options, callback)`.
+  async request(
+    _name: string,
+    optionsOrCb: { signal?: AbortSignal } | (() => Promise<void>),
+    maybeCb?: () => Promise<void>,
+  ): Promise<unknown> {
+    const options = typeof optionsOrCb === 'function' ? {} : optionsOrCb
+    const cb = typeof optionsOrCb === 'function' ? optionsOrCb : maybeCb!
+    this.requests += 1
+    if (this.held) {
+      await new Promise<void>((resolve, reject) => {
+        const signal = options.signal
+        const grant = () => {
+          signal?.removeEventListener('abort', onAbort)
+          resolve()
+        }
+        const onAbort = () => {
+          this.queue = this.queue.filter((g) => g !== grant)
+          reject(signal!.reason)
+        }
+        if (signal?.aborted) return reject(signal.reason)
+        signal?.addEventListener('abort', onAbort)
+        this.queue.push(grant)
+      })
+    }
+    this.held = true
+    try {
+      return await cb()
+    } finally {
+      const next = this.queue.shift()
+      if (next) next()
+      else this.held = false
+    }
+  }
+}
+
+const STALLED = 'Синхронизация зависла — попробуйте ещё раз'
+
+/** Поддельные часы — вперёд шагами, пока не выполнится условие: между шагами успевает отработать IndexedDB. */
+async function advanceUntil(done: () => boolean, stepMs: number, maxSteps = 2000): Promise<void> {
+  for (let i = 0; i < maxSteps && !done(); i++) await vi.advanceTimersByTimeAsync(stepMs)
+}
+
+describe('Web Locks и зависание цикла', () => {
+  let disk: FakeDisk
+  beforeEach(() => {
+    disk = new FakeDisk()
+  })
+
+  test('цикл упал под блокировкой — без блокировки второй раз не запускается', async () => {
+    const getDisk = vi.fn((): FakeDisk | null => {
+      throw new Error('токен не читается')
+    })
+    const locks = new FakeLocks()
+    const engine = engineFor(newDb(), null, { getDisk, locks })
+    await expect(engine.syncNow()).rejects.toThrow('токен не читается')
+    expect(getDisk).toHaveBeenCalledTimes(1)
+    expect(locks.held).toBe(false)
+  })
+
+  test('блокировку не дали (API бросает) — цикл идёт без неё', async () => {
+    const locks: SyncLocks = {
+      request: () => {
+        throw new TypeError('locks.request is not supported')
+      },
+    }
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const db = newDb()
+    await createRepos(db).places.create({ kind: 'service', name: 'СТО' })
+    const engine = engineFor(db, disk, { locks })
+    await engine.syncNow()
+    expect(engine.getStatus().state).toBe('idle')
+    expect(disk.peekJson<Snapshot>(GARAGE_PATH)!.tables.places).toHaveLength(1)
+  })
+
+  test('блокировку держит зависшая вкладка — через 2 мин «зависла», без неё цикл не идёт', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const locks = new FakeLocks()
+    locks.holdForever()
+    const engine = engineFor(newDb(), disk, { locks })
+    let done = false
+    const run = engine.syncNow().then(() => {
+      done = true
+    })
+    await vi.advanceTimersByTimeAsync(SYNC_STALL_MS - 1000)
+    expect(done).toBe(false)
+    await vi.advanceTimersByTimeAsync(2000)
+    await run
+    expect(engine.getStatus()).toMatchObject({ state: 'error', error: STALLED })
+    expect(disk.calls).toEqual([])
+  })
+
+  test('Диск не отвечает — через 2 мин «зависла», блокировка отпущена, повтор проходит', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let asked = false
+    const hanging = Object.assign(Object.create(disk) as FakeDisk, {
+      // обрыв без ошибки: ответ не придёт никогда
+      stat: () => {
+        asked = true
+        return new Promise<never>(() => {})
+      },
+    })
+    let current: FakeDisk = hanging
+    const locks = new FakeLocks()
+    const engine = engineFor(newDb(), null, { getDisk: () => current, locks })
+    let done = false
+    const run = engine.syncNow().then(() => {
+      done = true
+    })
+    await advanceUntil(() => asked, 10)
+    await vi.advanceTimersByTimeAsync(SYNC_STALL_MS - 1000)
+    expect(done).toBe(false)
+    expect(engine.getStatus().state).toBe('syncing')
+    await vi.advanceTimersByTimeAsync(2000)
+    await run
+    expect(engine.getStatus()).toMatchObject({ state: 'error', error: STALLED })
+    expect(locks.held).toBe(false)
+
+    current = disk
+    await engine.syncNow()
+    expect(engine.getStatus().state).toBe('idle')
+  })
+
+  test('долгая загрузка фото с ответами Диска зависанием не считается', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
+    const attachments = {
+      // 5 файлов по 50 с: всего дольше 2 мин, но Диск отвечает на каждый
+      uploadPending: async (d: DiskClient) => {
+        for (let i = 0; i < 5; i++) {
+          await new Promise((r) => setTimeout(r, 50_000))
+          await d.uploadBlob(`app:/attachments/${i}.jpg`, new Blob(['x']), 'image/jpeg')
+        }
+      },
+      cleanupDeleted: async () => {},
+      pendingCount: async () => 0,
+    }
+    const engine = engineFor(newDb(), disk, { attachments, locks: new FakeLocks() })
+    let done = false
+    const run = engine.syncNow().then(() => {
+      done = true
+    })
+    await advanceUntil(() => done, 500)
+    await run
+    expect(disk.calls.filter((c) => c.startsWith('uploadBlob'))).toHaveLength(5)
+    expect(engine.getStatus().state).toBe('idle')
   })
 })

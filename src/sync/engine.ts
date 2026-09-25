@@ -61,10 +61,17 @@ export interface EngineDeps {
 }
 
 export interface SyncLocks {
-  request(name: string, callback: () => Promise<void>): Promise<unknown>
+  request(name: string, options: { signal?: AbortSignal }, callback: () => Promise<void>): Promise<unknown>
 }
 
 export const SYNC_LOCK = 'myauto-sync'
+/**
+ * Цикл, от Диска которого нет ответа дольше этого, считается зависшим (связь оборвалась без ошибки): статус —
+ * «зависла», блокировка отпускается. Считаем тишину, а не всю длительность: длинная загрузка фото с ответами
+ * Диска на каждый файл — не зависание. Столько же ждём блокировку, которую держит другая вкладка.
+ */
+export const SYNC_STALL_MS = 2 * 60 * 1000
+const STALLED = 'Синхронизация зависла — попробуйте ещё раз'
 
 const browserLocks = (): SyncLocks | null =>
   typeof navigator !== 'undefined' && navigator.locks ? navigator.locks : null
@@ -90,6 +97,20 @@ function parseRemote(text: string): Snapshot {
     console.warn('Файл синхронизации не прошёл проверку', e)
     throw new SyncFailure(CORRUPTED)
   }
+}
+
+/** Клиент Диска, который сообщает о каждом запросе и ответе — по ним цикл понимает, что не завис. */
+function watchDisk(disk: DiskClient, onActivity: () => void): DiskClient {
+  return new Proxy(disk, {
+    get(target, prop, receiver) {
+      const value: unknown = Reflect.get(target, prop, receiver)
+      if (typeof value !== 'function') return value
+      return (...args: unknown[]) => {
+        onActivity()
+        return Promise.resolve(value.apply(target, args)).finally(onActivity)
+      }
+    },
+  })
 }
 
 /** Версия файла на Диске: md5, а если его нет — время изменения. null — файла нет. */
@@ -177,8 +198,9 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
     }
   }
 
-  async function cycle(): Promise<void> {
-    const disk = deps.getDisk()
+  async function cycle(onActivity: () => void): Promise<void> {
+    const connected = deps.getDisk()
+    const disk = connected && watchDisk(connected, onActivity)
     if (!disk) {
       setStatus(authError ? { state: 'error', error: authError } : { state: 'off' })
       await refreshPending()
@@ -223,16 +245,61 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
     }
   }
 
-  /** Цикл под блокировкой Web Locks, если она есть: две вкладки или окна PWA не синхронизируются разом. */
+  /**
+   * Цикл со сторожем: Диск молчит дольше SYNC_STALL_MS — статус «зависла», и цикл считается законченным
+   * (блокировка отпускается, следующий syncNow начнёт заново). Сам зависший запрос отменить нечем — если он
+   * всё же ответит, его цикл доработает: слияние идемпотентно.
+   */
+  function guardedCycle(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const arm = () => {
+        clearTimeout(timer)
+        timer = setTimeout(() => {
+          console.warn('Синхронизация зависла: Диск не отвечает')
+          setStatus({ state: 'error', error: STALLED })
+          resolve()
+        }, SYNC_STALL_MS)
+      }
+      arm()
+      cycle(arm)
+        .then(resolve, reject)
+        .finally(() => clearTimeout(timer))
+    })
+  }
+
+  /**
+   * Цикл под блокировкой Web Locks, если она есть: две вкладки или окна PWA не синхронизируются разом.
+   * Упал сам цикл — ошибка уходит вызвавшему, второй раз без блокировки не запускаем. Блокировку не дали
+   * (API нет или он сломан) — синхронизируемся без неё. Другая вкладка держит блокировку дольше SYNC_STALL_MS —
+   * её цикл завис: статус «зависла», без блокировки не идём.
+   */
   function lockedCycle(): Promise<void> {
-    if (!locks) return cycle()
-    return locks.request(SYNC_LOCK, cycle).then(
-      () => undefined,
-      (e: unknown) => {
-        console.warn('Блокировка синхронизации не получена', e)
-        return cycle()
-      },
-    )
+    if (!locks) return guardedCycle()
+    let granted = false
+    const wait = new AbortController()
+    const waitTimer = setTimeout(() => wait.abort(), SYNC_STALL_MS)
+    const run = () => {
+      granted = true
+      clearTimeout(waitTimer)
+      return guardedCycle()
+    }
+    return Promise.resolve()
+      .then(() => locks.request(SYNC_LOCK, { signal: wait.signal }, run))
+      .then(
+        () => undefined,
+        (e: unknown) => {
+          clearTimeout(waitTimer)
+          if (granted) throw e
+          if (wait.signal.aborted) {
+            console.warn('Блокировку синхронизации держит другая вкладка и не отпускает', e)
+            setStatus({ state: 'error', error: STALLED })
+            return
+          }
+          console.warn('Блокировка синхронизации не получена — синхронизируемся без неё', e)
+          return guardedCycle()
+        },
+      )
   }
 
   function syncNow(): Promise<void> {
