@@ -15,10 +15,20 @@ export interface PlacePickerProps {
   onChange(id?: ID): void
   hint?: string
   error?: string
+  /** «Создать «…»» по введённому названию; `false` — только выбор (фильтр журнала). По умолчанию `true`. */
+  allowCreate?: boolean
 }
 
 /** Комбобокс мест с созданием нового по введённому названию. */
-export function PlacePicker({ label, kinds, value, onChange, hint, error }: PlacePickerProps) {
+export function PlacePicker({
+  label,
+  kinds,
+  value,
+  onChange,
+  hint,
+  error,
+  allowCreate = true,
+}: PlacePickerProps) {
   const toast = useToast()
   const places = usePlaces()
   const lookup = useLookup()
@@ -47,7 +57,7 @@ export function PlacePicker({ label, kinds, value, onChange, hint, error }: Plac
       query={query}
       onQueryChange={setQuery}
       onSelect={(o) => onChange(o?.id)}
-      onCreate={(name) => void create(name)}
+      onCreate={allowCreate ? (name) => void create(name) : undefined}
       hint={hint}
       error={error}
     />

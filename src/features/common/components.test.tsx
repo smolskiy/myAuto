@@ -116,6 +116,17 @@ describe('выбор места и мастера', () => {
     expect(onChange).toHaveBeenLastCalledWith(station.id)
   })
 
+  test('PlacePicker allowCreate={false} — только выбор, «Создать «…»» нет', async () => {
+    await repos.places.create({ kind: 'fuel', name: 'Лукойл' })
+    inApp(<PlacePicker label="Место" kinds={['fuel']} allowCreate={false} onChange={() => {}} />)
+    await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'лук')
+    const options = await screen.findAllByRole('option')
+    expect(options.map((o) => o.textContent)).toEqual(['Лукойл'])
+    await userEvent.clear(screen.getByRole('combobox', { name: 'Место' }))
+    await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'Роснефть')
+    expect(screen.queryByRole('option', { name: 'Создать «Роснефть»' })).not.toBeInTheDocument()
+  })
+
   test('PlacePicker показывает имя выбранного места, даже удалённого', async () => {
     const place = await repos.places.create({ kind: 'service', name: 'Старый сервис' })
     await repos.places.remove(place.id)
