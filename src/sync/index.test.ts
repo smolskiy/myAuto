@@ -56,6 +56,36 @@ test('неудачный initSync не запоминается — следую
   fresh.syncEngine.stop()
 })
 
+test('вход в другой вкладке (канал «myauto-auth») — эта перечитывает токен', async () => {
+  const channels: { name: string; onmessage: ((e: { data: unknown }) => void) | null }[] = []
+  vi.stubGlobal(
+    'BroadcastChannel',
+    class {
+      onmessage: ((e: { data: unknown }) => void) | null = null
+      constructor(readonly name: string) {
+        channels.push(this)
+      }
+      postMessage() {}
+    },
+  )
+  try {
+    vi.resetModules()
+    const fresh = await import('./index')
+    const { db: freshDb } = await import('../db/instance')
+    const { META_KEYS, setMeta } = await import('../db/meta')
+    expect(channels.map((c) => c.name)).toEqual(['myauto-auth'])
+    expect(fresh.yandexAuth.isConnected()).toBe(false)
+    // Другая вкладка вошла: токен уже в общей базе, сюда пришло сообщение.
+    await setMeta(freshDb, META_KEYS.yandexToken, 'y0_OTHER_TAB')
+    channels[0]!.onmessage?.({ data: 'auth-changed' })
+    await waitFor(() => expect(fresh.yandexAuth.isConnected()).toBe(true))
+    await fresh.yandexAuth.disconnect()
+    fresh.syncEngine.stop()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
 describe('постоянное хранилище', () => {
   const original = Object.getOwnPropertyDescriptor(navigator, 'storage')
   afterEach(() => {

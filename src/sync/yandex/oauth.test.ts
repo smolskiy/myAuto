@@ -2,7 +2,14 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { MyAutoDB } from '../../db/schema'
 import { META_KEYS, getMeta } from '../../db/meta'
 import { FakeDisk } from './fakeDisk'
-import { OAUTH_STATE_KEY, OAUTH_TOKEN_KEY, createYandexAuth, extractToken } from './oauth'
+import {
+  OAUTH_STATE_KEY,
+  OAUTH_TOKEN_KEY,
+  createYandexAuth,
+  extractToken,
+  openAuthChannel,
+  type AuthChannel,
+} from './oauth'
 import { Offline, Unauthorized, YandexError } from './api'
 
 let db: MyAutoDB
@@ -152,5 +159,88 @@ describe('вход', () => {
     await auth.disconnect()
     expect(auth.isConnected()).toBe(false)
     expect(await getMeta(db, META_KEYS.yandexToken, null)).toBeNull()
+  })
+})
+
+describe('другие вкладки', () => {
+  /** Канал в памяти, как BroadcastChannel: сообщение получают все участники, кроме отправителя. */
+  const channelHub = () => {
+    const members = new Set<() => void>()
+    return (): AuthChannel => {
+      let listener: (() => void) | null = null
+      const deliver = () => listener?.()
+      members.add(deliver)
+      return {
+        post: () => {
+          for (const m of members) if (m !== deliver) m()
+        },
+        listen: (cb) => {
+          listener = cb
+        },
+      }
+    }
+  }
+
+  test('вход и выход в одной вкладке — другая перечитывает токен и сообщает подписчикам', async () => {
+    const open = channelHub()
+    const tab = () =>
+      createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk(), channel: open() })
+    const a = tab()
+    const b = tab()
+    await a.init()
+    await b.init()
+    const seen = vi.fn()
+    b.subscribe(seen)
+
+    await a.connectWithToken('y0_T')
+    await vi.waitFor(() => expect(b.isConnected()).toBe(true))
+    expect(b.getToken()).toBe('y0_T')
+    expect(seen).toHaveBeenCalled()
+
+    seen.mockClear()
+    await a.disconnect()
+    await vi.waitFor(() => expect(b.isConnected()).toBe(false))
+    expect(seen).toHaveBeenCalled()
+  })
+
+  test('без BroadcastChannel канала нет — вход работает как раньше', async () => {
+    vi.stubGlobal('BroadcastChannel', undefined)
+    try {
+      const channel = openAuthChannel()
+      expect(channel).toBeNull()
+      const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk(), channel })
+      await auth.connectWithToken('y0_T')
+      expect(auth.isConnected()).toBe(true)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('openAuthChannel — канал «myauto-auth»: отправка и приём', () => {
+    class FakeBroadcastChannel {
+      static last: FakeBroadcastChannel
+      posted: unknown[] = []
+      onmessage: ((e: { data: unknown }) => void) | null = null
+      constructor(readonly name: string) {
+        FakeBroadcastChannel.last = this
+      }
+      postMessage(m: unknown) {
+        this.posted.push(m)
+      }
+    }
+    vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel)
+    try {
+      const channel = openAuthChannel()!
+      const fake = FakeBroadcastChannel.last
+      expect(fake.name).toBe('myauto-auth')
+      const cb = vi.fn()
+      channel.listen(cb)
+      fake.onmessage?.({ data: 'auth-changed' })
+      expect(cb).toHaveBeenCalledOnce()
+      channel.post()
+      expect(fake.posted).toHaveLength(1)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
