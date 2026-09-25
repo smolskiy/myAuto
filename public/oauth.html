@@ -60,28 +60,32 @@
       <a href="./#/settings/sync">Вернуться в приложение</a>
     </main>
     <script>
-      // Приём токена Яндекса (implicit flow). Токен уходит в localStorage вместе со state,
-      // приложение само сверяет state и сохраняет токен. Фрагмент с токеном сразу стираем из адреса.
+      // Приём ответа Яндекса (implicit flow). Токен или ошибка уходят в localStorage вместе со state,
+      // приложение само сверяет state, сохраняет токен или показывает ошибку. Фрагмент сразу стираем из адреса.
       ;(function () {
         var params = new URLSearchParams(location.hash.replace(/^#/, ''))
         var token = params.get('access_token')
         var state = params.get('state') || ''
         var error = params.get('error')
+        var description = params.get('error_description') || ''
         var msg = document.getElementById('msg')
         history.replaceState(null, '', location.pathname + location.search)
-        if (token && !error) {
-          try {
-            localStorage.setItem('myauto.oauth.token', JSON.stringify({ token: token, state: state }))
-          } catch (e) {
-            msg.textContent = 'Браузер не дал сохранить вход. Войдите по коду подтверждения в настройках синхронизации.'
-            return
-          }
-          location.replace('./#/settings/sync')
+        if (!token && !error) {
+          msg.textContent = 'Яндекс не вернул данные входа. Попробуйте войти ещё раз.'
           return
         }
-        msg.textContent = error
-          ? 'Яндекс не выдал доступ: ' + (params.get('error_description') || error)
-          : 'Яндекс не вернул данные входа. Попробуйте войти ещё раз.'
+        var handoff = error
+          ? { error: error, errorDescription: description, state: state }
+          : { token: token, state: state }
+        try {
+          localStorage.setItem('myauto.oauth.token', JSON.stringify(handoff))
+        } catch (e) {
+          msg.textContent = error
+            ? 'Яндекс не выдал доступ: ' + (description || error)
+            : 'Браузер не дал сохранить вход. Войдите по коду подтверждения в настройках синхронизации.'
+          return
+        }
+        location.replace('./#/settings/sync')
       })()
     </script>
   </body>

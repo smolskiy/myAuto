@@ -3,7 +3,7 @@ import { MyAutoDB } from '../../db/schema'
 import { META_KEYS, getMeta } from '../../db/meta'
 import { FakeDisk } from './fakeDisk'
 import { OAUTH_STATE_KEY, OAUTH_TOKEN_KEY, createYandexAuth, extractToken } from './oauth'
-import { YandexError } from './api'
+import { Offline, Unauthorized, YandexError } from './api'
 
 let db: MyAutoDB
 const store = new Map<string, string>()
@@ -80,6 +80,70 @@ describe('вход', () => {
     off()
     await auth.connectWithToken('y0_T')
     expect(seen).toEqual([true, false])
+  })
+
+  test.each([
+    ['access_denied', 'The user denied access', 'Вход отменён'],
+    ['invalid_client', '', 'Яндекс не узнал приложение — проверьте ClientID'],
+    ['server_error', 'Сбой', 'Яндекс отказал во входе: Сбой'],
+  ])('ошибка %s из oauth.html видна приложению', async (error, errorDescription, text) => {
+    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk() })
+    const state = new URL(auth.loginUrl()).searchParams.get('state')!
+    const notified = vi.fn()
+    auth.subscribe(notified)
+    store.set(OAUTH_TOKEN_KEY, JSON.stringify({ error, errorDescription, state }))
+    expect(await auth.consumeRedirect()).toBe(false)
+    expect(auth.getLoginError()).toBe(text)
+    expect(notified).toHaveBeenCalled()
+    expect(store.has(OAUTH_TOKEN_KEY)).toBe(false)
+  })
+
+  test('чужой state — ошибка входа', async () => {
+    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk() })
+    auth.loginUrl()
+    store.set(OAUTH_TOKEN_KEY, JSON.stringify({ token: 'y0_OK', state: 'forged' }))
+    expect(await auth.consumeRedirect()).toBe(false)
+    expect(auth.getLoginError()).toBe('Вход не подтверждён — войдите ещё раз')
+  })
+
+  test('отказ в доступе к Диску — текст с подсказкой в ошибке входа', async () => {
+    const disk = new FakeDisk()
+    disk.failNext(new YandexError('Яндекс не дал доступ к Диску. Проверьте на oauth.yandex.ru доступ к папке приложения', 403))
+    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => disk })
+    await expect(auth.connectWithCode('y0_T')).rejects.toThrow('Яндекс не дал доступ к Диску')
+    expect(auth.getLoginError()).toBe('Яндекс не дал доступ к Диску. Проверьте на oauth.yandex.ru доступ к папке приложения')
+  })
+
+  test('нет сети при возврате с oauth.html — просьба войти, когда появится сеть', async () => {
+    const disk = new FakeDisk()
+    disk.failNext(new Offline('Нет связи с Яндекс.Диском', 0))
+    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => disk })
+    const state = new URL(auth.loginUrl()).searchParams.get('state')!
+    store.set(OAUTH_TOKEN_KEY, JSON.stringify({ token: 'y0_OK', state }))
+    expect(await auth.consumeRedirect()).toBe(false)
+    expect(auth.isConnected()).toBe(false)
+    expect(auth.getLoginError()).toBe('Нет связи — войдите ещё раз, когда появится сеть')
+  })
+
+  test('401 при вводе кода — код не подошёл', async () => {
+    const disk = new FakeDisk()
+    disk.failNext(new Unauthorized('Вход в Яндекс истёк — войдите заново', 401))
+    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => disk })
+    await expect(auth.connectWithCode('y0_OLD')).rejects.toThrow('Код не подошёл — получите новый')
+    expect(auth.getLoginError()).toBe('Код не подошёл — получите новый')
+  })
+
+  test('ошибка входа сбрасывается новым входом', async () => {
+    const disk = new FakeDisk()
+    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => disk })
+    disk.failNext(new Unauthorized('Вход в Яндекс истёк — войдите заново', 401))
+    await auth.connectWithCode('y0_OLD').catch(() => {})
+    auth.loginUrl()
+    expect(auth.getLoginError()).toBeNull()
+    disk.failNext(new Unauthorized('Вход в Яндекс истёк — войдите заново', 401))
+    await auth.connectWithCode('y0_OLD').catch(() => {})
+    await auth.connectWithCode('y0_NEW')
+    expect(auth.getLoginError()).toBeNull()
   })
 
   test('выход стирает токен', async () => {

@@ -13,6 +13,11 @@ export function useYandexConnected(): boolean {
   return useSyncExternalStore(yandexAuth.subscribe, yandexAuth.isConnected)
 }
 
+/** Текст последней неудачи входа в Яндекс или null. */
+export function useLoginError(): string | null {
+  return useSyncExternalStore(yandexAuth.subscribe, yandexAuth.getLoginError)
+}
+
 /**
  * object URL файла вложения: undefined — ещё грузится (или вложения нет), null — файла нет ни на устройстве,
  * ни на Диске. Адрес отзывается при размонтировании и при смене вложения.

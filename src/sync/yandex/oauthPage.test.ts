@@ -24,10 +24,16 @@ test('oauth.html сохраняет токен со state, стирает фра
   expect(location.replace).toHaveBeenCalledWith('./#/settings/sync')
 })
 
-test('oauth.html при отказе показывает причину и ссылку назад, токен не пишет', () => {
+test('oauth.html при отказе передаёт ошибку Яндекса приложению, токен не пишет', () => {
   const { stored, location } = runOauthPage('#error=access_denied&error_description=%D0%9E%D1%82%D0%BA%D0%B0%D0%B7&state=s1')
+  expect(JSON.parse(stored.get(OAUTH_TOKEN_KEY)!)).toEqual({ error: 'access_denied', errorDescription: 'Отказ', state: 's1' })
+  expect(location.replace).toHaveBeenCalledWith('./#/settings/sync')
+})
+
+test('oauth.html без данных входа показывает текст и ссылку назад', () => {
+  const { stored, location } = runOauthPage('')
   expect(stored.size).toBe(0)
   expect(location.replace).not.toHaveBeenCalled()
-  expect(document.body.textContent).toContain('Отказ')
+  expect(document.body.textContent).toContain('Яндекс не вернул данные входа')
   expect(document.querySelector('a')!.getAttribute('href')).toBe('./#/settings/sync')
 })

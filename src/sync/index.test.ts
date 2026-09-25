@@ -1,9 +1,9 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { db } from '../db/instance'
 import type { Attachment } from '../domain/types'
-import { initSync, syncEngine } from './index'
-import { useAttachmentUrl, useSyncStatus } from './react'
+import { initSync, syncEngine, yandexAuth } from './index'
+import { useAttachmentUrl, useLoginError, useSyncStatus } from './react'
 
 test('без подключения статус off, повторный initSync безопасен', async () => {
   await initSync()
@@ -12,6 +12,20 @@ test('без подключения статус off, повторный initSyn
   const { result } = renderHook(() => useSyncStatus())
   expect(result.current.state).toBe('off')
   syncEngine.stop()
+})
+
+test('useLoginError показывает ошибку входа, новый вход её сбрасывает', async () => {
+  const { result } = renderHook(() => useLoginError())
+  expect(result.current).toBeNull()
+  await act(async () => {
+    await yandexAuth.connectWithCode('   ').catch(() => {})
+  })
+  expect(result.current).toBe('Вставьте код из Яндекса')
+  act(() => {
+    yandexAuth.setClientId('cid')
+    yandexAuth.loginUrl()
+  })
+  expect(result.current).toBeNull()
 })
 
 describe('адреса вложений', () => {

@@ -1,7 +1,7 @@
 import type { MyAutoDB } from '../../db/schema'
 import { META_KEYS, deleteMeta, getMeta, setMeta } from '../../db/meta'
 import type { YandexAuth } from '../contracts'
-import { createDiskClient, type DiskClient } from './api'
+import { Offline, Unauthorized, YandexError, createDiskClient, type DiskClient } from './api'
 
 /**
  * Вход в Яндекс.
@@ -18,6 +18,34 @@ export const OAUTH_STATE_KEY = 'myauto.oauth.state'
 export const OAUTH_TOKEN_KEY = 'myauto.oauth.token'
 export const VERIFICATION_URI = 'https://oauth.yandex.ru/verification_code'
 const AUTHORIZE_URI = 'https://oauth.yandex.ru/authorize'
+
+const STATE_MISMATCH = 'Вход не подтверждён — войдите ещё раз'
+
+/** Ошибка входа с готовым текстом для человека. */
+class LoginFailure extends Error {}
+
+/** Текст неудачи входа для экрана. Техническая деталь — только в console.warn. */
+function loginErrorText(e: unknown): string {
+  if (e instanceof Unauthorized) return 'Код не подошёл — получите новый'
+  if (e instanceof Offline) return 'Нет связи — войдите ещё раз, когда появится сеть'
+  if (e instanceof YandexError || e instanceof LoginFailure) return e.message
+  console.warn('Вход в Яндекс не удался', e)
+  return 'Не удалось войти — попробуйте ещё раз'
+}
+
+/** Ошибка, которую Яндекс вернул на oauth.html (`#error=…&error_description=…`). */
+function yandexErrorText(error: string, description: string): string {
+  if (error === 'access_denied') return 'Вход отменён'
+  if (error === 'invalid_client' || error === 'unauthorized_client') return 'Яндекс не узнал приложение — проверьте ClientID'
+  return description ? `Яндекс отказал во входе: ${description}` : 'Яндекс отказал во входе'
+}
+
+interface Handoff {
+  token?: unknown
+  error?: unknown
+  errorDescription?: unknown
+  state?: unknown
+}
 
 /** Из вставленного текста достаём сам токен: люди копируют и с пробелами, и целым адресом. */
 export function extractToken(text: string): string {
@@ -39,7 +67,10 @@ export type YandexAuthService = YandexAuth & {
   /** Читает токен и ClientID из meta в память. */
   init(): Promise<void>
   getToken(): string | null
-  /** Забирает токен, оставленный oauth.html. true — вход состоялся. */
+  /**
+   * Забирает то, что оставил oauth.html. true — вход состоялся; false — входа не было или он не удался
+   * (текст — в getLoginError). Не бросает.
+   */
   consumeRedirect(): Promise<boolean>
 }
 
@@ -49,10 +80,19 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
   const envClientId = deps.envClientId?.trim() || null
   let token: string | null = null
   let manualClientId: string | null = null
+  let loginError: string | null = null
   const subscribers = new Set<() => void>()
+  const notify = () => {
+    for (const cb of subscribers) cb()
+  }
   const setToken = (value: string | null) => {
     token = value
-    for (const cb of subscribers) cb()
+    notify()
+  }
+  const setLoginError = (text: string | null) => {
+    if (text === loginError) return
+    loginError = text
+    notify()
   }
 
   const clientIdOrThrow = (): string => {
@@ -76,7 +116,7 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
       }
     },
 
-    getLoginError: () => null,
+    getLoginError: () => loginError,
 
     getToken: () => token,
 
@@ -91,10 +131,15 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
       saved.catch((e: unknown) => console.warn('ClientID не сохранился', e))
     },
 
+    /**
+     * Вызывать только в обработчике нажатия «Войти», прямо перед переходом: каждый вызов пишет новый
+     * state в storage, и возврат с oauth.html примется только с последним выданным.
+     */
     loginUrl() {
       const clientId = clientIdOrThrow()
       const state = crypto.randomUUID()
       storage.setItem(OAUTH_STATE_KEY, state)
+      setLoginError(null)
       const appBase = location.href.split('#')[0]!
       return authorizeUrl({
         response_type: 'token',
@@ -114,12 +159,20 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
       })
     },
 
+    /** Проверяет доступ и сохраняет токен. Неудача — текст в getLoginError и исключение с тем же текстом. */
     async connectWithToken(raw) {
-      const value = raw.trim()
-      if (!value) throw new Error('Вставьте код из Яндекса')
-      await makeDisk(value).checkAccess()
-      await setMeta(db, META_KEYS.yandexToken, value)
-      setToken(value)
+      try {
+        const value = raw.trim()
+        if (!value) throw new LoginFailure('Вставьте код из Яндекса')
+        await makeDisk(value).checkAccess()
+        await setMeta(db, META_KEYS.yandexToken, value)
+        loginError = null
+        setToken(value)
+      } catch (e) {
+        const text = loginErrorText(e)
+        setLoginError(text)
+        throw new Error(text, { cause: e })
+      }
       deps.onConnected?.()
     },
 
@@ -137,20 +190,35 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
       // Оставленный токен забираем всегда. State выданного входа — только при совпадении:
       // поддельный или старый возврат не должен ломать вход, который ещё идёт.
       storage.removeItem(OAUTH_TOKEN_KEY)
-      let payload: { token?: unknown; state?: unknown }
+      let payload: Handoff
       try {
-        payload = JSON.parse(raw) as { token?: unknown; state?: unknown }
+        payload = JSON.parse(raw) as Handoff
       } catch {
         console.warn('Вход в Яндекс: повреждённые данные возврата')
+        setLoginError(STATE_MISMATCH)
         return false
       }
-      if (typeof payload.token !== 'string' || !expected || payload.state !== expected) {
+      if (!expected || payload.state !== expected) {
         console.warn('Вход в Яндекс отклонён: state не совпал')
+        setLoginError(STATE_MISMATCH)
         return false
       }
       storage.removeItem(OAUTH_STATE_KEY)
-      await auth.connectWithToken(payload.token)
-      return true
+      if (typeof payload.error === 'string') {
+        const description = typeof payload.errorDescription === 'string' ? payload.errorDescription : ''
+        setLoginError(yandexErrorText(payload.error, description))
+        return false
+      }
+      if (typeof payload.token !== 'string') {
+        setLoginError(STATE_MISMATCH)
+        return false
+      }
+      try {
+        await auth.connectWithToken(payload.token)
+        return true
+      } catch {
+        return false // текст уже в getLoginError
+      }
     },
   }
   return auth
