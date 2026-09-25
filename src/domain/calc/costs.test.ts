@@ -51,6 +51,12 @@ test('пробег за период — по пробегу, интерполи
   expect(kmDriven(fills, { from: '2026-11-01' })).toBeNull()
 })
 
+test('запчасти округляются по строкам — сумма сходится с формой и историей узла', () => {
+  const oil = { name: 'Масло', qty: 4.5, unit: 'l' as const, unitPrice: 1111, ownPart: true }
+  const c = costBreakdown([service({ date: '2026-01-01', total: 10000, parts: [{ id: 'a', ...oil }, { id: 'b', ...oil }] })])
+  expect(c.byGroup).toEqual({ parts: 10000 })
+})
+
 test('скидка: итог меньше суммы строк → отрицательный остаток', () => {
   const c = costBreakdown([service({ date: '2026-01-01', total: 90000, works: [{ id: 'w', name: 'Работа', price: 100000 }] })])
   expect(c.byGroup).toEqual({ labor: 100000, serviceOther: -10000 })

@@ -1,5 +1,6 @@
 import { diffDays, monthKey } from '../dates'
 import type { CarRecord, ExpenseCategory, ISODate, Kopecks } from '../types'
+import { lineTotal } from './lines'
 
 export type CostGroup = 'parts' | 'labor' | 'serviceOther' | 'fuel' | ExpenseCategory
 
@@ -39,8 +40,8 @@ const inRange = (d: ISODate, range: Range) => (!range.from || d >= range.from) &
 function recordGroups(r: CarRecord): [CostGroup, Kopecks][] {
   switch (r.kind) {
     case 'service': {
-      const parts = Math.round(r.parts.reduce((s, p) => s + p.qty * (p.unitPrice ?? 0), 0))
-      const labor = r.works.reduce((s, w) => s + (w.price ?? 0), 0)
+      const parts = r.parts.reduce((s, p) => s + lineTotal(p), 0)
+      const labor = r.works.reduce((s, w) => s + lineTotal(w), 0)
       return [['parts', parts], ['labor', labor], ['serviceOther', r.total - parts - labor]]
     }
     case 'fuel':

@@ -1,5 +1,6 @@
 import { diffDays } from '../dates'
 import type { CarRecord, ID, ISODate, Kopecks, PartLine, ServiceRecord } from '../types'
+import { lineTotal } from './lines'
 
 export interface ItemHistoryEntry {
   recordId: ID
@@ -46,14 +47,14 @@ export function itemHistory(records: CarRecord[], itemId: ID): ItemHistoryEntry[
       const e: ItemHistoryEntry = { ...common, line: 'part', name: p.name }
       if (p.brand) e.brand = p.brand
       if (p.partNumber) e.partNumber = p.partNumber
-      if (p.unitPrice !== undefined) e.price = Math.round(p.qty * p.unitPrice)
+      if (p.unitPrice !== undefined) e.price = lineTotal(p)
       if (r.masterId) e.masterId = r.masterId
       out.push(e)
     }
     for (const w of r.works) {
       if (w.itemId !== itemId) continue
       const e: ItemHistoryEntry = { ...common, line: 'work', name: w.name }
-      if (w.price !== undefined) e.price = w.price
+      if (w.price !== undefined) e.price = lineTotal(w)
       const masterId = w.masterId ?? r.masterId
       if (masterId) e.masterId = masterId
       out.push(e)
