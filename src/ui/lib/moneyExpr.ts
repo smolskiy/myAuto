@@ -1,10 +1,13 @@
 /**
- * Арифметика в поле суммы («1200+650»). Своя копия: ui/ не импортирует domain/.
- * Понимает цифры, пробелы и неразрывные пробелы внутри чисел, запятую или точку в дробях,
- * + − × ÷ (и * /), скобки. Без eval: рекурсивный спуск по токенам.
+ * Арифметика в поле суммы («1200+650»). Своя копия src/domain/money.ts (ui/ не импортирует domain/),
+ * результаты совпадают — тесты повторяют доменные. Понимает цифры, пробелы и неразрывные пробелы
+ * внутри чисел, запятую или точку в дробях, + − × ÷ (и * /), скобки; унарного минуса нет.
+ * Без eval: рекурсивный спуск по токенам, вложенность скобок не глубже 50.
  */
 
 const NBSP = '\u00A0'
+/** Как MAX_DEPTH в domain/money.ts: глубже — null, а не переполнение стека. */
+const MAX_DEPTH = 50
 
 type Token = { kind: 'num'; value: number } | { kind: 'op'; value: '+' | '-' | '*' | '/' | '(' | ')' }
 
@@ -34,37 +37,38 @@ function tokenize(input: string): Token[] | null {
       i++
       continue
     }
-    const m = /^(\d+)(?:[.,](\d+))?/.exec(s.slice(i))
+    // «1200», «1200,5», «1200,» (дробь ещё набирают), «,5» — как в domain.
+    const m = /^(?:(\d+)(?:[.,](\d*))?|[.,](\d+))/.exec(s.slice(i))
     if (!m) return null
-    tokens.push({ kind: 'num', value: Number(`${m[1]}.${m[2] ?? '0'}`) })
+    const int = m[1] ?? '0'
+    const frac = m[2] || m[3] || '0'
+    tokens.push({ kind: 'num', value: Number(`${int}.${frac}`) })
     i += m[0].length
   }
   return tokens
 }
 
-/** expr := term (('+'|'-') term)* ; term := factor (('*'|'/') factor)* ; factor := '-' factor | num | '(' expr ')' */
+/** expr := term (('+'|'-') term)* ; term := factor (('*'|'/') factor)* ; factor := num | '(' expr ')' */
 function evaluate(tokens: Token[]): number | null {
   let pos = 0
+  let depth = 0
   const peek = () => tokens[pos]
   const isOp = (t: Token | undefined, v: string) => t?.kind === 'op' && t.value === v
 
   function factor(): number | null {
     const t = peek()
     if (!t) return null
-    if (isOp(t, '-')) {
-      pos++
-      const v = factor()
-      return v === null ? null : -v
-    }
     if (t.kind === 'num') {
       pos++
       return t.value
     }
     if (isOp(t, '(')) {
+      if (++depth > MAX_DEPTH) return null
       pos++
       const v = expr()
       if (v === null || !isOp(peek(), ')')) return null
       pos++
+      depth--
       return v
     }
     return null

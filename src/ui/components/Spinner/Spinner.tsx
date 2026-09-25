@@ -2,7 +2,10 @@ import styles from './Spinner.module.css'
 
 export interface SpinnerProps {
   size?: 16 | 24
-  /** Подпись для скринридера. Без неё спиннер декоративный (например, внутри кнопки с aria-busy). */
+  /**
+   * Подпись для скринридера — скрытым текстом в живой области (role=status), его объявляют.
+   * Без неё спиннер декоративный (например, внутри кнопки с aria-busy).
+   */
   label?: string
 }
 
@@ -27,8 +30,9 @@ export function Spinner({ size = 24, label }: SpinnerProps) {
   )
   if (!label) return svg
   return (
-    <span role="status" aria-label={label} className={styles.wrap}>
+    <span role="status" className={styles.wrap}>
       {svg}
+      <span className="visually-hidden">{label}</span>
     </span>
   )
 }

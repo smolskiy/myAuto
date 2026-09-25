@@ -15,6 +15,8 @@ export interface BottomSheetProps {
 
 /** Порог стягивания вниз за «ручку», px. */
 const DRAG_CLOSE = 80
+/** Сколько ждать выезда экранной клавиатуры перед прокруткой к полю, мс. */
+const KEYBOARD_DELAY = 300
 
 /**
  * Шторка снизу. Не выше экрана за вычетом безопасной зоны, содержимое прокручивается.
@@ -25,6 +27,28 @@ export function BottomSheet({ open, onClose, title, children, footer }: BottomSh
   const panelRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ y: number; dy: number } | null>(null)
 
+  // Поле в фокусе — в видимую часть, когда клавиатура уже выехала.
+  useEffect(() => {
+    const panel = panelRef.current
+    if (!open || !panel) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onFocusIn = (e: FocusEvent) => {
+      const el = e.target as HTMLElement
+      if (!el.matches('input, textarea, select')) return
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+        el.scrollIntoView?.({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' })
+      }, KEYBOARD_DELAY)
+    }
+    panel.addEventListener('focusin', onFocusIn)
+    return () => {
+      clearTimeout(timer)
+      panel.removeEventListener('focusin', onFocusIn)
+    }
+  }, [open])
+
+  // Шторка над экранной клавиатурой: высота видимой области из visualViewport.
   useEffect(() => {
     const panel = panelRef.current
     const vv = typeof window !== 'undefined' ? window.visualViewport : null
@@ -34,20 +58,12 @@ export function BottomSheet({ open, onClose, title, children, footer }: BottomSh
       panel.style.setProperty('--keyboard-inset', `${keyboard}px`)
       panel.style.setProperty('--viewport-height', `${vv.height}px`)
     }
-    const onFocusIn = (e: FocusEvent) => {
-      const el = e.target as HTMLElement
-      if (!el.matches('input, textarea, select')) return
-      // Ждём, пока клавиатура выедет, затем показываем поле.
-      setTimeout(() => el.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }), 300)
-    }
     update()
     vv.addEventListener('resize', update)
     vv.addEventListener('scroll', update)
-    panel.addEventListener('focusin', onFocusIn)
     return () => {
       vv.removeEventListener('resize', update)
       vv.removeEventListener('scroll', update)
-      panel.removeEventListener('focusin', onFocusIn)
     }
   }, [open])
 
@@ -89,14 +105,16 @@ export function BottomSheet({ open, onClose, title, children, footer }: BottomSh
         onPointerCancel={onPointerUp}
       >
         <span className={styles.handle} aria-hidden="true" />
-        {title && (
-          <div className={styles.header}>
+        <div className={styles.header}>
+          {title ? (
             <h2 id={titleId} className={styles.title}>
               {title}
             </h2>
-            <IconButton label="Закрыть" icon={<IconX />} variant="filled" size="sm" onClick={onClose} />
-          </div>
-        )}
+          ) : (
+            <span />
+          )}
+          <IconButton label="Закрыть" icon={<IconX />} variant="filled" size="sm" onClick={onClose} />
+        </div>
       </div>
       <div className={styles.body}>{children}</div>
       {footer && <div className={styles.footer}>{footer}</div>}

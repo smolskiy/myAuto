@@ -45,8 +45,19 @@ let scrollLocks = 0
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+/** Скрытые (hidden, display:none, visibility:hidden) и inert-элементы фокус не получают — их в списке нет. */
+function isFocusable(el: HTMLElement): boolean {
+  if (el.closest('[inert], [hidden]')) return false
+  for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+    const cs = getComputedStyle(node)
+    if (cs.display === 'none') return false
+    if (node === el && cs.visibility === 'hidden') return false
+  }
+  return true
+}
+
 function focusables(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.closest('[inert]'))
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(isFocusable)
 }
 
 export interface ModalLayerProps {
@@ -137,7 +148,13 @@ export function ModalLayer({
   if (!mounted) return null
   const state = open ? 'open' : 'closed'
   return createPortal(
-    <div className={cx(styles.layer, styles[placement])} data-state={state} data-theme={theme}>
+    // Закрывающийся слой (анимация выхода) уже недоступен: ни фокуса, ни нажатий, ни скринридера.
+    <div
+      className={cx(styles.layer, styles[placement])}
+      data-state={state}
+      data-theme={theme}
+      inert={!open || undefined}
+    >
       <div
         className={styles.backdrop}
         data-state={state}

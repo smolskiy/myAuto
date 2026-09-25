@@ -1,5 +1,5 @@
 import { IconPlus } from '@tabler/icons-react'
-import { Children, useId, type ReactNode } from 'react'
+import { Children, isValidElement, useId, type ReactNode } from 'react'
 import styles from './RepeatableList.module.css'
 
 export interface RepeatableListProps {
@@ -31,7 +31,8 @@ export function RepeatableList({ title, addLabel, onAdd, children, emptyText, to
         {rows.length > 0 ? (
           <ul className={styles.rows}>
             {rows.map((row, i) => (
-              <li key={i} className={styles.row}>
+              // Ключ строки — ключ ребёнка: удаление строки не сбрасывает состояние соседних.
+              <li key={isValidElement(row) ? (row.key ?? i) : i} className={styles.row}>
                 {row}
               </li>
             ))}

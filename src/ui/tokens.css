@@ -147,6 +147,8 @@
   --tap: 44px;
   --appbar-height: 56px;
   --tabbar-height: 64px;
+  /* Отступ уведомления снизу: высота нижней панели; экраны без панели задают 0px. */
+  --toast-offset: var(--tabbar-height);
   --border-width: 1px;
   --focus-width: 2px;
 

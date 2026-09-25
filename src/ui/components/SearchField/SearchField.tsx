@@ -26,7 +26,10 @@ export function SearchField({ value, onChange, placeholder = 'Поиск по ж
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Escape' && value) {
+            // Очищаем поиск и не даём Escape закрыть шторку/экран вокруг; пустой поиск Escape пропускает.
             e.preventDefault()
+            e.stopPropagation()
+            e.nativeEvent.stopImmediatePropagation()
             onChange('')
           }
         }}

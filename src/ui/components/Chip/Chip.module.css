@@ -82,10 +82,11 @@ button.main::after {
   background: transparent;
   color: inherit;
 }
+/* Видимо 28 px, область касания — 44×44. */
 .remove::after {
   content: '';
   position: absolute;
-  inset: -8px -6px -8px -4px;
+  inset: calc((var(--tap) - 28px) / -2);
 }
 
 @media (hover: hover) {

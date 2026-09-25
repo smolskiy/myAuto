@@ -115,9 +115,9 @@ test('потянуть вниз на 64 px и больше — обновлен�
   fireEvent.touchMove(area, touch(300))
   fireEvent.touchEnd(area, { touches: [] })
   expect(onRefresh).toHaveBeenCalledTimes(1)
-  expect(screen.getByRole('status', { name: 'Обновление' })).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('Обновление')
   await act(async () => resolve())
-  expect(screen.queryByRole('status', { name: 'Обновление' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
 test('вложения: открыть по нажатию, удалить с понятным именем', async () => {
