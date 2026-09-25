@@ -20,6 +20,7 @@ import { Page, useToday } from '../common'
 import styles from './DataSettings.module.css'
 import { reloadPage } from './leave'
 import settings from './Settings.module.css'
+import { useVehiclesArrived } from './useVehiclesArrived'
 
 type Busy = 'json' | 'xlsx' | 'merge' | 'replace' | null
 
@@ -96,6 +97,10 @@ export default function DataSettingsPage() {
   const [chosen, setChosen] = useState<{ file: File; preview: ImportPreview } | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const [confirmReplace, setConfirmReplace] = useState(false)
+  const [merged, setMerged] = useState(false)
+  // Копия (или синхронизация) принесла машины — дальше на главную; с онбординга сюда приходят без машин.
+  const { hasVehicles, arrived } = useVehiclesArrived()
+  const offerHome = hasVehicles && (arrived || merged)
 
   const exportAs = async (kind: 'json' | 'xlsx') => {
     setBusy(kind)
@@ -129,6 +134,7 @@ export default function DataSettingsPage() {
     try {
       await backupService.importJson(chosen.file, 'merge')
       setChosen(null)
+      setMerged(true)
       toast.show({ text: 'Данные из копии объединены с этими' })
     } catch (err) {
       setFileError(fileErrorText(err, 'Не удалось загрузить копию'))
@@ -216,6 +222,11 @@ export default function DataSettingsPage() {
             <p className={settings.error} role="alert">
               {fileError}
             </p>
+          )}
+          {offerHome && !chosen && (
+            <Button block onClick={() => void navigate('/')}>
+              Перейти на главную
+            </Button>
           )}
           {chosen && (
             <Card padded className={styles.preview}>

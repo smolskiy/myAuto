@@ -1,4 +1,4 @@
-import { IconCloudUpload } from '@tabler/icons-react'
+import { IconCloudDownload, IconCloudUpload, IconFileUpload } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { db } from '../../db/instance'
@@ -149,6 +149,34 @@ function SyncStep() {
   )
 }
 
+/** Новое устройство: данные уже есть — восстановить их вместо новой машины (иначе после восстановления их две). */
+function RestoreActions() {
+  const navigate = useNavigate()
+  return (
+    <div className={styles.restore}>
+      <p className={styles.restoreTitle}>Уже вели «Мой авто» на другом устройстве?</p>
+      <Button
+        block
+        size="sm"
+        variant="secondary"
+        icon={<IconCloudDownload />}
+        onClick={() => void navigate('/settings/sync')}
+      >
+        Уже есть данные на Яндекс.Диске
+      </Button>
+      <Button
+        block
+        size="sm"
+        variant="secondary"
+        icon={<IconFileUpload />}
+        onClick={() => void navigate('/settings/data')}
+      >
+        Загрузить копию
+      </Button>
+    </div>
+  )
+}
+
 /** Первый запуск: машина → стартовые напоминания → Яндекс.Диск. */
 export default function OnboardingPage() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
@@ -166,6 +194,7 @@ export default function OnboardingPage() {
               Начните с VIN: марка и год заполнятся сами. Обязательны только марка и модель, остальное — когда
               будет под рукой.
             </p>
+            <RestoreActions />
           </div>
         }
         submitLabel="Дальше"

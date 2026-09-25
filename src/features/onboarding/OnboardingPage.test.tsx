@@ -129,3 +129,18 @@ test('«Подключить Яндекс.Диск» с ClientID уходит н
   expect(loginUrl).toHaveBeenCalledOnce()
   expect(router.state.location.pathname).toBe('/onboarding')
 })
+
+// DEF-01: на новом устройстве данные восстанавливают до того, как заведена машина.
+test('шаг 1: «Уже есть данные на Яндекс.Диске» ведёт в синхронизацию, машина не создаётся', async () => {
+  const router = renderAt('/onboarding')
+  await userEvent.click(await screen.findByRole('button', { name: 'Уже есть данные на Яндекс.Диске' }))
+  await waitFor(() => expect(router.state.location.pathname).toBe('/settings/sync'))
+  expect(await db.vehicles.count()).toBe(0)
+})
+
+test('шаг 1: «Загрузить копию» ведёт к загрузке копии, машина не создаётся', async () => {
+  const router = renderAt('/onboarding')
+  await userEvent.click(await screen.findByRole('button', { name: 'Загрузить копию' }))
+  await waitFor(() => expect(router.state.location.pathname).toBe('/settings/data'))
+  expect(await db.vehicles.count()).toBe(0)
+})

@@ -10,6 +10,7 @@ import {
   type TablerIcon,
 } from '@tabler/icons-react'
 import { useId, useState } from 'react'
+import { useNavigate } from 'react-router'
 import type { SyncState } from '../../sync/contracts'
 import { syncEngine, yandexAuth } from '../../sync/index'
 import { useLoginError, useSyncStatus, useYandexConnected } from '../../sync/react'
@@ -19,6 +20,7 @@ import { goToUrl } from './leave'
 import styles from './Settings.module.css'
 import { syncStateText } from './syncText'
 import { useNow } from './useNow'
+import { useVehiclesArrived } from './useVehiclesArrived'
 
 const STATE_ICON: Record<SyncState, { icon: TablerIcon; tone: Tone }> = {
   off: { icon: IconCloudOff, tone: 'neutral' },
@@ -143,10 +145,13 @@ function LoginBlock() {
 
 /** Синхронизация с Яндекс.Диском: состояние, вход и выход. Токен на экран не выводится. */
 export default function SyncSettingsPage() {
+  const navigate = useNavigate()
   const status = useSyncStatus()
   const connected = useYandexConnected()
   const loginError = useLoginError()
   const now = useNow()
+  // Новое устройство: синхронизация принесла машины — дальше на главную, онбординг не нужен.
+  const { arrived } = useVehiclesArrived()
   const [confirmLogout, setConfirmLogout] = useState(false)
   const { icon, tone } = STATE_ICON[status.state]
   const offNote = status.state === 'off' ? 'Данные только на этом устройстве' : undefined
@@ -161,6 +166,12 @@ export default function SyncSettingsPage() {
           leading={<Icon icon={icon} tone={tone} circle />}
         />
       </ListGroup>
+
+      {arrived && (
+        <Button block onClick={() => void navigate('/')}>
+          Перейти на главную
+        </Button>
+      )}
 
       {loginError && (
         <p className={styles.error} role="alert">

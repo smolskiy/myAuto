@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { db } from '../../db/instance'
+import { repos } from '../../db/repos'
 import { NBSP } from '../../domain/format'
 import { THEME_STORAGE_KEY, ThemeProvider, ToastProvider } from '../../ui'
 import MorePage from '../more/MorePage'
@@ -227,6 +228,41 @@ describe('синхронизация', () => {
     renderAt('/settings/sync', <SyncSettingsPage />)
     expect(screen.getByRole('heading', { name: 'Что хранится на Диске' })).toBeInTheDocument()
     expect(screen.getByText('Приложения/Мой авто/')).toBeInTheDocument()
+  })
+
+  const addVehicle = () =>
+    repos.vehicles.create({
+      name: 'Lada 2109',
+      make: 'Lada',
+      model: '2109',
+      archived: false,
+      fluids: [],
+      order: 0,
+    })
+
+  test('новое устройство: синхронизация принесла машину — «Перейти на главную» ведёт на главную', async () => {
+    Object.assign(fake.state, {
+      connected: true,
+      status: { state: 'idle', pendingUploads: 0, lastSyncAt: Date.now() },
+    })
+    const router = renderAt('/settings/sync', <SyncSettingsPage />)
+    // Живой запрос машин ответил «пусто» — экран открыт без машин.
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByRole('button', { name: 'Перейти на главную' })).not.toBeInTheDocument()
+    await addVehicle()
+    await userEvent.click(await screen.findByRole('button', { name: 'Перейти на главную' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+
+  test('машины были и до входа на экран — кнопки нет', async () => {
+    await addVehicle()
+    Object.assign(fake.state, {
+      connected: true,
+      status: { state: 'idle', pendingUploads: 0, lastSyncAt: Date.now() },
+    })
+    renderAt('/settings/sync', <SyncSettingsPage />)
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByRole('button', { name: 'Перейти на главную' })).not.toBeInTheDocument()
   })
 })
 
