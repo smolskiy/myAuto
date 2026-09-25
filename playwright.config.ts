@@ -5,6 +5,8 @@ const PORT = Number(process.env.E2E_PORT ?? 4173)
 const PAGES_PORT = Number(process.env.E2E_PAGES_PORT ?? 4174)
 /** Подпапка на GitHub Pages — как в deploy-job `ci.yml`. */
 const PAGES_BASE = '/myAuto/'
+/** Сборки e2e не берут ClientID Яндекса из `.env.local`: сценарии не должны зависеть от машины. */
+const NO_CLIENT_ID = { VITE_YANDEX_CLIENT_ID: '' }
 
 const phone = { ...devices['Pixel 7'], viewport: { width: 390, height: 844 } }
 
@@ -30,6 +32,7 @@ export default defineConfig({
     {
       command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
       url: `http://localhost:${PORT}/`,
+      env: NO_CLIENT_ID,
       reuseExistingServer: !process.env.CI,
     },
     {
@@ -38,7 +41,7 @@ export default defineConfig({
         `npx vite build --outDir dist-pages && ` +
         `npx vite preview --outDir dist-pages --base ${PAGES_BASE} --port ${PAGES_PORT} --strictPort`,
       url: `http://localhost:${PAGES_PORT}${PAGES_BASE}`,
-      env: { VITE_BASE: PAGES_BASE },
+      env: { ...NO_CLIENT_ID, VITE_BASE: PAGES_BASE },
       reuseExistingServer: !process.env.CI,
     },
   ],
