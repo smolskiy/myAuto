@@ -1,9 +1,17 @@
 import { IconCircleCheck, IconTrash, IconWheel } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { useActiveVehicle, useRecords, useTireSet, useTireSetMileage, useTireSets } from '../../db/hooks'
+import {
+  useActiveVehicle,
+  useRecords,
+  useTireSet,
+  useTireSetMileage,
+  useTireSets,
+  useVehicle,
+} from '../../db/hooks'
 import { repos } from '../../db/repos'
 import { formatKm } from '../../domain/format'
+import { formatTireSize, TIRE_BRANDS, tireModels } from '../../domain/tireCatalog'
 import type {
   ID,
   Kopecks,
@@ -15,6 +23,7 @@ import type {
 } from '../../domain/types'
 import {
   Button,
+  Combobox,
   DateField,
   EmptyState,
   ListGroup,
@@ -29,6 +38,7 @@ import {
   TextField,
   useToast,
 } from '../../ui'
+import { matches } from '../common/pickerQuery'
 import {
   AttachmentsField,
   FormPage,
@@ -36,6 +46,7 @@ import {
   recordRowProps,
   TIRE_SEASON_LABELS,
   TIRE_STATUS_LABELS,
+  TireSizeField,
   useDraftAttachments,
   useGoBack,
   useLookup,
@@ -125,6 +136,35 @@ function TireSetForm({ set, vehicleId, defaults }: TireSetFormProps) {
   const [note, setNote] = useState(set?.note ?? '')
   const [dotError, setDotError] = useState<string>()
   const [countError, setCountError] = useState<string>()
+  const vehicle = useVehicle(vehicleId)
+
+  // Подсказки: бренды — по названию и прежнему имени, модели — выбранного бренда, сначала нужного сезона.
+  const brandOptions = TIRE_BRANDS.filter(
+    (b) => matches(b.brand, brand) || b.aka?.some((a) => matches(a, brand)),
+  ).map((b) => ({ id: b.brand, label: b.brand, hint: b.aka?.join(', ') }))
+  const models = tireModels(brand, season)
+  // Модель ищется и по прежнему имени: «Nordman 8» найдёт Ikon Character Ice 8.
+  const modelOptions = models
+    .filter((m) => matches(m.name, model) || m.aka?.some((a) => matches(a, model)))
+    .map((m) => ({
+      id: m.name,
+      label: m.name,
+      hint: [
+        TIRE_SEASON_LABELS[m.season],
+        m.studded ? 'шипы' : m.season === 'winter' ? 'без шипов' : '',
+        m.aka ? `раньше ${m.aka.join(', ')}` : '',
+      ]
+        .filter(Boolean)
+        .join(', '),
+    }))
+  const pickModel = (name: string) => {
+    setModel(name)
+    const m = models.find((x) => x.name === name)
+    if (!m) return
+    // Модель знает свой сезон и шипы — подставляем, владелец может поправить.
+    setSeason(m.season)
+    if (m.season === 'winter' && m.studded !== undefined) setStudded(m.studded)
+  }
 
   const dotText = formatDot(dot)
 
@@ -139,7 +179,7 @@ function TireSetForm({ set, vehicleId, defaults }: TireSetFormProps) {
       season,
       brand: optional(brand),
       model: optional(model),
-      size: optional(size),
+      size: optional(formatTireSize(size)),
       dot: optional(dot),
       studded: season === 'summer' ? undefined : studded,
       count: Math.round(count),
@@ -166,16 +206,30 @@ function TireSetForm({ set, vehicleId, defaults }: TireSetFormProps) {
         </span>
         <SegmentedControl ariaLabel="Сезон" value={season} options={SEASONS} onChange={setSeason} />
       </div>
-      <TextField label="Бренд" value={brand} onChange={(e) => setBrand(e.target.value)} autoComplete="off" />
-      <TextField label="Модель" value={model} onChange={(e) => setModel(e.target.value)} autoComplete="off" />
+      <Combobox
+        label="Бренд"
+        value={brandOptions.find((o) => o.label === brand) ?? null}
+        options={brandOptions}
+        query={brand}
+        onQueryChange={setBrand}
+        onSelect={(o) => o && setBrand(o.label)}
+      />
+      <Combobox
+        label="Модель"
+        value={modelOptions.find((o) => o.label === model) ?? null}
+        options={modelOptions}
+        query={model}
+        onQueryChange={setModel}
+        onSelect={(o) => o && pickModel(o.label)}
+        hint={brand && models.length === 0 ? 'Моделей этого бренда в подсказках нет — впишите' : undefined}
+      />
       <div className={styles.pair}>
-        <TextField
+        <TireSizeField
           label="Размер"
           value={size}
-          onChange={(e) => setSize(e.target.value)}
+          onChange={setSize}
+          preferred={[vehicle?.tireSizeFront ?? '', vehicle?.tireSizeRear ?? '']}
           placeholder="205/55 R16"
-          autoComplete="off"
-          spellCheck={false}
         />
         <TextField
           label="DOT"

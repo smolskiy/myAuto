@@ -1,5 +1,6 @@
 import type { Draft } from '../../../db/repo'
 import { isISODate } from '../../../domain/dates'
+import { formatTireSize } from '../../../domain/tireCatalog'
 import { applyVinToVehicle, type VinApplyInfo } from '../../../domain/vin/decode'
 import type { Drive, Fluid, FuelType, ISODate, Kopecks, Transmission, Vehicle } from '../../../domain/types'
 
@@ -172,8 +173,8 @@ export function valuesToDraft(
     }),
     archived,
     fluids: v.fluids,
-    tireSizeFront: text(v.tireSizeFront),
-    tireSizeRear: text(v.tireSizeRear),
+    tireSizeFront: text(formatTireSize(v.tireSizeFront)),
+    tireSizeRear: text(formatTireSize(v.tireSizeRear)),
     photoAttachmentId: extra.photoAttachmentId,
     schematic: v.schematic || undefined,
     note: text(v.note),

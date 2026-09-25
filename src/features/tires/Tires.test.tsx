@@ -197,9 +197,9 @@ describe('карточка комплекта', () => {
     const router = renderAt('/tires/new', ['/tires'])
 
     await userEvent.click(await screen.findByRole('radio', { name: 'Зимние' }))
-    await userEvent.type(screen.getByRole('textbox', { name: 'Бренд' }), 'Nokian')
-    await userEvent.type(screen.getByRole('textbox', { name: 'Модель' }), 'Nordman 8')
-    expect(screen.getByRole('textbox', { name: 'Размер' })).toHaveValue('205/55 R16')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Бренд' }), 'Nokian')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Модель' }), 'Nordman 8')
+    expect(screen.getByRole('combobox', { name: 'Размер' })).toHaveValue('205/55 R16')
     await userEvent.type(screen.getByRole('textbox', { name: 'DOT' }), '3822')
     await userEvent.click(screen.getByRole('switch', { name: 'Шипы' }))
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Состояние' }), 'Установлены')
@@ -224,6 +224,34 @@ describe('карточка комплекта', () => {
       status: 'installed',
     })
     expect((await repos.tireSets.get(old.id))?.status).toBe('stored')
+  })
+
+  test('шины из подсказок: размер по цифрам, бренд, модели бренда; зимняя шипованная ставит «Шипы»', async () => {
+    await addVehicle()
+    renderAt('/tires/new', ['/tires'])
+    await userEvent.click(await screen.findByRole('radio', { name: 'Зимние' }))
+    const size = screen.getByRole('combobox', { name: 'Размер' })
+    await userEvent.clear(size)
+    await userEvent.type(size, '22545')
+    await userEvent.click(await screen.findByRole('option', { name: /^225\/45 R17/ }))
+    expect(size).toHaveValue('225/45 R17')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Бренд' }), 'cord')
+    await userEvent.click(await screen.findByRole('option', { name: /^Cordiant/ }))
+    await userEvent.type(screen.getByRole('combobox', { name: 'Модель' }), 'snow')
+    await userEvent.click(await screen.findByRole('option', { name: /^Snow Cross 2(?! SUV)/ }))
+    expect(screen.getByRole('switch', { name: 'Шипы' })).toBeChecked()
+  })
+
+  test('размер, вписанный как попало, сохраняется в едином виде', async () => {
+    const v = await addVehicle()
+    const router = renderAt('/tires/new', ['/tires'])
+    const size = await screen.findByRole('combobox', { name: 'Размер' })
+    await userEvent.clear(size)
+    await userEvent.type(size, '195 65 r15')
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/tires'))
+    const [created] = (await repos.tireSets.list()).filter((s) => s.vehicleId === v.id)
+    expect(created?.size).toBe('195/65 R15')
   })
 
   test('неверный DOT — ошибка у поля, комплект не сохраняется', async () => {

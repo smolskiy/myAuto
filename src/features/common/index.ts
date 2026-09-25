@@ -12,6 +12,7 @@ export { useDraftAttachments, type DraftAttachments } from './useDraftAttachment
 export { PlacePicker, type PlacePickerProps } from './PlacePicker'
 export { MasterPicker, type MasterPickerProps } from './MasterPicker'
 export { CatalogItemPicker, type CatalogItemPickerProps } from './CatalogItemPicker'
+export { TireSizeField, type TireSizeFieldProps } from './TireSizeField'
 
 // Ошибки для владельца: throw new UserError('Укажите пробег') — текст уйдёт в уведомление
 export { UserError } from './errors'

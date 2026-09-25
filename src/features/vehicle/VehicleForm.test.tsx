@@ -204,3 +204,20 @@ test('снова «Автоматически» — выбор снимаетс�
   await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
   await waitFor(async () => expect((await repos.vehicles.get(vehicle.id))?.schematic).toBeUndefined())
 })
+
+test('размер шин — из подсказок, вписанный как попало сохраняется в едином виде', async () => {
+  renderAt(`/vehicle/${vehicle.id}/edit`)
+  const front = await screen.findByRole('combobox', { name: 'Размер спереди' })
+  await userEvent.clear(front)
+  await userEvent.type(front, '205 55 16')
+  const rear = screen.getByRole('combobox', { name: 'Размер сзади' })
+  await userEvent.type(rear, '22545')
+  await userEvent.click(await screen.findByRole('option', { name: /^225\/45 R17/ }))
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(async () =>
+    expect(await repos.vehicles.get(vehicle.id)).toMatchObject({
+      tireSizeFront: '205/55 R16',
+      tireSizeRear: '225/45 R17',
+    }),
+  )
+})

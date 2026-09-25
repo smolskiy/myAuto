@@ -17,6 +17,7 @@ import {
   DRIVE_LABELS,
   FormPage,
   FUEL_TYPE_LABELS,
+  TireSizeField,
   TRANSMISSION_LABELS,
   useDraftAttachments,
   useToday,
@@ -281,17 +282,18 @@ export function VehicleForm({
 
       <Section title="Шины">
         <div className={styles.pair}>
-          <TextField
+          <TireSizeField
             label="Размер спереди"
             value={values.tireSizeFront}
             placeholder="205/55 R16"
-            onChange={(e) => set({ tireSizeFront: e.target.value })}
+            onChange={(tireSizeFront) => set({ tireSizeFront })}
           />
-          <TextField
+          <TireSizeField
             label="Размер сзади"
             value={values.tireSizeRear}
             placeholder="Как спереди"
-            onChange={(e) => set({ tireSizeRear: e.target.value })}
+            preferred={[values.tireSizeFront]}
+            onChange={(tireSizeRear) => set({ tireSizeRear })}
           />
         </div>
       </Section>
