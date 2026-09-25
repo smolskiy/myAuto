@@ -28,7 +28,9 @@ export function reminderCardProps(item: UpcomingItem, today: ISODate): ReminderC
   const props: ReminderCardProps = { title: item.title, state: item.state }
   if (item.remainingKm !== undefined) props.kmText = kmText(item.remainingKm)
   if (item.remainingDays !== undefined) props.timeText = timeText(item.remainingDays)
-  if (item.predictedDate) props.predicted = predictedText(item.predictedDate, today)
+  // Прошедшая дата — уже не прогноз: у просроченного хватает «просрочено на …».
+  if (item.predictedDate && item.predictedDate >= today)
+    props.predicted = predictedText(item.predictedDate, today)
 
   const r = item.reminder
   if (r?.progressKm !== undefined) props.progressKm = r.progressKm

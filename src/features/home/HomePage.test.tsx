@@ -225,6 +225,15 @@ describe('reminderCardProps', () => {
     )
   })
 
+  test('прошедшая дата не выдаётся за прогноз', () => {
+    const props = reminderCardProps(
+      base({ state: 'overdue', remainingDays: -30, predictedDate: '2026-08-26' }),
+      TODAY,
+    )
+    expect(props.predicted).toBeUndefined()
+    expect(reminderCardProps(base({ predictedDate: TODAY }), TODAY).predicted).toBe(nb('≈ 25 сентября'))
+  })
+
   test('нет данных — без текстов', () => {
     const props = reminderCardProps(base({ state: 'unknown' }), TODAY)
     expect(props.kmText).toBeUndefined()

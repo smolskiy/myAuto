@@ -20,7 +20,6 @@
 }
 
 .legendHint {
-  margin-top: calc(var(--space-1) * -1);
   color: var(--color-text-2);
   font-size: var(--text-sm);
   line-height: var(--leading-tight);

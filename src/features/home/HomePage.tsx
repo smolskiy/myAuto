@@ -11,9 +11,9 @@ import {
   useUpcoming,
   useVehicles,
 } from '../../db/hooks'
-import { addDays, addMonths } from '../../domain/dates'
+import { addDays } from '../../domain/dates'
 import { formatConsumption, formatKm, formatMoney } from '../../domain/format'
-import type { ISODate, RecordKind, Vehicle } from '../../domain/types'
+import type { RecordKind, Vehicle } from '../../domain/types'
 import { syncEngine } from '../../sync/index'
 import { useAttachmentUrl, useSyncStatus } from '../../sync/react'
 import {
@@ -32,6 +32,7 @@ import {
   VehicleSwitcher,
 } from '../../ui'
 import { Page, VehicleGate, recordRowProps, useLookup, useToday } from '../common'
+import { periodRange } from '../stats/periods'
 import styles from './HomePage.module.css'
 import { reminderCardProps } from './reminderText'
 
@@ -62,12 +63,6 @@ const RECENT_LIMIT = 5
 const UPCOMING_LIMIT = 3
 const FUEL_WINDOW_DAYS = 90
 
-/** Календарный месяц даты: с первого по последнее число. */
-function monthOf(today: ISODate): { from: ISODate; to: ISODate } {
-  const from = `${today.slice(0, 7)}-01`
-  return { from, to: addDays(addMonths(from, 1), -1) }
-}
-
 const vehicleSubtitle = (v: Vehicle) =>
   [v.make, v.model, v.year].filter((p) => p !== undefined && p !== '').join(' ')
 
@@ -87,8 +82,8 @@ function HomeContent({ vehicle }: { vehicle: Vehicle }) {
   const upcoming = useUpcoming(vehicle.id, UPCOMING_LIMIT, today)
   const records = useRecords(vehicle.id)
   const lookup = useLookup()
-  const month = monthOf(today)
-  const costs = useCostBreakdown(vehicle.id, month)
+  // Тот же месяц, что «Месяц» в статистике, — числа на главной и в статистике совпадают.
+  const costs = useCostBreakdown(vehicle.id, periodRange('month', today))
   const fuel = useFuelStats(vehicle.id, { from: addDays(today, -FUEL_WINDOW_DAYS), to: today })
   const [switching, setSwitching] = useState(false)
 
