@@ -27,7 +27,7 @@ test('первый запуск: VIN → машина → все стартов�
   await page.getByLabel('VIN', { exact: true }).fill('XTA210990Y2765432')
   await expect(page.getByText('Lada · Россия · 2000')).toBeVisible()
   await page.getByRole('button', { name: 'Заполнить' }).click()
-  await expect(page.getByLabel('Марка', { exact: true })).toHaveValue('Lada')
+  await expect(page.getByRole('combobox', { name: 'Марка', exact: true })).toHaveValue('Lada')
   await expect(page.getByLabel('Год', { exact: true })).toHaveValue('2000')
 
   await page.getByLabel('Модель', { exact: true }).fill('2109')
@@ -125,7 +125,7 @@ test('DEF-04: «Назад» на первом шаге онбординга н�
   // Редирект обратно на онбординг проходит без видимых признаков — ждём его с запасом.
   await page.waitForTimeout(500)
   await expect(page.getByRole('heading', { level: 1, name: 'Добро пожаловать' })).toBeVisible()
-  await expect(page.getByLabel('Марка', { exact: true })).toHaveValue('Lada')
+  await expect(page.getByRole('combobox', { name: 'Марка', exact: true })).toHaveValue('Lada')
 })
 
 test('DEF-04: «Назад» со второго шага — снова шаг 1 с введённым, машина одна', async ({ page }) => {
@@ -139,7 +139,7 @@ test('DEF-04: «Назад» со второго шага — снова шаг 
   await expect(page.getByRole('heading', { level: 1, name: 'Что напоминать' })).toBeVisible()
   await page.getByRole('button', { name: 'Назад' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Добро пожаловать' })).toBeVisible()
-  await expect(page.getByLabel('Марка', { exact: true })).toHaveValue('Lada')
+  await expect(page.getByRole('combobox', { name: 'Марка', exact: true })).toHaveValue('Lada')
   await expect(page.getByLabel('Модель', { exact: true })).toHaveValue('2109')
 
   await page.getByRole('button', { name: 'Дальше' }).click()

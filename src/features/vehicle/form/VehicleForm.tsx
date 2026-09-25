@@ -24,7 +24,10 @@ import {
 } from '../../common'
 import { FUEL_GRADES } from '../../records/labels'
 import { schematicChoice, schematicOptions, schematicValue } from '../schematicChoice'
+import { BODY_LABELS } from '../../../domain/carCatalog'
+import { carPickerOptions } from './carPicker'
 import { FluidsEditor } from './FluidsEditor'
+import { useCarCatalog } from './useCarCatalog'
 import styles from './VehicleForm.module.css'
 import {
   applyVin,
@@ -101,6 +104,7 @@ export function VehicleForm({
   const [values, setValues] = useState<VehicleValues>(() => vehicleToValues(initial))
   const [errors, setErrors] = useState<VehicleErrors>({})
   const [focusInvalid, setFocusInvalid] = useState(0)
+  const cars = useCarCatalog()
 
   const set = (patch: Partial<VehicleValues>) => {
     setValues((v) => ({ ...v, ...patch }))
@@ -136,6 +140,17 @@ export function VehicleForm({
     return onSaved(saved)
   }
 
+  const pick = carPickerOptions(cars, values)
+  // Поколение из справочника: кузов подставляем, только если он у поколения один и поле пустое.
+  const pickGeneration = (name: string) => {
+    const bodies = pick.generation(name)?.bodies ?? []
+    set(
+      !values.bodyType.trim() && bodies.length === 1
+        ? { generation: name, bodyType: BODY_LABELS[bodies[0]!] }
+        : { generation: name },
+    )
+  }
+
   const q = values.defaultFuelGrade.trim().toLowerCase()
   const grades = FUEL_GRADES.filter((g) => !q || g.toLowerCase().includes(q)).map((g) => ({
     id: g,
@@ -157,16 +172,22 @@ export function VehicleForm({
         onChange={(vin) => set({ vin })}
         onApply={(info) => set(applyVin(values, info))}
       />
-      <TextField
+      <Combobox
         label="Марка"
-        value={values.make}
-        onChange={(e) => set({ make: e.target.value })}
+        value={pick.makeOptions.find((o) => o.label === values.make) ?? null}
+        options={pick.makeOptions}
+        query={values.make}
+        onQueryChange={(make) => set({ make })}
+        onSelect={(o) => o && set({ make: o.label })}
         error={errors.make}
       />
-      <TextField
+      <Combobox
         label="Модель"
-        value={values.model}
-        onChange={(e) => set({ model: e.target.value })}
+        value={pick.modelOptions.find((o) => o.label === values.model) ?? null}
+        options={pick.modelOptions}
+        query={values.model}
+        onQueryChange={(model) => set({ model })}
+        onSelect={(o) => o && set({ model: o.label })}
         error={errors.model}
       />
       <TextField
@@ -175,12 +196,6 @@ export function VehicleForm({
         placeholder={defaultName(values) || 'Как её зовёте'}
         hint="Как машина подписана в гараже и на главной"
         onChange={(e) => set({ name: e.target.value })}
-      />
-      <TextField
-        label="Поколение"
-        value={values.generation}
-        placeholder="A7, рестайлинг"
-        onChange={(e) => set({ generation: e.target.value })}
       />
       <div className={styles.pair}>
         <TextField
@@ -200,13 +215,25 @@ export function VehicleForm({
           onChange={(e) => set({ plate: e.target.value.toUpperCase() })}
         />
       </div>
+      <Combobox
+        label="Поколение"
+        value={pick.generationOptions.find((o) => o.label === values.generation) ?? null}
+        options={pick.generationOptions}
+        query={values.generation}
+        onQueryChange={(generation) => set({ generation })}
+        onSelect={(o) => o && pickGeneration(o.label)}
+        placeholder="A7, рестайлинг"
+      />
       <div className={styles.pair}>
         <TextField label="Цвет" value={values.color} onChange={(e) => set({ color: e.target.value })} />
-        <TextField
+        <Combobox
           label="Кузов"
-          value={values.bodyType}
+          value={pick.bodyOptions.find((o) => o.label === values.bodyType) ?? null}
+          options={pick.bodyOptions}
+          query={values.bodyType}
+          onQueryChange={(bodyType) => set({ bodyType })}
+          onSelect={(o) => o && set({ bodyType: o.label })}
           placeholder="Лифтбек"
-          onChange={(e) => set({ bodyType: e.target.value })}
         />
       </div>
       <SchematicPicker

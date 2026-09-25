@@ -6,3 +6,6 @@ playwright-report
 test-results
 package-lock.json
 docs
+
+# Справочник машин — данные одной строкой (≈260 КБ), не форматируем.
+src/domain/carCatalog.json

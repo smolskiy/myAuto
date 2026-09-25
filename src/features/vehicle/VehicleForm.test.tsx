@@ -221,3 +221,39 @@ test('размер шин — из подсказок, вписанный как
     }),
   )
 })
+
+test('марка → модель → поколение → кузов из справочника; поколение подходит к году', async () => {
+  renderAt('/vehicle/new')
+  const make = await screen.findByRole('combobox', { name: 'Марка' })
+  await userEvent.type(make, 'шкод')
+  await userEvent.click(await screen.findByRole('option', { name: /^Skoda/ }))
+  expect(make).toHaveValue('Skoda')
+  await userEvent.type(screen.getByRole('combobox', { name: 'Модель' }), 'окт')
+  await userEvent.click(await screen.findByRole('option', { name: /^Octavia/ }))
+  await userEvent.type(screen.getByLabelText('Год'), '2011')
+  const generation = screen.getByRole('combobox', { name: 'Поколение' })
+  await userEvent.click(generation)
+  // Первым — поколение, в которое попадает год.
+  const options = await screen.findAllByRole('option')
+  expect(options[0]).toHaveTextContent('A5 рестайлинг')
+  expect(options[0]).toHaveTextContent('2008–2013')
+  await userEvent.click(options[0]!)
+  expect(generation).toHaveValue('A5 рестайлинг')
+  await userEvent.click(screen.getByRole('combobox', { name: 'Кузов' }))
+  const bodies = await screen.findAllByRole('option')
+  expect(bodies.slice(0, 2).map((o) => o.textContent)).toEqual([
+    expect.stringContaining('Лифтбек'),
+    expect.stringContaining('Универсал'),
+  ])
+  await userEvent.click(bodies[0]!)
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(async () =>
+    expect((await others())[0]).toMatchObject({
+      make: 'Skoda',
+      model: 'Octavia',
+      generation: 'A5 рестайлинг',
+      year: 2011,
+      bodyType: 'Лифтбек',
+    }),
+  )
+})

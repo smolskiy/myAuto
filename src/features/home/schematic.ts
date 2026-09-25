@@ -31,6 +31,9 @@ const CEED_OTHER_BODY = /х[эе]тчб[эе]к|hatch|купе|coupe|седан|
 /** pro_cee’d / «Про Сид» и XCeed / «ИксСид» — другие машины. */
 const CEED_OTHER_MODEL = /pro|про|xceed|икс/
 
+/** Поколение cee’d из справочника: II (JD) и III (CD) с рестайлингами — другая машина. */
+const CEED_OTHER_GENERATION = /(^|[^a-zа-я])(ii|iii)([^a-zа-я]|$)|\b(jd|cd)\b/
+
 /** BMW X5 другого поколения: E53, E70 (до 2013) и G05 (с 2018) выглядят иначе, чем F15. */
 const X5_OTHER_GENERATION = /e53|e70|g05/
 
@@ -59,7 +62,12 @@ export function autoSchematic(
     return inYears(v.year, 2004, 2013) && !OCTAVIA_OTHER_BODY.test(details) ? 'octavia-a5' : null
   }
   if ((make === 'kia' || make === 'киа') && /ceed|сид/.test(model) && !CEED_OTHER_MODEL.test(model)) {
-    return inYears(v.year, 2006, 2012) && !CEED_OTHER_BODY.test(details) ? 'ceed-sw-1' : null
+    const generation = (v.generation ?? '').toLowerCase()
+    return inYears(v.year, 2006, 2012) &&
+      !CEED_OTHER_BODY.test(details) &&
+      !CEED_OTHER_GENERATION.test(generation)
+      ? 'ceed-sw-1'
+      : null
   }
   if (
     ['daewoo', 'дэу', 'деу', 'chevrolet', 'шевроле', 'zaz', 'заз'].includes(make) &&

@@ -45,6 +45,16 @@ test('другой cee’d — без схемы: хэтчбек, pro_cee’d, X
   expect(schematicModelFor(car('Lada', '2109', { year: 2000 }))).toBeNull()
 })
 
+test('поколение из справочника решает: cee’d II/III и Octavia A7/A8 — без картинки, I и A5 — с картинкой', () => {
+  expect(schematicModelFor(car('Kia', 'Ceed', { generation: 'I рестайлинг' }))).toBe('ceed-sw-1')
+  expect(schematicModelFor(car('Kia', 'Ceed', { generation: 'II (JD)' }))).toBeNull()
+  expect(schematicModelFor(car('Kia', 'Ceed', { generation: 'III рестайлинг' }))).toBeNull()
+  expect(schematicModelFor(car('Skoda', 'Octavia', { generation: 'A5 рестайлинг' }))).toBe('octavia-a5')
+  expect(schematicModelFor(car('Skoda', 'Octavia', { generation: 'A8 (NX)' }))).toBeNull()
+  expect(schematicModelFor(car('Skoda', 'Octavia', { generation: 'Tour (1U)' }))).toBeNull()
+  expect(schematicModelFor(car('BMW', 'X5', { generation: 'II (E70)' }))).toBeNull()
+})
+
 test('исключения понимают кириллицу: «Про Сид», «ИксСид», «Хэтчбэк», «А7»', () => {
   expect(schematicModelFor(car('Киа', 'Про Сид'))).toBeNull()
   expect(schematicModelFor(car('Kia', 'ИксСид'))).toBeNull()

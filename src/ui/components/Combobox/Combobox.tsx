@@ -1,5 +1,5 @@
 import { IconCheck, IconPlus, IconX } from '@tabler/icons-react'
-import { useId, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { cx } from '../../lib/cx'
 import { Field } from '../Field/Field'
 import { InputBox } from '../Field/InputBox'
@@ -52,6 +52,11 @@ export function Combobox(props: ComboboxProps) {
   const showEmpty = open && trimmed !== '' && items.length === 0
   const expanded = open && items.length > 0
   const optionId = (i: number) => `${id}-opt-${i}`
+  const listRef = useRef<HTMLUListElement>(null)
+  // Поле внизу экрана (над кнопкой формы или клавиатурой): открытый список прокручиваем в видимую часть.
+  useEffect(() => {
+    if (expanded) listRef.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [expanded])
 
   const choose = (item: Item) => {
     if (item.type === 'option') {
@@ -97,7 +102,7 @@ export function Combobox(props: ComboboxProps) {
       below={
         <>
           {expanded && (
-            <ul id={listId} role="listbox" aria-label={label} className={styles.list}>
+            <ul ref={listRef} id={listId} role="listbox" aria-label={label} className={styles.list}>
               {items.map((item, i) => (
                 <li
                   key={item.type === 'option' ? item.option.id : '__create'}
