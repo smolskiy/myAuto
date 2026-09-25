@@ -22,8 +22,9 @@ import {
 } from '../domain/calc/reminders'
 import { searchRecords } from '../domain/calc/search'
 import { tireSetMileage } from '../domain/calc/tires'
+import { masterSpend, placeSpend, visitStats, type VisitStats } from '../domain/calc/visits'
 import type {
-  Attachment, CarRecord, CatalogItem, DocumentKind, ID, ISODate, Kopecks, Master, OwnerType, Place, PlaceKind,
+  Attachment, CarRecord, CatalogItem, DocumentKind, ID, ISODate, Master, OwnerType, Place, PlaceKind,
   RecordKind, ReminderRule, Row, TireSet, TireSetStatus, Vehicle, VehicleDocument,
 } from '../domain/types'
 
@@ -41,6 +42,13 @@ async function getLive<T extends Row>(table: Table<T, ID>, id?: ID): Promise<T |
 /** Живые записи машины. */
 async function vehicleRecords(vehicleId: ID): Promise<CarRecord[]> {
   return live(await db.records.where('vehicleId').equals(vehicleId).toArray())
+}
+
+/** Живые записи всех машин, кроме записей удалённых машин. */
+async function allRecords(): Promise<CarRecord[]> {
+  const [records, vehicles] = await Promise.all([db.records.toArray(), db.vehicles.toArray()])
+  const deletedVehicles = new Set(vehicles.filter((v) => v.deleted).map((v) => v.id))
+  return records.filter((r) => !r.deleted && !deletedVehicles.has(r.vehicleId))
 }
 
 /** Каталог: строки базы + встроенные позиции, которых в базе нет (надгробие встроенную позицию не воскрешает). */
@@ -95,12 +103,9 @@ function matchesFilter(r: CarRecord, f: RecordFilter): boolean {
     if (r.kind !== 'service') return false
     if (!r.works.some((w) => w.itemId === f.itemId) && !r.parts.some((p) => p.itemId === f.itemId)) return false
   }
-  if (f.placeId && r.placeId !== f.placeId
-    && !(r.kind === 'service' && r.parts.some((p) => p.supplierPlaceId === f.placeId))) return false
-  if (f.masterId) {
-    if (r.kind !== 'service') return false
-    if (r.masterId !== f.masterId && !r.works.some((w) => w.masterId === f.masterId)) return false
-  }
+  // то же правило, что и в статистике места/мастера (domain/calc/visits)
+  if (f.placeId && placeSpend(r, f.placeId) === null) return false
+  if (f.masterId && masterSpend(r, f.masterId) === null) return false
   return true
 }
 
@@ -109,14 +114,19 @@ function compareRecords(a: CarRecord, b: CarRecord): number {
   return b.date.localeCompare(a.date) || (b.odometer ?? -1) - (a.odometer ?? -1) || b.createdAt - a.createdAt
 }
 
-/** Журнал машины с фильтром; `query` — поиск по тексту записи, строкам, местам и мастерам. */
-export function useRecords(vehicleId?: ID, filter?: RecordFilter): CarRecord[] | undefined {
+/**
+ * Журнал с фильтром: одной машины или `'all'` — всех машин (визиты места, мастера);
+ * `undefined` — машина ещё не известна, результат undefined. `query` — поиск по тексту записи, строкам,
+ * местам и мастерам. Фильтр по месту/мастеру — по правилу визитов (`placeSpend`/`masterSpend`).
+ */
+export function useRecords(vehicleId?: ID | 'all', filter?: RecordFilter): CarRecord[] | undefined {
   // Фильтр сериализуется: объект-литерал в каждом рендере не должен перезапускать запрос.
   const filterKey = JSON.stringify(filter ?? {})
   return useLiveQuery(async () => {
     if (!vehicleId) return undefined
     const f = JSON.parse(filterKey) as RecordFilter
-    let rows = (await vehicleRecords(vehicleId)).filter((r) => matchesFilter(r, f))
+    const source = vehicleId === 'all' ? await allRecords() : await vehicleRecords(vehicleId)
+    let rows = source.filter((r) => matchesFilter(r, f))
     if (f.query?.trim()) {
       const [places, masters, catalog] = await Promise.all([db.places.toArray(), db.masters.toArray(), loadCatalog()])
       rows = searchRecords(rows, f.query, {
@@ -345,7 +355,7 @@ export function useLastPart(vehicleId?: ID, itemId?: ID): LastPart | null | unde
 /** Подсказки бренда: своя история (все машины, новые записи первыми) + справочник. */
 export function useBrandSuggestions(query: string, limit?: number): string[] {
   const history = useLiveQuery(async () => {
-    const rows = live(await db.records.toArray()).sort(compareRecords)
+    const rows = (await allRecords()).sort(compareRecords)
     const brands: string[] = []
     for (const r of rows) {
       if (r.kind !== 'service') continue
@@ -358,33 +368,20 @@ export function useBrandSuggestions(query: string, limit?: number): string[] {
 
 // ——— Статистика мест и мастеров ———
 
-export interface VisitStats {
-  visits: number
-  total: Kopecks
-  average: Kopecks
-  lastDate?: ISODate
-}
+export type { VisitStats }
 
-function visitStats(records: CarRecord[]): VisitStats {
-  const total = records.reduce((s, r) => s + r.total, 0)
-  const stats: VisitStats = { visits: records.length, total, average: records.length ? Math.round(total / records.length) : 0 }
-  const lastDate = records.reduce<ISODate | undefined>((max, r) => (!max || r.date > max ? r.date : max), undefined)
-  if (lastDate) stats.lastDate = lastDate
-  return stats
-}
-
+/** Визиты к месту по всем машинам: те же записи, что `useRecords('all', { placeId })`. */
 export function usePlaceStats(placeId?: ID): VisitStats | undefined {
   return useLiveQuery(async () => {
     if (!placeId) return undefined
-    return visitStats(live(await db.records.toArray()).filter((r) => r.placeId === placeId))
+    return visitStats(await allRecords(), (r) => placeSpend(r, placeId))
   }, [placeId])
 }
 
+/** Визиты к мастеру по всем машинам: те же записи, что `useRecords('all', { masterId })`. */
 export function useMasterStats(masterId?: ID): VisitStats | undefined {
   return useLiveQuery(async () => {
     if (!masterId) return undefined
-    const rows = live(await db.records.toArray()).filter((r) => r.kind === 'service'
-      && (r.masterId === masterId || r.works.some((w) => w.masterId === masterId)))
-    return visitStats(rows)
+    return visitStats(await allRecords(), (r) => masterSpend(r, masterId))
   }, [masterId])
 }
