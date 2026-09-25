@@ -97,14 +97,20 @@ test('DEF-02: длинное имя машины обрезается много
 })
 
 // DEF-03 (docs/qa/2026-09-25-e2e.md): редирект на онбординг считается переходом — оболочка переводит фокус на h1,
-// и на первом же экране у «Добро пожаловать» синяя рамка фокуса.
-test.fixme('DEF-03: на первом запуске заголовок онбординга без рамки фокуса', async ({ page }) => {
+// и на первом же экране у «Добро пожаловать» была синяя рамка фокуса.
+test('DEF-03: на первом запуске заголовок онбординга без рамки фокуса', async ({ page }) => {
   await page.goto('./')
   const heading = page.getByRole('heading', { level: 1, name: 'Добро пожаловать' })
   await expect(heading).toBeVisible()
-  // Фокус ставится эффектом после отрисовки — даём ему два кадра.
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+  // Фокус ставится эффектом после отрисовки — ждём, пока заголовок его получит.
+  await expect(heading).toBeFocused()
   await expect(heading).toHaveCSS('outline-style', 'none')
+
+  // Клавиатура: Tab уводит фокус на кнопку, и её рамка видна.
+  await page.keyboard.press('Tab')
+  const focused = page.locator(':focus')
+  await expect(focused).toHaveCount(1)
+  await expect(focused).not.toHaveCSS('outline-style', 'none')
 })
 
 // DEF-04 (docs/qa/2026-09-25-e2e.md): «Назад» на первом шаге онбординга некуда вести — экран пересоздаётся
