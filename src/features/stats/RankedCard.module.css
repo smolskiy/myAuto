@@ -1,0 +1,139 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+.subtitle,
+.empty {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+
+.chart {
+  min-width: 0;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.pie {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* Таблица рейтинга: название (кнопка, если ведёт на страницу), вторая строка, полоса доли; сумма и доля справа. */
+.table {
+  overflow-x: auto;
+}
+.table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.table th,
+.table td {
+  padding: var(--space-2) 0;
+  border-top: var(--border-width) solid var(--color-border);
+  text-align: right;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.table th:first-child {
+  text-align: left;
+}
+.table th {
+  color: var(--color-text-2);
+  font-weight: var(--weight-medium);
+}
+.table thead th {
+  border-top: 0;
+  padding-top: 0;
+}
+.table td + td,
+.table th + td,
+.table th + th {
+  padding-left: var(--space-3);
+}
+
+.table .name {
+  width: 100%;
+  color: var(--color-text);
+  font-weight: var(--weight-regular);
+  white-space: normal;
+}
+
+.nameLine {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-2);
+  font-size: var(--text-xs);
+}
+
+.swatch {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.bar {
+  display: block;
+  min-width: 2px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 0 4px 4px 0;
+  background: var(--color-accent);
+}
+
+.amount {
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+}
+
+.share {
+  color: var(--color-text-2);
+}
+
+/* Название — ссылка на страницу места, мастера или узла; зона касания выше строки текста. */
+.link {
+  position: relative;
+}
+.link::after {
+  content: '';
+  position: absolute;
+  inset: -10px -4px;
+}

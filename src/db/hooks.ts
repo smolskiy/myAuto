@@ -13,6 +13,7 @@ import { META_KEYS, getMeta, setMeta } from './meta'
 import { BUILTIN_CATALOG, ITEM_GROUP_LABELS, withBuiltinDefaults } from '../domain/catalog'
 import { suggestBrands } from '../domain/brands'
 import { todayISO } from '../domain/dates'
+import { partsStats, serviceStats, type PartsStats, type ServiceStats } from '../domain/calc/garageStats'
 import { costBreakdown, type CostBreakdown } from '../domain/calc/costs'
 import { averageConsumption, fuelIntervals, type FuelInterval } from '../domain/calc/fuel'
 import { itemHistory, lastPartFor, type ItemHistoryEntry, type LastPart } from '../domain/calc/itemHistory'
@@ -369,6 +370,25 @@ export function useCostBreakdown(vehicleId?: ID, range?: Range): CostBreakdown |
   return useLiveQuery(async () => {
     if (!vehicleId) return undefined
     return costBreakdown(await vehicleRecords(vehicleId), JSON.parse(rangeKey) as Range)
+  }, [vehicleId, rangeKey])
+}
+
+/** «Статистика → Сервис»: работы и запчасти, места, мастера, месяцы. */
+export function useServiceStats(vehicleId?: ID, range?: Range): ServiceStats | undefined {
+  const rangeKey = JSON.stringify(range ?? {})
+  return useLiveQuery(async () => {
+    if (!vehicleId) return undefined
+    return serviceStats(await vehicleRecords(vehicleId), JSON.parse(rangeKey) as Range)
+  }, [vehicleId, rangeKey])
+}
+
+/** «Статистика → Запчасти»: узлы, бренды, где куплены. */
+export function usePartsStats(vehicleId?: ID, range?: Range): PartsStats | undefined {
+  const rangeKey = JSON.stringify(range ?? {})
+  return useLiveQuery(async () => {
+    if (!vehicleId) return undefined
+    const [records, catalog] = await Promise.all([vehicleRecords(vehicleId), loadCatalog()])
+    return partsStats(records, JSON.parse(rangeKey) as Range, catalog)
   }, [vehicleId, rangeKey])
 }
 

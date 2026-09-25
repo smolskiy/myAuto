@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { db } from '../../db/instance'
 import { repos } from '../../db/repos'
 import { addDays, todayISO } from '../../domain/dates'
+import { CATALOG_ID } from '../../domain/catalog'
 import { formatDate } from '../../domain/format'
 import { ThemeProvider, ToastProvider } from '../../ui'
 import { monthsBetween, periodRange } from './periods'
@@ -23,6 +24,8 @@ beforeEach(async () => {
 })
 afterEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  // Выбранные раздел и вид запоминаются — тесты начинают с чистого листа.
+  localStorage.clear()
 })
 
 const renderStats = () => {
@@ -287,5 +290,115 @@ describe('статистика: месяцы и годы', () => {
     expect(rows.map((r) => r[0])).toEqual([String(year - 3), String(year - 2), String(year - 1)])
     const sum = rows.reduce((s, r) => s + Number(r[2]!.replace(/\s/g, '')), 0)
     expect(Math.abs(sum - 20000)).toBeLessThanOrEqual(1)
+  })
+})
+
+describe('статистика: сервис и запчасти', () => {
+  /** СТО с мастером: ТО с маслом Motul (свой, из Exist) и работой; «делал сам» с фильтром Mann. */
+  async function seedGarage() {
+    const today = todayISO()
+    const car = await addVehicle()
+    const sto = await repos.places.create({ kind: 'service', name: 'Автосервис на Ленина' })
+    const exist = await repos.places.create({ kind: 'parts', name: 'Exist' })
+    const sergey = await repos.masters.create({ name: 'Сергей', placeId: sto.id })
+    const oil = (id: string, price: number, brand: string) => ({
+      id,
+      itemId: CATALOG_ID.engineOil,
+      name: 'Масло',
+      brand,
+      qty: 4,
+      unit: 'l' as const,
+      unitPrice: price,
+      ownPart: true,
+      supplierPlaceId: exist.id,
+    })
+    await repos.records.create({
+      vehicleId: car.id,
+      kind: 'service',
+      date: addDays(today, -100),
+      odometer: 100000,
+      total: 560000,
+      title: 'ТО',
+      serviceType: 'maintenance',
+      diy: false,
+      placeId: sto.id,
+      masterId: sergey.id,
+      works: [{ id: 'w1', name: 'Замена масла', price: 200000, itemId: CATALOG_ID.engineOil }],
+      parts: [oil('p1', 90000, 'Motul')],
+    })
+    await repos.records.create({
+      vehicleId: car.id,
+      kind: 'service',
+      date: addDays(today, -5),
+      odometer: 110000,
+      total: 465000,
+      title: 'ТО своими',
+      serviceType: 'maintenance',
+      diy: true,
+      works: [],
+      parts: [
+        oil('p2', 100000, 'Motul'),
+        {
+          id: 'p3',
+          itemId: CATALOG_ID.oilFilter,
+          name: 'Фильтр',
+          brand: 'Mann-Filter',
+          qty: 1,
+          unit: 'pcs',
+          unitPrice: 65000,
+          ownPart: true,
+        },
+      ],
+    })
+    return { car, sto, sergey }
+  }
+
+  test('«Сервис»: где обслуживаюсь и мастера, строка ведёт на страницу места', async () => {
+    const { sto } = await seedGarage()
+    const router = renderStats()
+    await userEvent.click(await screen.findByRole('radio', { name: 'Сервис' }))
+    const places = await screen.findByRole('region', { name: 'Где обслуживаюсь' })
+    const rows = within(places).getAllByRole('row').slice(1)
+    expect(rows.map((r) => r.querySelector('th button, th')?.textContent)).toEqual([
+      expect.stringContaining('Автосервис на Ленина'),
+      expect.stringContaining('Делал сам'),
+    ])
+    expect(rows[0]).toHaveTextContent('5 600 ₽')
+    const masters = screen.getByRole('region', { name: 'Мастера' })
+    expect(within(masters).getByRole('button', { name: 'Сергей' })).toBeInTheDocument()
+    await userEvent.click(within(places).getByRole('button', { name: 'Автосервис на Ленина' }))
+    expect(router.state.location.pathname).toBe(`/places/${sto.id}`)
+  })
+
+  test('вид карточки: «Доли» — кольцо и легенда, «Столбцы» — график; выбор запоминается', async () => {
+    await seedGarage()
+    renderStats()
+    await userEvent.click(await screen.findByRole('radio', { name: 'Сервис' }))
+    const places = await screen.findByRole('region', { name: 'Где обслуживаюсь' })
+    await userEvent.click(within(places).getByRole('radio', { name: 'Доли' }))
+    expect(places.querySelector('.recharts-wrapper')).not.toBeNull()
+    expect(within(places).getByRole('table')).toHaveTextContent('Делал сам')
+    await userEvent.click(within(places).getByRole('radio', { name: 'Столбцы' }))
+    expect(places.querySelector('.recharts-wrapper')).not.toBeNull()
+    expect(localStorage.getItem('myauto.stats.view.service.places')).toBe('bars')
+    expect(localStorage.getItem('myauto.stats.view.tab')).toBe('service')
+  })
+
+  test('«Запчасти»: узлы с заменами и пробегом между ними, бренды, где покупал', async () => {
+    await seedGarage()
+    renderStats()
+    await userEvent.click(await screen.findByRole('radio', { name: 'Запчасти' }))
+    const items = await screen.findByRole('region', { name: 'На что уходит' })
+    const oil = within(items).getByRole('row', { name: /Моторное масло/ })
+    expect(oil).toHaveTextContent('2 замены')
+    expect(oil).toHaveTextContent('каждые 10 000 км')
+    expect(oil).toHaveTextContent('Motul')
+    const brands = screen.getByRole('region', { name: 'Бренды' })
+    expect(within(brands).getByRole('row', { name: /Motul/ })).toHaveTextContent('7 600 ₽')
+    const where = screen.getByRole('region', { name: 'Где покупал' })
+    expect(within(where).getByRole('button', { name: 'Exist' })).toBeInTheDocument()
+    expect(within(where).getByRole('row', { name: /Купил сам, магазин не указан/ })).toHaveTextContent(
+      '650 ₽',
+    )
   })
 })

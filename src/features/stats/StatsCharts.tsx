@@ -11,7 +11,7 @@ import {
   YAxis,
   type TooltipContentProps,
 } from 'recharts'
-import { COST_GROUP_LABELS, type CostBreakdown, type CostGroup } from '../../domain/calc/costs'
+import type { CostBreakdown, CostGroup } from '../../domain/calc/costs'
 import type { FuelInterval } from '../../domain/calc/fuel'
 import {
   NBSP,
@@ -57,7 +57,7 @@ export function useChartColors(): StatsColors {
 }
 
 /** Ширина контейнера графика; в jsdom (нет размеров) — 320. */
-function useWidth() {
+export function useWidth() {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(320)
   useLayoutEffect(() => {
@@ -318,54 +318,6 @@ export function MonthlyChart({
             />
           ))}
         </BarChart>
-      </div>
-    </ChartCard>
-  )
-}
-
-// ——— На что уходят деньги ———
-
-/** «69 %»; ненулевая доля меньше процента — «<1 %», а не «0 %». */
-const shareText = (share: number) => (share < 0.005 ? `<1${NBSP}%` : `${formatNumber(share * 100)}${NBSP}%`)
-
-/**
- * Группы по убыванию: таблица, в строках которой — полосы долей. Один ряд — один цвет (акцент);
- * название группы подписано текстом, так что цвет ничего не кодирует.
- */
-export function GroupsChart({ byGroup }: { byGroup: CostBreakdown['byGroup'] }) {
-  const rows = (Object.entries(byGroup) as [CostGroup, Kopecks][])
-    .filter(([, amount]) => amount > 0)
-    .sort((a, b) => b[1] - a[1])
-  const sum = rows.reduce((s, [, amount]) => s + amount, 0)
-  const max = rows[0]?.[1] ?? 0
-  return (
-    <ChartCard title="На что уходят деньги">
-      <div className={styles.table}>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Группа</th>
-              <th scope="col">Сумма</th>
-              <th scope="col">Доля</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(([group, amount]) => (
-              <tr key={group}>
-                <th scope="row" className={styles.groupName}>
-                  {COST_GROUP_LABELS[group]}
-                  <span
-                    className={styles.bar}
-                    style={{ width: `${(amount / max) * 100}%` }}
-                    aria-hidden="true"
-                  />
-                </th>
-                <td className={styles.amount}>{formatMoney(amount)}</td>
-                <td className={styles.share}>{shareText(amount / sum)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </ChartCard>
   )

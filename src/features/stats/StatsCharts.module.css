@@ -106,29 +106,3 @@
 .table th + th {
   padding-left: var(--space-3);
 }
-
-/* Строка группы: название и полоса под ним — полоса от общей базы, скруглён только конец. */
-.table .groupName {
-  width: 100%;
-  color: var(--color-text);
-  font-weight: var(--weight-regular);
-  white-space: normal;
-}
-
-.bar {
-  display: block;
-  min-width: 2px;
-  height: 8px;
-  margin-top: 6px;
-  border-radius: 0 4px 4px 0;
-  background: var(--color-accent);
-}
-
-.amount {
-  color: var(--color-text);
-  font-weight: var(--weight-medium);
-}
-
-.share {
-  color: var(--color-text-2);
-}

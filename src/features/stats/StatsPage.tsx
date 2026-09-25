@@ -8,7 +8,11 @@ import type { CarRecord, ISODate, Vehicle } from '../../domain/types'
 import { Button, EmptyState, SegmentedControl, StatTile } from '../../ui'
 import { Page, VehicleGate, useToday } from '../common'
 import { PERIOD_OPTIONS, monthsBetween, periodRange, type PeriodKind } from './periods'
-import { FuelChart, GroupsChart, MonthlyChart, YearsTable, useChartColors, type YearRow } from './StatsCharts'
+import { COST_GROUP_LABELS, type CostGroup } from '../../domain/calc/costs'
+import type { Kopecks } from '../../domain/types'
+import { PartsTab, ServiceTab } from './GarageTabs'
+import { RankedCard, useStoredView } from './RankedCard'
+import { FuelChart, MonthlyChart, YearsTable, useChartColors, type YearRow } from './StatsCharts'
 import styles from './StatsPage.module.css'
 
 type Range = { from?: ISODate; to?: ISODate }
@@ -52,9 +56,18 @@ function fillMonths(byMonth: ByMonth, range: Range, records: CarRecord[]): ByMon
 /** «11,6 ₽/км» из копеек на км. */
 const perKmText = (kopecksPerKm: number) => `${formatNumber(kopecksPerKm / 100, 1)}${NBSP}₽/км`
 
+type StatsTab = 'costs' | 'service' | 'parts'
+
+const TABS: { value: StatsTab; label: string }[] = [
+  { value: 'costs', label: 'Расходы' },
+  { value: 'service', label: 'Сервис' },
+  { value: 'parts', label: 'Запчасти' },
+]
+
 function StatsContent({ vehicle }: { vehicle: Vehicle }) {
   const navigate = useNavigate()
   const today = useToday()
+  const [tab, setTab] = useStoredView<StatsTab>('tab', 'costs', ['costs', 'service', 'parts'])
   const [period, setPeriod] = useState<PeriodKind>('12m')
   const range = useMemo(() => periodRange(period, today), [period, today])
   // Пробег и цена км считаются по всем записям машины: на границах периода пробег интерполируется.
@@ -82,13 +95,35 @@ function StatsContent({ vehicle }: { vehicle: Vehicle }) {
 
   const km = kmDriven(records, range)
   const perKm = costPerKm(records, range)
-  const hasGroups = Object.values(costs.byGroup).some((v) => v > 0)
 
   return (
     <>
+      <SegmentedControl ariaLabel="Раздел статистики" value={tab} options={TABS} onChange={setTab} />
       <div className={styles.period}>
         <SegmentedControl ariaLabel="Период" value={period} options={PERIOD_OPTIONS} onChange={setPeriod} />
       </div>
+      {tab === 'service' && <ServiceTab vehicle={vehicle} range={range} />}
+      {tab === 'parts' && <PartsTab vehicle={vehicle} range={range} />}
+      {tab === 'costs' && <CostsTab {...{ costs, fuel, months, years, colors, perKm, km }} />}
+    </>
+  )
+}
+
+interface CostsTabProps {
+  costs: CostBreakdown
+  fuel: NonNullable<ReturnType<typeof useFuelStats>>
+  months: ByMonth
+  years: YearRow[]
+  colors: ReturnType<typeof useChartColors>
+  perKm: number | null
+  km: number | null
+}
+
+/** «Статистика → Расходы»: плитки, по месяцам, на что уходят деньги, расход топлива, по годам. */
+function CostsTab({ costs, fuel, months, years, colors, perKm, km }: CostsTabProps) {
+  const hasGroups = Object.values(costs.byGroup).some((v) => v > 0)
+  return (
+    <>
       <div className={styles.tiles}>
         <StatTile label="Всего" value={formatMoney(costs.total)} />
         <StatTile label="Цена километра" value={perKm !== null ? perKmText(perKm) : '—'} />
@@ -102,7 +137,16 @@ function StatsContent({ vehicle }: { vehicle: Vehicle }) {
         <p className={styles.note}>За этот период расходов нет</p>
       )}
       {costs.byMonth.length > 0 && months.length >= 2 && <MonthlyChart byMonth={months} colors={colors} />}
-      {hasGroups && <GroupsChart byGroup={costs.byGroup} />}
+      {hasGroups && (
+        <RankedCard
+          title="На что уходят деньги"
+          viewKey="costs.groups"
+          nameHeader="Группа"
+          rows={(Object.entries(costs.byGroup) as [CostGroup, Kopecks][])
+            .sort((a, b) => b[1] - a[1])
+            .map(([group, amount]) => ({ key: group, label: COST_GROUP_LABELS[group], value: amount }))}
+        />
+      )}
       {fuel.intervals.length >= 2 && <FuelChart intervals={fuel.intervals} colors={colors} />}
       {years.length >= 2 && <YearsTable rows={years} />}
     </>
