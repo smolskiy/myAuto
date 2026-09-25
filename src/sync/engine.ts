@@ -23,8 +23,8 @@ import { NoSpace, Offline, Unauthorized, YandexError, type DiskClient, type Reso
  *   2) слить со своей базой (domain/merge.ts) и записать себе то, чего не было;
  *   3) если на Диске не то же самое — сверить версию ещё раз и загрузить результат;
  *      версия сменилась (другое устройство успело записать) — начать заново, до 3 попыток;
- *   4) загрузить файлы вложений, удалить с Диска файлы удалённых вложений;
- *   5) раз в день — копия garage.json в backups/, храним 30 последних.
+ *   4) раз в день — копия garage.json в backups/, храним 30 последних (до вложений: сбой файла её не остановит);
+ *   5) загрузить файлы вложений, удалить с Диска файлы удалённых вложений.
  *
  * Окно между последней сверкой версии и записью без блокировок на Диске не закрыть. Если проигравший
  * цикл всё же перезапишет чужую версию, чужие строки не пропадут: они лежат в базе другого устройства
@@ -239,11 +239,12 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
     report({ state: 'syncing' })
     try {
       await syncGarage(disk)
+      // Копия дня — сразу после garage.json: постоянный сбой одного файла вложения не должен её останавливать.
+      await dailyBackup(disk)
       if (deps.attachments) {
         await deps.attachments.uploadPending(disk)
         await deps.attachments.cleanupDeleted(disk)
       }
-      await dailyBackup(disk)
       const at = now()
       await setMeta(db, META_KEYS.lastSyncAt, at)
       const pendingUploads = deps.attachments ? await deps.attachments.pendingCount() : 0
