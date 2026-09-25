@@ -34,6 +34,23 @@ test('пробег и цена км', () => {
   expect(costPerKm(records, { from: '2026-09-20' })).toBeNull()
 })
 
+test('пробег за период — по пробегу, интерполированному на границы периода', () => {
+  const fills = [
+    fuel({ date: '2026-08-31', odometer: 10000, total: 300000 }),
+    fuel({ date: '2026-09-05', odometer: 10200, total: 300000 }),
+    fuel({ date: '2026-09-28', odometer: 11000, total: 300000 }),
+    fuel({ date: '2026-10-02', odometer: 11200, total: 300000 }),
+  ]
+  const september = { from: '2026-09-01', to: '2026-09-30' }
+  // 09-01: 10000 + 200 × 1/5 = 10040; 09-30: 11000 + 200 × 2/4 = 11100
+  expect(kmDriven(fills, september)).toBeCloseTo(1060, 5)
+  expect(costPerKm(fills, september)).toBeCloseTo(600000 / 1060, 5)
+  // граница вне данных — прижимается к первой/последней точке
+  expect(kmDriven(fills, { from: '2026-01-01', to: '2026-12-31' })).toBeCloseTo(1200, 5)
+  expect(kmDriven(fills, { to: '2026-09-03' })).toBeCloseTo(120, 5)
+  expect(kmDriven(fills, { from: '2026-11-01' })).toBeNull()
+})
+
 test('скидка: итог меньше суммы строк → отрицательный остаток', () => {
   const c = costBreakdown([service({ date: '2026-01-01', total: 90000, works: [{ id: 'w', name: 'Работа', price: 100000 }] })])
   expect(c.byGroup).toEqual({ labor: 100000, serviceOther: -10000 })

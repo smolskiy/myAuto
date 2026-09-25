@@ -1,4 +1,4 @@
-import { monthKey } from '../dates'
+import { diffDays, monthKey } from '../dates'
 import type { CarRecord, ExpenseCategory, ISODate, Kopecks } from '../types'
 
 export type CostGroup = 'parts' | 'labor' | 'serviceOther' | 'fuel' | ExpenseCategory
@@ -84,23 +84,63 @@ export function costBreakdown(records: CarRecord[], range: Range = {}): CostBrea
   return out
 }
 
-/** Пробег за период: разница максимального и минимального пробега живых записей периода; < 2 точек — null. */
-export function kmDriven(records: CarRecord[], range: Range = {}): number | null {
-  let min: number | null = null
-  let max: number | null = null
-  let count = 0
+/** Пробег по датам: для каждой даты — наименьший (начало дня) и наибольший (конец дня) пробег живых записей. */
+interface DayOdometer {
+  date: ISODate
+  min: number
+  max: number
+}
+
+function odometerByDay(records: CarRecord[]): DayOdometer[] {
+  const days = new Map<ISODate, DayOdometer>()
   for (const r of records) {
-    if (r.deleted || typeof r.odometer !== 'number' || !inRange(r.date, range)) continue
-    count++
-    if (min === null || r.odometer < min) min = r.odometer
-    if (max === null || r.odometer > max) max = r.odometer
+    if (r.deleted || typeof r.odometer !== 'number') continue
+    const day = days.get(r.date)
+    if (!day) days.set(r.date, { date: r.date, min: r.odometer, max: r.odometer })
+    else {
+      day.min = Math.min(day.min, r.odometer)
+      day.max = Math.max(day.max, r.odometer)
+    }
   }
-  return count >= 2 && min !== null && max !== null ? max - min : null
+  return [...days.values()].sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/**
+ * Пробег на дату: линейная интерполяция по дням между соседними точками; вне данных — первая/последняя точка.
+ * В день с записями: для начала периода — наименьший пробег дня, для конца — наибольший.
+ */
+function odometerAt(days: DayOdometer[], date: ISODate, bound: 'from' | 'to'): number {
+  const first = days[0]!
+  const last = days[days.length - 1]!
+  if (date < first.date) return first.min
+  if (date > last.date) return last.max
+  let prev = first
+  for (const day of days) {
+    if (day.date === date) return bound === 'from' ? day.min : day.max
+    if (day.date > date) {
+      const share = diffDays(prev.date, date) / diffDays(prev.date, day.date)
+      return prev.max + (day.min - prev.max) * share
+    }
+    prev = day
+  }
+  return last.max
+}
+
+/**
+ * Пробег за период (оценка): пробег, интерполированный на `to`, минус интерполированный на `from`;
+ * без `from` — первая точка, без `to` — последняя. Результат ≤ 0 или нет данных — null.
+ */
+export function kmDriven(records: CarRecord[], range: Range = {}): number | null {
+  const days = odometerByDay(records)
+  if (days.length === 0) return null
+  const start = range.from ? odometerAt(days, range.from, 'from') : days[0]!.min
+  const end = range.to ? odometerAt(days, range.to, 'to') : days[days.length - 1]!.max
+  const km = end - start
+  return km > 0 ? km : null
 }
 
 /** Цена километра, копеек на км (дробное); без пробега за период — null. */
 export function costPerKm(records: CarRecord[], range: Range = {}): number | null {
   const km = kmDriven(records, range)
-  if (!km || km <= 0) return null
-  return costBreakdown(records, range).total / km
+  return km === null ? null : costBreakdown(records, range).total / km
 }
