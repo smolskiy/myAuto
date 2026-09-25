@@ -17,3 +17,13 @@
   /* Пустая live-область остаётся в дереве доступности (иначе новое сообщение не объявят), но не даёт отступа. */
   position: absolute;
 }
+
+/* Клавиша действия, а не сумма: нейтральная, знак крупнее. */
+.quick .opKey {
+  min-width: var(--tap);
+  background: var(--color-surface-2);
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-border-strong);
+  color: var(--color-text);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+}

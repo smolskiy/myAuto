@@ -60,7 +60,7 @@ export function FieldsSection() {
         />
       </Demo>
 
-      <Demo name="MoneyField" note="Введите «1200+650» — появится итог; «+500» прибавляет рубли.">
+      <Demo name="MoneyField" note="«1200+650» — появится итог. Клавиша «+» — для цифровой клавиатуры iPhone, фокус остаётся в поле; «+500» прибавляет рубли.">
         <MoneyField label="Сумма" value={money} onChange={setMoney} quickAdd={[500, 1000, 5000]} />
         <MoneyField
           label="Сумма с ошибкой"

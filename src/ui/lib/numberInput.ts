@@ -15,11 +15,15 @@ export function parseNumberDraft(text: string): number | undefined {
   return Number.isFinite(n) ? n : undefined
 }
 
-/** Число → текст поля: разряды неразрывным пробелом, дробь через запятую, без хвостовых нулей. */
-export function formatNumberInput(n: number | undefined, decimals: number): string {
+/**
+ * Число → текст поля: разряды неразрывным пробелом, дробь через запятую.
+ * Обычно без хвостовых нулей («42,5 л»); `keepDecimals` — дробная часть всегда полностью, как у денег («54,90 ₽»).
+ */
+export function formatNumberInput(n: number | undefined, decimals: number, keepDecimals = false): string {
   if (n === undefined || !Number.isFinite(n)) return ''
   const fixed = n.toFixed(decimals)
   const [int, frac] = fixed.split('.')
   const trimmed = frac?.replace(/0+$/, '')
-  return trimmed ? `${groupDigits(int!)},${trimmed}` : groupDigits(int!)
+  if (!trimmed) return groupDigits(int!)
+  return `${groupDigits(int!)},${keepDecimals ? frac : trimmed}`
 }

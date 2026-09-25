@@ -8,7 +8,7 @@ export interface NumberFieldProps {
   value: number | undefined
   /** Вызывается на каждый ввод: число или undefined, если поле пустое. */
   onChange(v: number | undefined): void
-  /** 'км' | 'л' | '₽' — справа в поле. */
+  /** 'км' | 'л' | '₽' — справа в поле. С '₽' дробь показывается двумя знаками («54,90»). */
   unit?: string
   decimals?: 0 | 1 | 2
   /** Меньше — при потере фокуса поднимается до min. */
@@ -33,12 +33,14 @@ export function NumberField({
   warning,
   placeholder,
 }: NumberFieldProps) {
-  const [text, setText] = useState(() => formatNumberInput(value, decimals))
+  // Рубли с копейками — всегда два знака («54,90»), как formatMoney в domain.
+  const money = unit === '₽'
+  const [text, setText] = useState(() => formatNumberInput(value, decimals, money))
   const [prevValue, setPrevValue] = useState(value)
   // Значение сменили снаружи (не наш ввод) — показываем его.
   if (value !== prevValue) {
     setPrevValue(value)
-    if (value !== parseNumberDraft(text)) setText(formatNumberInput(value, decimals))
+    if (value !== parseNumberDraft(text)) setText(formatNumberInput(value, decimals, money))
   }
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -54,7 +56,7 @@ export function NumberField({
       n = min
       onChange(n)
     }
-    setText(formatNumberInput(n, decimals))
+    setText(formatNumberInput(n, decimals, money))
   }
 
   return (

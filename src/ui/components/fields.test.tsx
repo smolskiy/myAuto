@@ -28,10 +28,69 @@ test('сумма понимает выражение и отдаёт копей�
 test('некорректная сумма — сообщение, значение не меняется', async () => {
   const onChange = vi.fn()
   render(<MoneyField label="Сумма" value={undefined} onChange={onChange} />)
-  await userEvent.type(screen.getByRole('textbox', { name: 'Сумма' }), '12++')
+  const input = screen.getByRole('textbox', { name: 'Сумма' })
+  await userEvent.type(input, '12')
+  const calls = onChange.mock.calls.length
+  await userEvent.type(input, '++')
   await userEvent.tab()
   expect(screen.getByText('Не получилось посчитать сумму')).toBeInTheDocument()
-  expect(onChange).not.toHaveBeenCalledWith(expect.any(Number))
+  expect(onChange).toHaveBeenCalledTimes(calls)
+  expect(onChange).toHaveBeenLastCalledWith(1200)
+})
+
+test('сумма уходит в onChange на каждый разбираемый ввод, пустое поле — undefined', async () => {
+  const onChange = vi.fn()
+  render(<MoneyField label="Сумма" value={undefined} onChange={onChange} />)
+  const input = screen.getByRole('textbox', { name: 'Сумма' })
+  await userEvent.type(input, '1200+6')
+  expect(onChange).toHaveBeenLastCalledWith(120600)
+  expect(onChange).not.toHaveBeenCalledWith(null)
+  await userEvent.clear(input)
+  expect(onChange).toHaveBeenLastCalledWith(undefined)
+})
+
+test('Enter на некорректной сумме не отправляет форму', async () => {
+  const onSubmit = vi.fn((e: { preventDefault(): void }) => e.preventDefault())
+  render(
+    <form onSubmit={onSubmit}>
+      <MoneyField label="Сумма" value={undefined} onChange={() => {}} />
+    </form>,
+  )
+  const input = screen.getByRole('textbox', { name: 'Сумма' })
+  const events: KeyboardEvent[] = []
+  input.addEventListener('keydown', (e) => e.key === 'Enter' && events.push(e))
+  await userEvent.type(input, '12++{Enter}')
+  expect(events[0]?.defaultPrevented).toBe(true)
+  expect(onSubmit).not.toHaveBeenCalled()
+  expect(screen.getByText('Не получилось посчитать сумму')).toBeInTheDocument()
+})
+
+test('клавиша «+» для айфона: вставляет плюс, фокус остаётся в поле', async () => {
+  const onChange = vi.fn()
+  render(<MoneyField label="Сумма" value={undefined} onChange={onChange} />)
+  const input = screen.getByRole('textbox', { name: 'Сумма' })
+  await userEvent.type(input, '1200')
+  const plus = screen.getByRole('button', { name: 'Плюс' })
+  await userEvent.click(plus)
+  expect(input).toHaveFocus()
+  await userEvent.keyboard('650')
+  expect(input).toHaveValue('1200+650')
+  expect(screen.getByText('= 1 850 ₽')).toBeInTheDocument()
+  expect(onChange).toHaveBeenLastCalledWith(185000)
+})
+
+test('клавиша «+» стоит первой в ряду быстрых сумм', () => {
+  render(<MoneyField label="Сумма" value={undefined} onChange={() => {}} quickAdd={[500, 1000]} />)
+  const names = screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent)
+  expect(names).toEqual(['Плюс', '+500', '+1 000'])
+})
+
+test('цена в рублях с копейками показывает два знака', async () => {
+  render(<NumberField label="Цена" unit="₽" decimals={2} value={undefined} onChange={() => {}} />)
+  const input = screen.getByRole('textbox', { name: 'Цена' })
+  await userEvent.type(input, '54,9')
+  await userEvent.tab()
+  expect(input).toHaveValue('54,90')
 })
 
 test('быстрые кнопки прибавляют рубли', async () => {
