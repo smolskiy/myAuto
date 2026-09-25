@@ -9,6 +9,8 @@ export default mergeConfig(
       setupFiles: ['src/test/setup.ts'],
       include: ['src/**/*.test.{ts,tsx}'],
       restoreMocks: true,
+      // Под нагрузкой (полный прогон рядом с другими процессами) рендер экранов в jsdom идёт секундами.
+      testTimeout: 15_000,
     },
   }),
 )
