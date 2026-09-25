@@ -1,4 +1,4 @@
-import { IconMapPin, IconPhone, IconPlus, IconTrash, IconUser } from '@tabler/icons-react'
+import { IconExternalLink, IconMapPin, IconPhone, IconPlus, IconTrash, IconUser } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useMasters, usePlace, usePlaceStats, useRecords } from '../../db/hooks'
@@ -8,7 +8,7 @@ import type { Place, PlaceKind, Rating as Stars } from '../../domain/types'
 import { Button, EmptyState, Icon, ListGroup, ListItem, Select, TextArea, TextField } from '../../ui'
 import { FormPage, Page, PLACE_KIND_LABELS, useGoBack, useSoftDelete } from '../common'
 import { optional } from '../garage/kit'
-import { mapsHref, telHref } from './links'
+import { mapsHref, placeUrl, telHref } from './links'
 import { RatingMark } from '../garage/RowText'
 import { RatingField, VisitsList, VisitStatsSection } from './parts'
 import styles from './places.module.css'
@@ -67,6 +67,7 @@ function PlaceForm({ place }: { place?: Place }) {
   }
 
   const map = mapsHref(address, url)
+  const own = placeUrl(url)
   const tel = telHref(phone)
 
   return (
@@ -121,7 +122,17 @@ function PlaceForm({ place }: { place?: Place }) {
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         placeholder="https://"
-        hint="Сайт или точка на картах — адрес будет открывать её"
+        hint={
+          // Адреса нет — открыть ссылку больше неоткуда, ведём прямо с поля.
+          own && !address.trim() ? (
+            <a className={styles.hintLink} href={own} target="_blank" rel="noreferrer">
+              <IconExternalLink size={16} aria-hidden="true" />
+              Открыть ссылку
+            </a>
+          ) : (
+            'Сайт или точка на картах — адрес будет открывать её'
+          )
+        }
       />
       <RatingField value={rating} onChange={setRating} />
       <TextArea label="Заметка" value={note} onChange={(e) => setNote(e.target.value)} />

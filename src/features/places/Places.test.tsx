@@ -97,6 +97,15 @@ describe('список мест и мастеров', () => {
     await waitFor(() => expect(station).toHaveTextContent('Нет визитов'))
   })
 
+  test('мастер удалённого места — «Место удалено» в списке', async () => {
+    const place = await repos.places.create({ kind: 'service', name: 'Закрытый сервис' })
+    await repos.masters.create({ name: 'Игорь', placeId: place.id, specialization: 'Кузовщик' })
+    await repos.places.remove(place.id)
+    renderAt('/places?tab=masters')
+    const row = await screen.findByRole('button', { name: /Игорь/ })
+    await waitFor(() => expect(row).toHaveTextContent('Место удалено · Кузовщик'))
+  })
+
   test('мастера: имя, место и специализация; «Добавить мастера»', async () => {
     const place = await repos.places.create({ kind: 'service', name: 'Автосервис' })
     await repos.masters.create({ name: 'Сергей', placeId: place.id, specialization: 'Моторист' })
@@ -153,6 +162,23 @@ describe('карточка места', () => {
       'href',
       'https://dealer.example/contacts',
     )
+  })
+
+  test('ссылка без схемы получает https://; ссылка без адреса — «Открыть ссылку»', async () => {
+    const place = await repos.places.create({ kind: 'parts', name: 'Exist', url: 'exist.ru/cart' })
+    renderAt(`/places/${place.id}`)
+    expect(await screen.findByRole('link', { name: 'Открыть ссылку' })).toHaveAttribute(
+      'href',
+      'https://exist.ru/cart',
+    )
+    expect(screen.queryByRole('link', { name: 'Открыть на карте' })).not.toBeInTheDocument()
+
+    await fill(screen.getByRole('textbox', { name: 'Адрес' }), 'Москва, Тверская, 1')
+    expect(screen.getByRole('link', { name: 'Открыть на карте' })).toHaveAttribute(
+      'href',
+      'https://exist.ru/cart',
+    )
+    expect(screen.queryByRole('link', { name: 'Открыть ссылку' })).not.toBeInTheDocument()
   })
 
   test('мастера места: только этого места', async () => {

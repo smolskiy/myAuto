@@ -4,7 +4,7 @@ import { useMasters, usePlaces, usePlaceStats } from '../../db/hooks'
 import { formatMoney, formatNumber, NBSP, pluralize } from '../../domain/format'
 import type { Master, Place, PlaceKind } from '../../domain/types'
 import { Button, EmptyState, ListGroup, ListItem, SegmentedControl } from '../../ui'
-import { Page, PLACE_KIND_LABELS, useLookup } from '../common'
+import { MISSING_PLACE, Page, PLACE_KIND_LABELS } from '../common'
 import { RatingMark } from '../garage/RowText'
 
 type Tab = 'places' | 'masters'
@@ -110,7 +110,8 @@ function PlacesList({ onOpen, onAdd }: { onOpen(id: string): void; onAdd(): void
 
 function MastersList({ onOpen, onAdd }: { onOpen(id: string): void; onAdd(): void }) {
   const masters = useMasters()
-  const lookup = useLookup()
+  // Живые места: мастер удалённого места показывает «Место удалено», а не старое имя.
+  const places = usePlaces()
   if (!masters) return null
   const add = (
     <Button variant="secondary" block icon={<IconPlus />} onClick={onAdd}>
@@ -134,7 +135,11 @@ function MastersList({ onOpen, onAdd }: { onOpen(id: string): void; onAdd(): voi
           <MasterRow
             key={m.id}
             master={m}
-            placeName={m.placeId ? lookup?.places.get(m.placeId)?.name : undefined}
+            placeName={
+              m.placeId && places
+                ? (places.find((p) => p.id === m.placeId)?.name ?? MISSING_PLACE)
+                : undefined
+            }
             onOpen={() => onOpen(m.id)}
           />
         ))}
