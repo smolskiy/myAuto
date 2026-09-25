@@ -10,6 +10,7 @@ import {
   SCHEMATIC_ART,
   SCHEMATIC_MODELS,
   SchematicPicker,
+  isSchematicModel,
   Select,
   TextArea,
   TextField,
@@ -237,7 +238,8 @@ export function VehicleForm({
       </div>
       <SchematicPicker
         label="Чертёж на главной"
-        value={values.schematic || AUTO}
+        // Неизвестный id (чертёж убрали из приложения) работает как подбор — так и отмечаем.
+        value={isSchematicModel(values.schematic) || values.schematic === NONE ? values.schematic : AUTO}
         options={schematicOptions(values)}
         onChange={(v) => set({ schematic: v === AUTO ? '' : v })}
       />

@@ -4,7 +4,7 @@ import { ITEM_GROUP_LABELS } from '../../domain/catalog'
 import type { CatalogItem, ID } from '../../domain/types'
 import { Combobox, useToast } from '../../ui'
 import { SAVE_FAILED, userMessage } from './errors'
-import { matches, usePickerQuery } from './pickerQuery'
+import { matches, normalize, usePickerQuery } from './pickerQuery'
 import { useLookup } from './useLookup'
 
 export interface CatalogItemPickerProps {
@@ -41,11 +41,17 @@ export function CatalogItemPicker({
     onQueryChange?.(q)
   }
 
+  // Слова запроса ищутся в названии и группе вместе: «двигатель прокладка».
   const options = (catalog ?? [])
-    .filter((i) => matches(i.name, query) || matches(ITEM_GROUP_LABELS[i.group], query))
+    .filter((i) => matches(`${i.name} ${ITEM_GROUP_LABELS[i.group]}`, query))
     .map((i) => ({ id: i.id, label: i.name, hint: ITEM_GROUP_LABELS[i.group] }))
 
   const create = async (name: string) => {
+    // Такое имя уже есть (скрытый встроенный узел не попадает в подсказки) — выбираем его, а не плодим двойник.
+    const same = [...(lookup?.catalog.values() ?? [])].find(
+      (i) => !i.deleted && normalize(i.name) === normalize(name),
+    )
+    if (same) return onChange(same.id, same)
     try {
       const item = await repos.catalog.create({ name, group: 'other', builtin: false })
       onChange(item.id, item)

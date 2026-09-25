@@ -22,7 +22,7 @@ import {
   applyLastPart,
   BLANK_LINE,
   isBlankLine,
-  lineName,
+  resolveLine,
   matchesLastPart,
   type PartDraft,
 } from './serviceLines'
@@ -41,11 +41,10 @@ export interface PartSheetProps {
   onDone(line: PartLine): void
 }
 
-/** Готовая строка: количество по умолчанию 1, пустое название — имя узла или набранное в поиске узла. */
-function finish(d: PartDraft, itemName: string | undefined, itemQuery: string): PartLine {
+/** Готовая строка (узел и название — `resolveLine`): количество по умолчанию 1. */
+function finish(d: PartDraft): PartLine {
   return {
     ...d,
-    name: lineName(d, itemName, itemQuery),
     brand: d.brand?.trim() || undefined,
     partNumber: d.partNumber?.trim() || undefined,
     qty: d.qty && d.qty > 0 ? d.qty : 1,
@@ -66,9 +65,9 @@ export function PartSheet({ open, line, vehicleId, onDone }: PartSheetProps) {
 
   const suggestion = last && !matchesLastPart(draft, last.line) ? lastPartText(last.line) : null
   // Крестик и жест — отмена пустой строки; «Готово» с пустой строкой — подсказка, а не молчаливый выброс.
-  const close = () => onDone(finish(draft, itemName(draft.itemId), itemQuery))
+  const close = () => onDone(finish(resolveLine(draft, '', lookup?.catalog)))
   const done = () => {
-    const line = finish(draft, itemName(draft.itemId), itemQuery)
+    const line = finish(resolveLine(draft, itemQuery, lookup?.catalog))
     if (isBlankLine(line)) setError(BLANK_LINE)
     else onDone(line)
   }

@@ -1,5 +1,13 @@
 import { newId } from '../../../domain/ids'
-import type { CarRecord, ID, PartLine, ServiceRecord, ServiceType, WorkLine } from '../../../domain/types'
+import type {
+  CarRecord,
+  CatalogItem,
+  ID,
+  PartLine,
+  ServiceRecord,
+  ServiceType,
+  WorkLine,
+} from '../../../domain/types'
 
 /** Запчасть в шторке: количество может быть временно пустым, пока его стирают и вводят заново. */
 export type PartDraft = Omit<PartLine, 'qty'> & { qty?: number }
@@ -20,16 +28,28 @@ export const isBlankLine = (l: { name: string; itemId?: ID }) => !l.name.trim() 
 /** Подсказка у выбора узла, когда «Готово» нажали на пустой строке. */
 export const BLANK_LINE = 'Выберите узел или впишите название'
 
+const normalizeName = (s: string) => s.trim().toLowerCase().replaceAll('ё', 'е')
+
 /**
- * Название готовой строки: вписанное → имя выбранного узла → текст, набранный в поиске узла (узла нет в каталоге:
- * набранное не должно теряться).
+ * Готовая строка по «Готово»: узел не выбран, а набранное в поиске — точное имя узла каталога (регистр и «ё» не
+ * важны) — строка привязывается к нему, иначе напоминание по узлу не узнает о замене. Название: вписанное → имя
+ * узла → набранное в поиске (узла нет в каталоге: набранное не должно теряться). Крестик и жест передают пустой
+ * `itemQuery`: отмена не превращает поисковый запрос в строку.
  */
-export function lineName(
-  line: { name: string; itemId?: ID },
-  itemName: string | undefined,
+export function resolveLine<T extends { name: string; itemId?: ID }>(
+  line: T,
   itemQuery: string,
-) {
-  return line.name.trim() || itemName || (line.itemId ? '' : itemQuery.trim())
+  catalog: ReadonlyMap<ID, CatalogItem> | undefined,
+): T {
+  const q = normalizeName(itemQuery)
+  const typed =
+    !line.itemId && q
+      ? [...(catalog?.values() ?? [])].find((i) => !i.deleted && normalizeName(i.name) === q)
+      : undefined
+  const itemId = line.itemId ?? typed?.id
+  const item = itemId ? catalog?.get(itemId) : undefined
+  const name = line.name.trim() || item?.name || (itemId ? '' : itemQuery.trim())
+  return { ...line, ...(itemId && { itemId }), name }
 }
 
 /** Подсказка «в прошлый раз» одним касанием: бренд, артикул, цена, единица и количество. */
