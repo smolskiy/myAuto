@@ -71,6 +71,17 @@ describe('вход', () => {
     expect(store.has(OAUTH_TOKEN_KEY)).toBe(false)
   })
 
+  test('подписчики узнают о входе и выходе', async () => {
+    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk() })
+    const seen: boolean[] = []
+    const off = auth.subscribe(() => seen.push(auth.isConnected()))
+    await auth.connectWithToken('y0_T')
+    await auth.disconnect()
+    off()
+    await auth.connectWithToken('y0_T')
+    expect(seen).toEqual([true, false])
+  })
+
   test('выход стирает токен', async () => {
     const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk() })
     await auth.connectWithToken('y0_T')

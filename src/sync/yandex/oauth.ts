@@ -41,6 +41,8 @@ export type YandexAuthService = YandexAuth & {
   getToken(): string | null
   /** Забирает токен, оставленный oauth.html. true — вход состоялся. */
   consumeRedirect(): Promise<boolean>
+  /** Сообщает о входе, выходе и чтении токена из meta (для useYandexConnected). */
+  subscribe(cb: () => void): () => void
 }
 
 export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
@@ -49,6 +51,11 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
   const envClientId = deps.envClientId?.trim() || null
   let token: string | null = null
   let manualClientId: string | null = null
+  const subscribers = new Set<() => void>()
+  const setToken = (value: string | null) => {
+    token = value
+    for (const cb of subscribers) cb()
+  }
 
   const clientIdOrThrow = (): string => {
     const id = manualClientId ?? envClientId
@@ -60,8 +67,15 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
 
   const auth: YandexAuthService = {
     async init() {
-      token = await getMeta<string | null>(db, META_KEYS.yandexToken, null)
       manualClientId = await getMeta<string | null>(db, META_KEYS.yandexClientId, null)
+      setToken(await getMeta<string | null>(db, META_KEYS.yandexToken, null))
+    },
+
+    subscribe(cb) {
+      subscribers.add(cb)
+      return () => {
+        subscribers.delete(cb)
+      }
     },
 
     getToken: () => token,
@@ -105,7 +119,7 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
       if (!value) throw new Error('Вставьте код из Яндекса')
       await makeDisk(value).checkAccess()
       await setMeta(db, META_KEYS.yandexToken, value)
-      token = value
+      setToken(value)
       deps.onConnected?.()
     },
 
@@ -113,7 +127,7 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
 
     async disconnect() {
       await deleteMeta(db, META_KEYS.yandexToken)
-      token = null
+      setToken(null)
     },
 
     async consumeRedirect() {
