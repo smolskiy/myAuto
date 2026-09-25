@@ -321,11 +321,13 @@ app:/backups/ГГГГ-ММ-ДД.json         ежедневные копии (к
 
 ### 6.2 Вход в Яндекс
 
-OAuth-приложение на oauth.yandex.ru: платформа «Веб-сервисы», доступ «Яндекс.Диск REST API → Доступ к папке
-приложения на Диске», Redirect URI — `https://smolskiy.github.io/myAuto/oauth.html` и
-`http://localhost:5173/oauth.html`. Вход — implicit flow (`response_type=token`): страница `oauth.html` забирает
-`access_token` из фрагмента URL, кладёт в `localStorage` и уходит на `./#/settings/sync`.
-Запасной путь (как в `stats`): «Получить код» → `https://oauth.yandex.ru/verification_code` → вставить код.
+OAuth-приложение владельца (ClientID `c6b845b4…`) — тип с доступом «Яндекс.Диск REST API → Доступ к папке приложения
+на Диске», у которого **единственный разрешённый адрес возврата — `https://oauth.yandex.ru/verification_code`**
+(свой Redirect URI такому типу задать нельзя; выяснено на живом сайте 2026-09-25, как и в `stats`).
+Поэтому вход — **по коду**: «1. Получить код в Яндексе» (`response_type=token`, `redirect_uri=verification_code`,
+новая вкладка) → Яндекс показывает токен `y0_…` → «2. Вставьте код» → «Подключить». Код нужен один раз на устройство
+и живёт около года. Код implicit flow через `public/oauth.html` оставлен в `sync/yandex/oauth.ts` без точки входа в UI —
+пригодится, если тип приложения когда-нибудь позволит свой Redirect URI.
 ClientID зашивается при сборке из `VITE_YANDEX_CLIENT_ID` (переменная репозитория GitHub, не секрет);
 без него приложение просит ввести ClientID вручную.
 
