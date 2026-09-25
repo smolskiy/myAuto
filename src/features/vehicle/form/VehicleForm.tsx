@@ -37,6 +37,8 @@ export interface VehicleFormProps {
   submitLabel?: string
   /** Заголовок экрана; по умолчанию «Новая машина» / «Правка машины». */
   title?: string
+  /** Вступление над полями (онбординг: шаг и пояснение). */
+  intro?: ReactNode
 }
 
 const NONE = 'none'
@@ -67,7 +69,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
  * Новая машина встаёт последней в гараже и становится активной. Страницы `/vehicle/new`, `/vehicle/:id/edit`
  * и первый шаг онбординга.
  */
-export function VehicleForm({ initial, onSaved, submitLabel, title }: VehicleFormProps) {
+export function VehicleForm({ initial, onSaved, submitLabel, title, intro }: VehicleFormProps) {
   const today = useToday()
   const { setActive } = useActiveVehicle()
   const drafts = useDraftAttachments('vehicle')
@@ -121,6 +123,7 @@ export function VehicleForm({ initial, onSaved, submitLabel, title }: VehicleFor
       onSave={onSave}
       onCancel={initial ? undefined : () => void drafts.discard()}
     >
+      {intro}
       <VinField
         value={values.vin}
         onChange={(vin) => set({ vin })}
