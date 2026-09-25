@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { Attachment } from '../domain/types'
 import type { SyncStatus } from './contracts'
 import { attachmentStore, syncEngine, yandexAuth } from './index'
@@ -20,37 +20,53 @@ export function useLoginError(): string | null {
 
 /**
  * object URL файла вложения: undefined — ещё грузится (или вложения нет), null — файла нет ни на устройстве,
- * ни на Диске. Адрес отзывается при размонтировании и при смене вложения.
+ * ни на Диске.
+ *
+ * Живые запросы отдают новые копии той же строки, поэтому адрес пересоздаётся только при смене id, вида,
+ * `uploadedAt` или варианта. Пока грузится замена, отдаётся прежний адрес того же файла; отзывается он
+ * только после того, как замена показана, а последний — при размонтировании.
  */
 export function useAttachmentUrl(att: Attachment | undefined, variant: 'thumb' | 'orig'): string | null | undefined {
-  // Живые запросы отдают новые копии той же строки: показываем прежний адрес, пока грузится новый.
-  const key = att ? `${att.id}:${att.uploadedAt ?? ''}:${variant}` : null
-  const [loaded, setLoaded] = useState<{ key: string; url: string | null } | null>(null)
+  const attRef = useRef(att)
+  useEffect(() => {
+    attRef.current = att
+  })
+  const id = att?.id
+  const uploadedAt = att?.uploadedAt
+  const kind = att?.kind
+  const [loaded, setLoaded] = useState<{ file: string; url: string | null } | null>(null)
 
   useEffect(() => {
-    if (!att) return
+    const current = attRef.current
+    if (!id || !current) return
     let cancelled = false
-    let url: string | null = null
-    const load = variant === 'thumb' ? attachmentStore.getThumbUrl(att) : attachmentStore.getOriginalUrl(att)
+    const file = `${id}:${variant}`
+    const load = variant === 'thumb' ? attachmentStore.getThumbUrl(current) : attachmentStore.getOriginalUrl(current)
     load.then(
-      (u) => {
+      (url) => {
         if (cancelled) {
-          if (u) URL.revokeObjectURL(u)
+          if (url) URL.revokeObjectURL(url)
           return
         }
-        url = u
-        setLoaded({ key: `${att.id}:${att.uploadedAt ?? ''}:${variant}`, url: u })
+        setLoaded({ file, url })
       },
       (e: unknown) => {
         console.warn('Файл вложения не открылся', e)
-        if (!cancelled) setLoaded({ key: `${att.id}:${att.uploadedAt ?? ''}:${variant}`, url: null })
+        if (!cancelled) setLoaded({ file, url: null })
       },
     )
     return () => {
       cancelled = true
+    }
+  }, [id, uploadedAt, kind, variant])
+
+  // Отзыв — после того как показан следующий адрес (очистка эффекта предыдущего значения) или при размонтировании.
+  useEffect(() => {
+    const url = loaded?.url
+    return () => {
       if (url) URL.revokeObjectURL(url)
     }
-  }, [att, variant])
+  }, [loaded])
 
-  return key !== null && loaded?.key === key ? loaded.url : undefined
+  return id && loaded?.file === `${id}:${variant}` ? loaded.url : undefined
 }
