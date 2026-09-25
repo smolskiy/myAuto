@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider } from 'react-router'
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { db } from '../db/instance'
 import { repos } from '../db/repos'
 import { AppProviders } from './providers'
@@ -29,6 +29,10 @@ const renderAt = (path: string) => {
   )
   return router
 }
+
+// Витрина тяжёлая (графики, все секции): под нагрузкой полного прогона её холодный импорт бывает дольше 5 с.
+// Прогреваем модуль заранее с запасом — тесты проверяют маршрутизацию, а не скорость диска.
+beforeAll(() => import('../ui/showcase/ShowcasePage'), 60_000)
 
 beforeEach(async () => {
   await db.open()

@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider } from 'react-router'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../db/instance'
 import { repos } from '../db/repos'
 import { AppProviders } from './providers'
@@ -20,6 +20,9 @@ const renderAt = (path: string) => {
 }
 const addVehicle = (archived = false) =>
   repos.vehicles.create({ name: 'Октавия', make: 'Skoda', model: 'Octavia', archived, fluids: [], order: 0 })
+
+// Холодный импорт тяжёлой витрины под нагрузкой полного прогона бывает дольше 5 с — прогреваем заранее.
+beforeAll(() => import('../ui/showcase/ShowcasePage'), 60_000)
 
 beforeEach(async () => {
   await db.open()
@@ -75,17 +78,19 @@ test.each([
   '/vehicle/new',
   '/vehicle/v1/edit',
   '/reminders/new',
+  '/reminders/r1',
   '/documents/new',
   '/tires/new',
   '/places/new',
   '/masters/new',
   '/onboarding',
-])('форма %s — без панели, уведомления у нижнего края', async (path) => {
+])('форма %s — без панели, уведомления не над панелью', async (path) => {
   await addVehicle()
   renderAt(path)
   await screen.findByRole('main')
   expect(screen.queryByRole('navigation', { name: 'Основная навигация' })).not.toBeInTheDocument()
-  expect(document.documentElement.style.getPropertyValue('--toast-offset')).toBe('0px')
+  // 0px у заглушки; когда экран станет FormPage — высота её кнопки «Сохранить» (см. formMode.test.tsx).
+  expect(document.documentElement.style.getPropertyValue('--toast-offset')).not.toBe('')
 })
 
 test.each(['/', '/journal', '/reminders', '/more', '/stats', '/garage', '/places', '/settings'])(
