@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { db } from '../db/instance'
@@ -53,9 +54,11 @@ describe('маршруты', () => {
     expect(screen.queryByRole('heading', { name: 'Страница не найдена' })).not.toBeInTheDocument()
   })
 
-  test('неизвестный путь показывает «Страница не найдена»', async () => {
-    renderAt('/nope/42')
-    expect(await screen.findByRole('heading', { name: 'Страница не найдена' })).toBeInTheDocument()
+  test('неизвестный путь показывает «Страница не найдена» с дорогой на главную', async () => {
+    const router = renderAt('/nope/42')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Страница не найдена' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'На главную' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })
 
   test('у каждого маршрута есть заголовок', () => {
