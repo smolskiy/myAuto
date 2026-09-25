@@ -1,0 +1,66 @@
+.sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  max-height: calc(var(--viewport-height, 100dvh) - var(--safe-top) - var(--space-6));
+  margin-bottom: var(--keyboard-inset, 0px);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sheet);
+  transition: margin-bottom var(--dur-fast) var(--ease-out);
+}
+
+.grip {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4) 0;
+  touch-action: none;
+}
+
+.handle {
+  display: block;
+  width: 36px;
+  height: 5px;
+  margin: 0 auto var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+  opacity: 0.6;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--tap);
+  margin-bottom: var(--space-2);
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 var(--space-4) var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.sheet:not(:has(.footer)) .body {
+  padding-bottom: calc(var(--space-4) + var(--safe-bottom));
+}
+
+.footer {
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-4) calc(var(--space-3) + var(--safe-bottom));
+  border-top: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+}

@@ -1,0 +1,10 @@
+.divider {
+  height: 0;
+  margin: 0;
+  border: 0;
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.inset {
+  margin-left: var(--space-4);
+}

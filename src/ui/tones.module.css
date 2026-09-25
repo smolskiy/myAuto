@@ -1,0 +1,46 @@
+/* Класс тона задаёт пару переменных: --tone (текст/значок) и --tone-soft (подложка). */
+.neutral {
+  --tone: var(--color-text-2);
+  --tone-soft: var(--color-surface-2);
+}
+.accent {
+  --tone: var(--color-accent);
+  --tone-soft: var(--color-accent-soft);
+}
+.ok {
+  --tone: var(--color-ok);
+  --tone-soft: var(--color-ok-soft);
+}
+.soon {
+  --tone: var(--color-soon);
+  --tone-soft: var(--color-soon-soft);
+}
+.overdue,
+.danger {
+  --tone: var(--color-overdue);
+  --tone-soft: var(--color-overdue-soft);
+}
+.unknown {
+  --tone: var(--color-text-2);
+  --tone-soft: var(--color-surface-2);
+}
+.service {
+  --tone: var(--kind-service);
+  --tone-soft: var(--kind-service-soft);
+}
+.fuel {
+  --tone: var(--kind-fuel);
+  --tone-soft: var(--kind-fuel-soft);
+}
+.expense {
+  --tone: var(--kind-expense);
+  --tone-soft: var(--kind-expense-soft);
+}
+.odometer {
+  --tone: var(--kind-odometer);
+  --tone-soft: var(--kind-odometer-soft);
+}
+.note {
+  --tone: var(--kind-note);
+  --tone-soft: var(--kind-note-soft);
+}

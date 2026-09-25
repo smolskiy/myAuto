@@ -1,0 +1,96 @@
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  max-width: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-border);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  flex-shrink: 0;
+}
+
+.selected {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-accent);
+}
+
+.main {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+/* Видимо 36 px, область касания — 44 px. */
+button.main::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+
+.removable .main {
+  padding-right: var(--space-1);
+}
+
+.icon {
+  display: inline-flex;
+}
+.icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  color: var(--color-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.selected .count {
+  color: inherit;
+}
+
+.remove {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: var(--space-1);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: inherit;
+}
+/* Видимо 28 px, область касания — 44×44. */
+.remove::after {
+  content: '';
+  position: absolute;
+  inset: calc((var(--tap) - 28px) / -2);
+}
+
+@media (hover: hover) {
+  .remove:hover {
+    background: var(--color-surface-pressed);
+  }
+}

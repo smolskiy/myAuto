@@ -1,0 +1,133 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.photo,
+.placeholder {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+}
+
+.photo {
+  object-fit: cover;
+  background: var(--color-skeleton);
+}
+
+.placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+
+.nameButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--tap);
+  margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+@media (hover: hover) {
+  .nameButton:hover {
+    background: var(--color-surface-pressed);
+  }
+}
+.nameButton:active {
+  background: var(--color-surface-pressed);
+}
+
+.name {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+.caret {
+  color: var(--color-text-2);
+}
+
+.subtitle {
+  color: var(--color-text-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-tight);
+}
+
+.facts {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.factEnd {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.factName {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
+
+/* Номер — как табличка: рамка цветом текста, без декора. */
+.plate {
+  align-self: flex-start;
+  padding: calc(var(--space-1) / 2) var(--space-2);
+  border: 1.5px solid var(--color-text);
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.odometer {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
