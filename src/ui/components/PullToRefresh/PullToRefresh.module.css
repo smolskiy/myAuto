@@ -1,0 +1,35 @@
+.area {
+  position: relative;
+}
+
+.indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.visible {
+  opacity: 1;
+}
+
+.arrow {
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.ready {
+  transform: rotate(180deg);
+}
+
+.settled {
+  transition: transform var(--dur-base) var(--ease-out);
+}

@@ -54,7 +54,9 @@ export interface ModalLayerProps {
   describedBy?: string
   /** Куда поставить фокус при открытии; по умолчанию — на саму панель. */
   initialFocus?: RefObject<HTMLElement | null>
-  placement: 'bottom' | 'center'
+  placement: 'bottom' | 'center' | 'fullscreen'
+  /** Принудительная тема слоя (просмотр фото всегда тёмный). */
+  theme?: 'light' | 'dark'
   panelClassName?: string
   panelRef?: RefObject<HTMLDivElement | null>
   children: ReactNode
@@ -70,6 +72,7 @@ export function ModalLayer({
   describedBy,
   initialFocus,
   placement,
+  theme,
   panelClassName,
   panelRef,
   children,
@@ -130,7 +133,7 @@ export function ModalLayer({
   if (!mounted) return null
   const state = open ? 'open' : 'closed'
   return createPortal(
-    <div className={cx(styles.layer, styles[placement])} data-state={state}>
+    <div className={cx(styles.layer, styles[placement])} data-state={state} data-theme={theme}>
       <div className={styles.backdrop} data-state={state} onClick={() => open && onDismiss()} aria-hidden="true" />
       <div
         ref={ref}

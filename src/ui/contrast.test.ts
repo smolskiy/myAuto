@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { chartTheme } from './chartTheme'
 import { THEME_BG } from './theme'
 
 // `?raw` для .css Vitest подменяет пустой строкой, поэтому читаем файлы напрямую (cwd — корень проекта).
@@ -108,4 +109,12 @@ test('фон темы един для CSS, theme-color и скрипта в inde
   expect(tokens.dark['--color-bg']).toBe(THEME_BG.dark)
   expect(indexHtml).toContain(THEME_BG.light)
   expect(indexHtml).toContain(THEME_BG.dark)
+})
+
+test('запасные цвета графиков совпадают со светлой темой', () => {
+  const t = tokens.light
+  expect(chartTheme.colors.accent).toBe(t['--color-accent'])
+  expect(chartTheme.colors.grid).toBe(t['--color-border'])
+  expect(chartTheme.colors.text).toBe(t['--color-text-2'])
+  for (const [kind, color] of Object.entries(chartTheme.colors.kinds)) expect(color).toBe(t[`--kind-${kind}`])
 })

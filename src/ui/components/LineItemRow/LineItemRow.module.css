@@ -1,0 +1,106 @@
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-1);
+}
+.item:not(:has(.suggestion)) {
+  padding-bottom: 0;
+}
+
+.line {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.main {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 56px;
+  padding: var(--space-2) 0 var(--space-2) var(--space-4);
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+}
+.main:active {
+  background: var(--color-surface-pressed);
+}
+.main:focus-visible {
+  outline-offset: -2px;
+}
+
+.text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}
+
+.meta {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
+
+.amount {
+  flex-shrink: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 52px;
+  min-height: 56px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-2);
+}
+.remove:active {
+  background: var(--color-overdue-soft);
+  color: var(--color-overdue);
+}
+.remove:focus-visible {
+  outline-offset: -2px;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: var(--tap);
+  margin: 0 var(--space-3) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.suggestion svg {
+  flex-shrink: 0;
+}

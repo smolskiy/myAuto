@@ -19,6 +19,23 @@
   padding: var(--space-6);
 }
 
+.fullscreen {
+  z-index: var(--z-dialog);
+  align-items: stretch;
+  background: transparent;
+}
+.fullscreen .panel {
+  width: 100%;
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+.fullscreen .panel[data-state='closed'] {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.fullscreen .backdrop {
+  background: var(--color-bg);
+}
+
 .backdrop {
   position: absolute;
   inset: 0;
