@@ -6,13 +6,15 @@ import { ThemeProvider } from './ui'
 import { initApp } from './app/init'
 import { AppProviders } from './app/providers'
 import AppRouter from './app/router'
-import { NEED_REFRESH_EVENT, type NeedRefreshDetail } from './app/useUpdateToast'
+import { appUpdate } from './app/appUpdate'
 
 const updateSW = registerSW({
   onNeedRefresh() {
-    // Оболочка показывает «Доступна новая версия — Обновить» по этому событию (app/useUpdateToast.ts).
-    const detail: NeedRefreshDetail = { update: () => updateSW(true) }
-    window.dispatchEvent(new CustomEvent(NEED_REFRESH_EVENT, { detail }))
+    // Оболочка показывает «Доступна новая версия — Обновить» (app/useUpdateToast.ts), настройки — строку «Обновить».
+    appUpdate.setReady(() => updateSW(true))
+  },
+  onRegisteredSW(_url, registration) {
+    if (registration) appUpdate.watch(registration)
   },
 })
 

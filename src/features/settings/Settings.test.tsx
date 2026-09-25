@@ -7,6 +7,7 @@ import { db } from '../../db/instance'
 import { repos } from '../../db/repos'
 import { NBSP } from '../../domain/format'
 import { THEME_STORAGE_KEY, ThemeProvider, ToastProvider } from '../../ui'
+import { appUpdate } from '../../app/appUpdate'
 import MorePage from '../more/MorePage'
 import { goToUrl } from './leave'
 import SettingsPage from './SettingsPage'
@@ -134,6 +135,30 @@ describe('настройки', () => {
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
     await userEvent.click(within(theme).getByRole('radio', { name: 'Как в системе' }))
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull()
+  })
+
+  test('«Проверить обновления»: последняя версия — так и сказано; нет сети — тоже', async () => {
+    const check = vi
+      .spyOn(appUpdate, 'check')
+      .mockResolvedValueOnce('latest')
+      .mockResolvedValueOnce('offline')
+    renderAt('/settings', <SettingsPage />)
+    const about = screen.getByRole('list', { name: 'О приложении' })
+    expect(within(about).getByText(/^Сборка /)).toBeInTheDocument()
+    await userEvent.click(within(about).getByRole('button', { name: /Проверить обновления/ }))
+    expect(await screen.findByText('Установлена последняя версия')).toBeInTheDocument()
+    await userEvent.click(within(about).getByRole('button', { name: /Проверить обновления/ }))
+    expect(await screen.findByText('Нет сети — проверим позже')).toBeInTheDocument()
+    expect(check).toHaveBeenCalledTimes(2)
+  })
+
+  test('новая версия скачана — «Обновить приложение» ставит её', async () => {
+    vi.spyOn(appUpdate, 'isReady').mockReturnValue(true)
+    const apply = vi.spyOn(appUpdate, 'apply').mockResolvedValue()
+    renderAt('/settings', <SettingsPage />)
+    const about = screen.getByRole('list', { name: 'О приложении' })
+    await userEvent.click(within(about).getByRole('button', { name: /Обновить приложение/ }))
+    expect(apply).toHaveBeenCalled()
   })
 
   test('«О приложении» — версия из package.json, ссылки на витрину нет', () => {

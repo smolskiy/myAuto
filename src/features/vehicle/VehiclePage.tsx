@@ -31,6 +31,7 @@ import {
   ListItem,
   RecordRow,
   VehicleCard,
+  VehicleSchematic,
   useToast,
 } from '../../ui'
 import { Page, recordRowProps, useLookup, type Lookup } from '../common'
@@ -38,6 +39,8 @@ import { failureText } from '../garage/kit'
 import { OwnershipList } from './details/OwnershipList'
 import { FluidsList, SpecsList } from './details/SpecsList'
 import { useVehiclePhoto } from './details/useVehiclePhoto'
+import { schematicModelFor } from '../home/schematic'
+import { SchematicSheet } from './SchematicSheet'
 import { makeModelYear, shownOdometer } from './details/vehicleText'
 import styles from './details/VehiclePage.module.css'
 
@@ -74,6 +77,8 @@ function VehicleDetails({ vehicle }: { vehicle: Vehicle }) {
   const records = useRecords(vehicle.id)
   const costs = useCostBreakdown(vehicle.id)
   const photo = useVehiclePhoto(vehicle)
+  const [pickingArt, setPickingArt] = useState(false)
+  const schematicModel = schematicModelFor(vehicle)
 
   const isActive = active?.id === vehicle.id
 
@@ -129,7 +134,12 @@ function VehicleDetails({ vehicle }: { vehicle: Vehicle }) {
           plate={vehicle.plate?.trim() || undefined}
           odometer={odometer !== undefined ? formatKm(odometer) : undefined}
           photoUrl={photo}
+          schematic={
+            schematicModel && <VehicleSchematic model={schematicModel} marks={[]} label="Схема машины" />
+          }
+          onPickSchematic={vehicle.archived ? undefined : () => setPickingArt(true)}
         />
+        <SchematicSheet vehicle={vehicle} open={pickingArt} onClose={() => setPickingArt(false)} />
         <div className={styles.state}>
           {status}
           {/* Пока неизвестно, какая машина активна, действий нет: «В архив» должно знать, передавать ли активность. */}

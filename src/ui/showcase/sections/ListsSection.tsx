@@ -317,7 +317,7 @@ export function ListsSection() {
           ))}
           <Caption>Выбор чертежа на форме машины</Caption>
           <SchematicPicker
-            label="Чертёж на главной"
+            label="Картинка на главной"
             value={schematic}
             options={[
               { value: 'auto', label: 'Автоматически', hint: 'Skoda Octavia A5', model: 'octavia-a5' },
@@ -326,7 +326,7 @@ export function ListsSection() {
                 label: SCHEMATIC_ART[model].label,
                 model,
               })),
-              { value: 'none', label: 'Без чертежа' },
+              { value: 'none', label: 'Без картинки' },
             ]}
             onChange={setSchematic}
           />

@@ -1,4 +1,11 @@
-import { IconGasStation, IconGauge, IconNotes, IconReceipt, IconTool } from '@tabler/icons-react'
+import {
+  IconGasStation,
+  IconGauge,
+  IconNotes,
+  IconPhotoEdit,
+  IconReceipt,
+  IconTool,
+} from '@tabler/icons-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import {
@@ -39,6 +46,8 @@ import { useNow } from '../settings/useNow'
 import { periodRange } from '../stats/periods'
 import styles from './HomePage.module.css'
 import { reminderCardProps } from './reminderText'
+import { SchematicSheet } from '../vehicle/SchematicSheet'
+import { NO_SCHEMATIC } from '../vehicle/schematicChoice'
 import { schematicData, schematicModelFor } from './schematic'
 
 /** «Потрачено в сентябре» — месяц в предложном падеже. */
@@ -93,6 +102,7 @@ function HomeContent({ vehicle }: { vehicle: Vehicle }) {
   const costs = useCostBreakdown(vehicle.id, periodRange('month', today))
   const fuel = useFuelStats(vehicle.id, { from: addDays(today, -FUEL_WINDOW_DAYS), to: today })
   const [switching, setSwitching] = useState(false)
+  const [pickingArt, setPickingArt] = useState(false)
   const schematicModel = schematicModelFor(vehicle)
   const statuses = upcomingAll?.flatMap((u) => (u.reminder ? [u.reminder] : []))
   const catalog = useCatalog({ includeHidden: true })
@@ -109,17 +119,26 @@ function HomeContent({ vehicle }: { vehicle: Vehicle }) {
         odometer={odometer != null ? formatKm(odometer) : undefined}
         photoUrl={photoUrl}
         onSwitch={() => setSwitching(true)}
+        onPickSchematic={() => setPickingArt(true)}
         schematic={
-          schematicModel && (
+          schematicModel ? (
             <VehicleSchematic
               model={schematicModel}
               // Пока статусы и каталог грузятся — чертёж без точек, а не пустое место.
               {...schematicData(statuses && catalog ? statuses : [], catalog ?? [])}
               onClick={() => go('/reminders')}
             />
+          ) : (
+            // Картинка не подобралась — предлагаем выбрать; «Без картинки» выбрано сознательно — не напоминаем.
+            vehicle.schematic !== NO_SCHEMATIC && (
+              <Button variant="secondary" block icon={<IconPhotoEdit />} onClick={() => setPickingArt(true)}>
+                Выбрать картинку машины
+              </Button>
+            )
           )
         }
       />
+      <SchematicSheet vehicle={vehicle} open={pickingArt} onClose={() => setPickingArt(false)} />
       <VehicleSwitcher
         open={switching}
         onClose={() => setSwitching(false)}

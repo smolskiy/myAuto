@@ -1,29 +1,24 @@
 import { useEffect } from 'react'
 import { useToast } from '../ui'
+import { appUpdate } from './appUpdate'
 
-/** Событие из main.tsx: service worker скачал новую версию и ждёт команды. */
-export const NEED_REFRESH_EVENT = 'pwa:need-refresh'
-
-export interface NeedRefreshDetail {
-  update(): void | Promise<void>
-}
-
-/** Минута на решение; пока палец или фокус на уведомлении — таймер стоит. Без ответа версия встанет при следующем запуске. */
+/** Минута на решение; пока палец или фокус на уведомлении — таймер стоит. Возврат в приложение напомнит снова. */
 const UPDATE_TOAST_MS = 60_000
 
-/** «Доступна новая версия — Обновить»: кнопка активирует новый service worker и перезагружает приложение. */
+/**
+ * «Доступна новая версия — Обновить»: кнопка ставит новую версию и перезагружает приложение. Версия, скачанная до
+ * того, как оболочка подписалась, тоже показывается — это состояние `appUpdate`, а не разовое событие.
+ */
 export function useUpdateToast(): void {
   const toast = useToast()
   useEffect(() => {
-    const onNeedRefresh = (e: Event) => {
-      const { update } = (e as CustomEvent<NeedRefreshDetail>).detail
+    const show = () =>
       toast.show({
         text: 'Доступна новая версия',
-        action: { label: 'Обновить', onClick: () => void update() },
+        action: { label: 'Обновить', onClick: () => void appUpdate.apply() },
         durationMs: UPDATE_TOAST_MS,
       })
-    }
-    window.addEventListener(NEED_REFRESH_EVENT, onNeedRefresh)
-    return () => window.removeEventListener(NEED_REFRESH_EVENT, onNeedRefresh)
+    if (appUpdate.isReady()) show()
+    return appUpdate.subscribe(show)
   }, [toast])
 }

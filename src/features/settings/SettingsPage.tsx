@@ -1,8 +1,18 @@
-import { IconCloud, IconDatabase } from '@tabler/icons-react'
+import { IconCloud, IconCloudDownload, IconDatabase, IconRefresh } from '@tabler/icons-react'
+import { useSyncExternalStore } from 'react'
 import { useNavigate } from 'react-router'
 import { version } from '../../../package.json'
+import { appUpdate, type CheckResult } from '../../app/appUpdate'
 import { useSyncStatus } from '../../sync/react'
-import { Icon, ListGroup, ListItem, SegmentedControl, useTheme, type ThemePreference } from '../../ui'
+import {
+  Icon,
+  ListGroup,
+  ListItem,
+  SegmentedControl,
+  useTheme,
+  useToast,
+  type ThemePreference,
+} from '../../ui'
 import { Page } from '../common'
 import styles from './Settings.module.css'
 import { syncStateText } from './syncText'
@@ -14,7 +24,47 @@ const THEMES: { value: ThemePreference; label: string }[] = [
   { value: 'dark', label: 'Тёмная' },
 ]
 
-/** Настройки: тема, ссылки на синхронизацию и выгрузки, версия приложения. */
+/** «26 сентября, 14:05» — когда собрана стоящая версия. */
+const BUILD_TEXT = `Сборка ${new Date(__BUILD_TIME__).toLocaleString('ru-RU', {
+  day: 'numeric',
+  month: 'long',
+  hour: '2-digit',
+  minute: '2-digit',
+})}`
+
+const CHECK_TEXT: Record<Exclude<CheckResult, 'ready'>, string> = {
+  latest: 'Установлена последняя версия',
+  downloading: 'Скачиваем новую версию — предложим обновить',
+  offline: 'Нет сети — проверим позже',
+}
+
+/** Новая версия скачана — «Обновить приложение», иначе «Проверить обновления». */
+function UpdateItem() {
+  const toast = useToast()
+  const ready = useSyncExternalStore(appUpdate.subscribe, appUpdate.isReady)
+  if (ready)
+    return (
+      <ListItem
+        title="Обновить приложение"
+        subtitle="Новая версия скачана"
+        leading={<Icon icon={IconRefresh} tone="accent" circle />}
+        onClick={() => void appUpdate.apply()}
+      />
+    )
+  return (
+    <ListItem
+      title="Проверить обновления"
+      leading={<Icon icon={IconCloudDownload} tone="accent" circle />}
+      onClick={() =>
+        void appUpdate.check().then((result) => {
+          if (result !== 'ready') toast.show({ text: CHECK_TEXT[result] })
+        })
+      }
+    />
+  )
+}
+
+/** Настройки: тема, ссылки на синхронизацию и выгрузки, версия приложения и обновление. */
 export default function SettingsPage() {
   const navigate = useNavigate()
   const { preference, setPreference } = useTheme()
@@ -47,7 +97,8 @@ export default function SettingsPage() {
       </ListGroup>
 
       <ListGroup title="О приложении">
-        <ListItem title="Версия" value={version} />
+        <ListItem title="Версия" subtitle={BUILD_TEXT} value={version} />
+        <UpdateItem />
       </ListGroup>
     </Page>
   )

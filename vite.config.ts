@@ -4,6 +4,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
+  // Время сборки — в «Настройки → О приложении»: видно, свежая ли версия стоит на телефоне.
+  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     react(),
     VitePWA({

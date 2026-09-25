@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../db/instance'
 import { repos } from '../db/repos'
+import { appUpdate } from './appUpdate'
 import { AppProviders } from './providers'
 import { createAppRouter } from './routes'
 
@@ -164,14 +165,13 @@ test('настройки доступны и без машин', async () => {
 
 test('тост новой версии обновляет приложение', async () => {
   await addVehicle()
+  // Версия скачана раньше, чем оболочка подписалась: уведомление всё равно показывается.
+  vi.spyOn(appUpdate, 'isReady').mockReturnValue(true)
+  const apply = vi.spyOn(appUpdate, 'apply').mockResolvedValue()
   renderAt('/')
-  const update = vi.fn()
-  act(() => {
-    window.dispatchEvent(new CustomEvent('pwa:need-refresh', { detail: { update } }))
-  })
   expect(await screen.findByText('Доступна новая версия')).toBeInTheDocument()
   await userEvent.click(await screen.findByRole('button', { name: 'Обновить' }))
-  expect(update).toHaveBeenCalled()
+  expect(apply).toHaveBeenCalled()
 })
 
 test(

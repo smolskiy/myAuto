@@ -1,6 +1,7 @@
-import { IconCar, IconChevronDown } from '@tabler/icons-react'
+import { IconCar, IconChevronDown, IconPhotoEdit } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
+import { IconButton } from '../IconButton/IconButton'
 import shared from '../../shared.module.css'
 import styles from './VehicleCard.module.css'
 
@@ -17,6 +18,8 @@ export interface VehicleCardProps {
   onSwitch?(): void
   /** Чертёж машины (VehicleSchematic) между именем и фактами; со схемой заглушка без фото не рисуется. */
   schematic?: ReactNode
+  /** Значок «Картинка машины» справа от имени — выбрать или сменить картинку. */
+  onPickSchematic?(): void
 }
 
 export function VehicleCard({
@@ -27,6 +30,7 @@ export function VehicleCard({
   photoUrl,
   onSwitch,
   schematic,
+  onPickSchematic,
 }: VehicleCardProps) {
   return (
     <div className={styles.card}>
@@ -56,6 +60,9 @@ export function VehicleCard({
           )}
           {subtitle && <span className={cx(styles.subtitle, shared.truncate)}>{subtitle}</span>}
         </div>
+        {onPickSchematic && (
+          <IconButton label="Картинка машины" icon={<IconPhotoEdit />} onClick={onPickSchematic} />
+        )}
       </div>
       {schematic}
       {(plate || odometer) && (

@@ -216,6 +216,40 @@ describe('главная', () => {
     expect(router.state.location.pathname).toBe('/reminders')
   })
 
+  test('картинку машины меняют прямо с главной: шторка с плитками, выбор сохраняется сразу', async () => {
+    const car = await repos.vehicles.create({
+      name: 'Октавия',
+      make: 'Skoda',
+      model: 'Octavia',
+      year: 2011,
+      archived: false,
+      fluids: [],
+      order: 0,
+    })
+    renderAt(<HomePage />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Картинка машины' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Картинка машины' })
+    expect(within(sheet).getByRole('radio', { name: /Автоматически/ })).toBeChecked()
+    await userEvent.click(within(sheet).getByRole('radio', { name: 'BMW X5' }))
+    await waitFor(async () => expect((await repos.vehicles.get(car.id))?.schematic).toBe('x5-f15'))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Картинка машины' })).not.toBeInTheDocument(),
+    )
+  })
+
+  test('машина без картинки — «Выбрать картинку машины»; выбрано «Без картинки» — не напоминаем', async () => {
+    const car = await addVehicle('Жигули', 'Octavia')
+    renderAt(<HomePage />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Выбрать картинку машины' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Картинка машины' })
+    await userEvent.click(within(sheet).getByRole('radio', { name: 'Без картинки' }))
+    await waitFor(async () => expect((await repos.vehicles.get(car.id))?.schematic).toBe('none'))
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Выбрать картинку машины' })).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('button', { name: 'Картинка машины' })).toBeInTheDocument()
+  })
+
   test('машина без чертежа — карточка без схемы', async () => {
     await addVehicle('Октавия', 'Octavia')
     renderAt(<HomePage />)

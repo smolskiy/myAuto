@@ -141,6 +141,16 @@ describe('гараж', () => {
 })
 
 describe('карточка машины', () => {
+  test('картинка машины: видна на карточке и меняется значком «Картинка машины»', async () => {
+    const v = await addVehicle({ year: 2011 })
+    renderAt(`/vehicle/${v.id}`)
+    expect(await screen.findByRole('img', { name: 'Схема машины' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Картинка машины' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Картинка машины' })
+    await userEvent.click(within(sheet).getByRole('radio', { name: 'Daewoo Lanos' }))
+    await waitFor(async () => expect((await repos.vehicles.get(v.id))?.schematic).toBe('lanos'))
+  })
+
   test('характеристики: VIN, двигатель, КПП, привод, бак, топливо, шины', async () => {
     const v = await addVehicle({
       generation: 'A7',

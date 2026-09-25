@@ -6,7 +6,7 @@ import styles from './SchematicPicker.module.css'
 
 export interface SchematicPickerOption {
   value: string
-  /** «Daewoo Lanos», «Автоматически», «Без чертежа». */
+  /** «Daewoo Lanos», «Автоматически», «Без картинки». */
   label: string
   /** Вторая строка плитки: что подобралось автоматически. */
   hint?: string

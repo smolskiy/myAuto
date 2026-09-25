@@ -7,14 +7,10 @@ import {
   DateField,
   MoneyField,
   NumberField,
-  SCHEMATIC_ART,
-  SCHEMATIC_MODELS,
   SchematicPicker,
-  isSchematicModel,
   Select,
   TextArea,
   TextField,
-  type SchematicPickerOption,
 } from '../../../ui'
 import {
   AttachmentsField,
@@ -25,8 +21,8 @@ import {
   useDraftAttachments,
   useToday,
 } from '../../common'
-import { autoSchematic } from '../../home/schematic'
 import { FUEL_GRADES } from '../../records/labels'
+import { schematicChoice, schematicOptions, schematicValue } from '../schematicChoice'
 import { FluidsEditor } from './FluidsEditor'
 import styles from './VehicleForm.module.css'
 import {
@@ -69,30 +65,6 @@ const FUEL_OPTIONS = options<FuelType>(FUEL_TYPE_LABELS)
 const TRANSMISSION_OPTIONS = options<Transmission>(TRANSMISSION_LABELS)
 const DRIVE_OPTIONS = options<Drive>(DRIVE_LABELS)
 const fromNone = <T extends string>(v: string) => (v === NONE ? undefined : (v as T))
-
-/** «Автоматически» в выборе чертежа; в машине — отсутствие поля. */
-const AUTO = 'auto'
-
-/** Плитки чертежа: «Автоматически» с тем, что подобралось по введённым полям, все картинки, «Без чертежа». */
-function schematicOptions(v: VehicleValues): SchematicPickerOption[] {
-  const auto = autoSchematic({
-    make: v.make,
-    model: v.model,
-    year: v.year ? Number(v.year) : undefined,
-    generation: v.generation,
-    bodyType: v.bodyType,
-  })
-  return [
-    {
-      value: AUTO,
-      label: 'Автоматически',
-      hint: auto ? SCHEMATIC_ART[auto].label : 'Нет для модели',
-      ...(auto && { model: auto }),
-    },
-    ...SCHEMATIC_MODELS.map((model) => ({ value: model, label: SCHEMATIC_ART[model].label, model })),
-    { value: NONE, label: 'Без чертежа' },
-  ]
-}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
@@ -237,11 +209,16 @@ export function VehicleForm({
         />
       </div>
       <SchematicPicker
-        label="Чертёж на главной"
-        // Неизвестный id (чертёж убрали из приложения) работает как подбор — так и отмечаем.
-        value={isSchematicModel(values.schematic) || values.schematic === NONE ? values.schematic : AUTO}
-        options={schematicOptions(values)}
-        onChange={(v) => set({ schematic: v === AUTO ? '' : v })}
+        label="Картинка на главной"
+        value={schematicChoice(values.schematic || undefined)}
+        options={schematicOptions({
+          make: values.make,
+          model: values.model,
+          year: values.year ? Number(values.year) : undefined,
+          generation: values.generation,
+          bodyType: values.bodyType,
+        })}
+        onChange={(choice) => set({ schematic: schematicValue(choice) ?? '' })}
       />
 
       <Section title="Двигатель и трансмиссия">

@@ -71,18 +71,25 @@ test('выбор чертежа — радиогруппа: подписи, от
   const onChange = vi.fn()
   render(
     <SchematicPicker
-      label="Чертёж на главной"
+      label="Картинка на главной"
       value="auto"
       options={[
         { value: 'auto', label: 'Автоматически', hint: 'Skoda Octavia A5', model: 'octavia-a5' },
         { value: 'lanos', label: 'Daewoo Lanos', model: 'lanos' },
-        { value: 'none', label: 'Без чертежа' },
+        { value: 'none', label: 'Без картинки' },
       ]}
       onChange={onChange}
     />,
   )
-  const group = screen.getByRole('radiogroup', { name: 'Чертёж на главной' })
+  const group = screen.getByRole('radiogroup', { name: 'Картинка на главной' })
   expect(within(group).getByRole('radio', { name: /Автоматически/ })).toBeChecked()
   await userEvent.click(within(group).getByRole('radio', { name: 'Daewoo Lanos' }))
   expect(onChange).toHaveBeenCalledWith('lanos')
+})
+
+test('карточка машины: кнопка «Картинка машины» — выбор картинки', async () => {
+  const onPick = vi.fn()
+  render(<VehicleCard name="Октавия" onPickSchematic={onPick} />)
+  await userEvent.click(screen.getByRole('button', { name: 'Картинка машины' }))
+  expect(onPick).toHaveBeenCalled()
 })
