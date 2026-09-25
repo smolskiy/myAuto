@@ -7,6 +7,7 @@ import { useAttachmentUrl, useYandexConnected } from '../../sync/react'
 import { saveFile } from '../../sync/saveFile'
 import { AttachmentGrid, Lightbox, PhotoPicker, Spinner, useToast } from '../../ui'
 import styles from './AttachmentsField.module.css'
+import { ADD_FILE_FAILED, SAVE_FAILED, userMessage } from './errors'
 import { useSoftDelete } from './useSoftDelete'
 
 export interface AttachmentsFieldProps {
@@ -26,7 +27,16 @@ function ThumbUrl({ att, onUrl }: { att: Attachment; onUrl(id: ID, url: UrlState
   return null
 }
 
-const errorText = (e: unknown) => (e instanceof Error && e.message) || 'Файл не добавился'
+/**
+ * `attachmentStore.addFile` по контракту слоя синхронизации бросает обычный Error с русским текстом для
+ * владельца («Можно прикрепить фото или PDF», «PDF больше 20 МБ — сожмите файл») — такой текст показываем.
+ * Остальное (сбой базы, английские DOMException) — общий текст, подробности в консоль.
+ */
+const CYRILLIC = /[а-яё]/i
+function addFileMessage(e: unknown): string {
+  if (e instanceof Error && !(e instanceof DOMException) && CYRILLIC.test(e.message)) return e.message
+  return userMessage(e, ADD_FILE_FAILED)
+}
 
 /** Фото и PDF строки: превью, «Добавить фото» (камера или галерея), просмотр и удаление с «Отменить». */
 export function AttachmentsField({ ownerType, ownerId, label = 'Фото и документы' }: AttachmentsFieldProps) {
@@ -51,7 +61,7 @@ export function AttachmentsField({ ownerType, ownerId, label = 'Фото и до
       try {
         await attachmentStore.addFile({ ownerType, ownerId }, file)
       } catch (e) {
-        toast.show({ text: errorText(e) })
+        toast.show({ text: addFileMessage(e) })
       } finally {
         setAdding((n) => n - 1)
       }
@@ -82,7 +92,7 @@ export function AttachmentsField({ ownerType, ownerId, label = 'Фото и до
     try {
       await saveFile(await (await fetch(original)).blob(), viewing.name)
     } catch (e) {
-      toast.show({ text: (e instanceof Error && e.message) || 'Файл не сохранился' })
+      toast.show({ text: userMessage(e, SAVE_FAILED) })
     }
   }
 

@@ -13,6 +13,9 @@ export { PlacePicker, type PlacePickerProps } from './PlacePicker'
 export { MasterPicker, type MasterPickerProps } from './MasterPicker'
 export { CatalogItemPicker, type CatalogItemPickerProps } from './CatalogItemPicker'
 
+// Ошибки для владельца: throw new UserError('Укажите пробег') — текст уйдёт в уведомление
+export { UserError } from './errors'
+
 // Хуки
 export { useToday } from './useToday'
 export { useSoftDelete, type SoftDeleteOptions } from './useSoftDelete'

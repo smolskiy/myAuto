@@ -2,6 +2,7 @@ import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { AppBar, Button, useToast } from '../../ui'
+import { SAVE_FAILED, userMessage } from './errors'
 import { useFormMode } from './formMode'
 import styles from './FormPage.module.css'
 import pageStyles from './Page.module.css'
@@ -14,7 +15,8 @@ export interface FormPageProps {
    * - ничего (void) — сохранено, форма закрывается «назад»;
    * - путь — сохранено, форма заменяется этим экраном (новая запись → её карточка);
    * - `false` — не сохранено (ошибки уже показаны у полей): форма остаётся, без уведомления и перехода;
-   * - исключение — не сохранено, текст уходит в уведомление, форма остаётся.
+   * - исключение — не сохранено, форма остаётся; в уведомлении текст `UserError`, у любой другой ошибки —
+   *   «Не получилось сохранить — попробуйте ещё раз» (сама ошибка — в консоль).
    */
   onSave(): Promise<void | string | false>
   /** По умолчанию «Сохранить». */
@@ -65,7 +67,7 @@ export function FormPage({
       if (typeof to === 'string') void navigate(to, { replace: true })
       else goBack()
     } catch (e) {
-      toast.show({ text: (e instanceof Error && e.message) || 'Не удалось сохранить' })
+      toast.show({ text: userMessage(e, SAVE_FAILED) })
     } finally {
       busyRef.current = false
       if (mounted.current) setBusy(false)
