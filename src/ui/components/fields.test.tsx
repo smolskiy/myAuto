@@ -1,7 +1,7 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import {
   Combobox,
   DateField,
@@ -12,8 +12,6 @@ import {
   SearchField,
   Switch,
 } from '../index'
-
-afterEach(cleanup)
 
 test('сумма понимает выражение и отдаёт копейки', async () => {
   const onChange = vi.fn()

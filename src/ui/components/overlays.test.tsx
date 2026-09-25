@@ -1,6 +1,6 @@
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { useState, type ReactElement } from 'react'
 import { IconHome, IconList, IconTool, IconDots, IconGasStation } from '@tabler/icons-react'
 import {
@@ -14,8 +14,6 @@ import {
   useToast,
   VehicleSwitcher,
 } from '../index'
-
-afterEach(cleanup)
 
 test('нижняя панель: 4 вкладки и центральная кнопка', async () => {
   const onAdd = vi.fn()

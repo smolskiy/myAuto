@@ -1,9 +1,7 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { Button, Chip, ProgressBar, SegmentedControl, StatusPill } from '../index'
-
-afterEach(cleanup)
 
 test('кнопка в состоянии загрузки не нажимается и объявляет занятость', async () => {
   const onClick = vi.fn()

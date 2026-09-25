@@ -1,10 +1,8 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { IconTool } from '@tabler/icons-react'
 import { ListItem, RecordRow, ReminderCard, VehicleCard } from '../index'
-
-afterEach(cleanup)
 
 test('строка журнала: длинный заголовок обрезается, сумма остаётся видимой', () => {
   const long = 'Замена ремня ГРМ с роликами и помпой в автосервисе на Профсоюзной улице дом 128'

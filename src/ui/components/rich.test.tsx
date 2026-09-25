@@ -1,6 +1,6 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { IconTrash, IconCopy } from '@tabler/icons-react'
 import {
   AttachmentGrid,
@@ -11,8 +11,6 @@ import {
   RepeatableList,
   SwipeRow,
 } from '../index'
-
-afterEach(cleanup)
 
 test('свайп-действия доступны без жеста', async () => {
   const onDelete = vi.fn()

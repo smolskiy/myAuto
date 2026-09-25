@@ -1,5 +1,5 @@
-import { act, cleanup, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { ThemeProvider, useTheme } from './theme'
 
 function Probe() {
@@ -23,9 +23,6 @@ const mockSystem = (dark: boolean) => {
   }))
   return (next: boolean) => listeners.forEach((l) => l({ matches: next }))
 }
-
-// В setup.ts нет globals, поэтому Testing Library не чистит DOM сама.
-afterEach(cleanup)
 
 beforeEach(() => {
   localStorage.clear()

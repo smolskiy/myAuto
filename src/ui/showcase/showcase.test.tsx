@@ -1,9 +1,7 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, test } from 'vitest'
+import { expect, test } from 'vitest'
 import ShowcasePage from './ShowcasePage'
-
-afterEach(cleanup)
 
 const SECTIONS = [
   'Токены',
