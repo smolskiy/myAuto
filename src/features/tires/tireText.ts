@@ -1,3 +1,4 @@
+import { db } from '../../db/instance'
 import { repos } from '../../db/repos'
 import { NBSP } from '../../domain/format'
 import type { TireSet } from '../../domain/types'
@@ -35,14 +36,21 @@ export function tireSetSubtitle(set: TireSet): string {
 }
 
 /**
- * На машине один установленный комплект: прочие установленные этой машины уходят «на хранение».
- * Вызывается после сохранения комплекта со статусом «установлен» и из «Отметить установленным».
+ * На машине один установленный комплект. Ставит комплект установленным: СНАЧАЛА прочие установленные этой машины
+ * уходят «на хранение», потом `write` записывает сам комплект (по умолчанию — только статус), всё в одной
+ * транзакции — ни экран, ни синхронизация не увидят двух установленных сразу.
  * Возвращает, сколько комплектов ушло на хранение.
  */
-export async function makeOnlyInstalled(set: Pick<TireSet, 'id' | 'vehicleId'>): Promise<number> {
-  const others = (await repos.tireSets.list()).filter(
-    (s) => s.vehicleId === set.vehicleId && s.id !== set.id && s.status === 'installed',
-  )
-  for (const s of others) await repos.tireSets.update(s.id, { status: 'stored' })
-  return others.length
+export function installTireSet(
+  set: Pick<TireSet, 'id' | 'vehicleId'>,
+  write: () => Promise<unknown> = () => repos.tireSets.update(set.id, { status: 'installed' }),
+): Promise<number> {
+  return db.transaction('rw', db.tireSets, async () => {
+    const others = (await repos.tireSets.list()).filter(
+      (s) => s.vehicleId === set.vehicleId && s.id !== set.id && s.status === 'installed',
+    )
+    for (const s of others) await repos.tireSets.update(s.id, { status: 'stored' })
+    await write()
+    return others.length
+  })
 }

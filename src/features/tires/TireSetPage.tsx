@@ -44,7 +44,7 @@ import {
   VehicleGate,
 } from '../common'
 import { failureText, optional } from '../garage/kit'
-import { formatDot, makeOnlyInstalled, tireSetTitle } from './tireText'
+import { formatDot, installTireSet, tireSetTitle } from './tireText'
 import styles from './tires.module.css'
 
 const SEASONS = (Object.keys(TIRE_SEASON_LABELS) as TireSeason[]).map((s) => ({
@@ -146,10 +146,11 @@ function TireSetForm({ set, vehicleId, defaults }: TireSetFormProps) {
       treadMm,
       note: optional(note),
     }
-    const saved = set
-      ? await repos.tireSets.update(set.id, data)
-      : await repos.tireSets.create({ id: draft.ownerId, vehicleId, ...data })
-    if (saved.status === 'installed') await makeOnlyInstalled(saved)
+    const id = set?.id ?? draft.ownerId
+    const write = () =>
+      set ? repos.tireSets.update(set.id, data) : repos.tireSets.create({ id, vehicleId, ...data })
+    if (status === 'installed') await installTireSet({ id, vehicleId }, write)
+    else await write()
   }
 
   return (
@@ -232,8 +233,7 @@ function TireSetSummary({ set, onInstalled }: { set: TireSet; onInstalled(): voi
   const mileage = useTireSetMileage(set.id)
   const install = async () => {
     try {
-      await repos.tireSets.update(set.id, { status: 'installed' })
-      const stored = await makeOnlyInstalled(set)
+      const stored = await installTireSet(set)
       onInstalled()
       toast.show({ text: stored > 0 ? 'Комплект установлен, прежний — на хранении' : 'Комплект установлен' })
     } catch (e) {

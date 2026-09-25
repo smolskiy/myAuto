@@ -75,6 +75,26 @@ const swap = (vehicleId: ID, date: string, odometer: number, mountedSetId?: ID, 
     tireSwap: { mountedSetId, removedSetId },
   })
 
+/** Записи статуса комплектов в базу (создание и правка) по порядку, с транзакцией каждой записи. */
+function watchStatusWrites() {
+  const log: { id: ID; status: string; tx: unknown }[] = []
+  const onCreate = function (_key: unknown, obj: TireSet, tx: unknown) {
+    log.push({ id: obj.id, status: obj.status, tx })
+  }
+  const onUpdate = function (mods: Partial<TireSet>, key: unknown, _obj: TireSet, tx: unknown) {
+    if (mods.status) log.push({ id: key as ID, status: mods.status, tx })
+  }
+  db.tireSets.hook('creating', onCreate)
+  db.tireSets.hook('updating', onUpdate)
+  return {
+    log,
+    stop() {
+      db.tireSets.hook('creating').unsubscribe(onCreate)
+      db.tireSets.hook('updating').unsubscribe(onUpdate)
+    },
+  }
+}
+
 /** Зима стояла с 10 000 до 16 000 км, с 16 000 — лето; сейчас 20 000 км. */
 async function seasonHistory() {
   const v = await addVehicle()
@@ -151,10 +171,20 @@ describe('карточка комплекта', () => {
     const foreign = await addSet(other.id, { status: 'installed' })
     renderAt(`/tires/${winter.id}`)
 
+    const writes = watchStatusWrites()
     await userEvent.click(await screen.findByRole('button', { name: 'Отметить установленным' }))
-    await waitFor(async () => expect((await repos.tireSets.get(winter.id))?.status).toBe('installed'))
-    expect((await repos.tireSets.get(summer.id))?.status).toBe('stored')
+    await waitFor(async () => {
+      expect((await repos.tireSets.get(winter.id))?.status).toBe('installed')
+      expect((await repos.tireSets.get(summer.id))?.status).toBe('stored')
+    })
     expect((await repos.tireSets.get(foreign.id))?.status).toBe('installed')
+    // Сначала прежний уходит на хранение, потом новый ставится — в одной транзакции: двух установленных не видно никогда.
+    expect(writes.log.map((w) => [w.id, w.status])).toEqual([
+      [summer.id, 'stored'],
+      [winter.id, 'installed'],
+    ])
+    expect(writes.log[0]!.tx).toBe(writes.log[1]!.tx)
+    writes.stop()
     expect(await screen.findByText('Комплект установлен, прежний — на хранении')).toBeInTheDocument()
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Отметить установленным' })).not.toBeInTheDocument(),
@@ -173,9 +203,13 @@ describe('карточка комплекта', () => {
     await userEvent.type(screen.getByRole('textbox', { name: 'DOT' }), '3822')
     await userEvent.click(screen.getByRole('switch', { name: 'Шипы' }))
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Состояние' }), 'Установлены')
+    const writes = watchStatusWrites()
     await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/tires'))
+    expect(writes.log.map((w) => w.status)).toEqual(['stored', 'installed'])
+    expect(writes.log[0]!.tx).toBe(writes.log[1]!.tx)
+    writes.stop()
     const sets = await repos.tireSets.list()
     const created = sets.find((s) => s.id !== old.id)
     expect(created).toMatchObject({
