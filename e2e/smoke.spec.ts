@@ -47,7 +47,9 @@ test('с машиной: главная открывается и нижняя �
   await seedVehicle(page)
   await page.goto('./')
   await page.reload()
-  await expect(page.getByRole('heading', { level: 1, name: 'Главная' })).toBeVisible()
+  // Заголовок главной — название приложения; экран узнаём по заголовку вкладки.
+  await expect(page).toHaveTitle('Главная — Мой авто')
+  await expect(page.getByRole('heading', { level: 1, name: 'Мой авто' })).toBeVisible()
   await page
     .getByRole('navigation', { name: 'Основная навигация' })
     .getByRole('link', { name: 'Журнал' })
