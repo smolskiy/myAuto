@@ -1,0 +1,30 @@
+/* Строка подзаголовка — блок с многоточием; плашки внутри стоят по средней линии текста. */
+.line {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line + .line {
+  margin-top: 4px;
+}
+
+.line > * {
+  vertical-align: middle;
+}
+
+/* Звезда цвета оценки (как у Rating), число — цветом вторичного текста. */
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--color-text-2);
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.rating svg {
+  color: var(--color-soon);
+}

@@ -56,6 +56,24 @@ test('активная машина: по умолчанию первая неа
   await waitFor(() => expect(result.current.vehicle?.id).toBe(a.id))
 })
 
+test('архивная или удалённая машина активной не бывает: берётся первая неархивная, нет таких — null', async () => {
+  const sold = await newVehicle('Проданная', 0, true)
+  const b = await newVehicle('B', 2)
+  const a = await newVehicle('A', 1)
+  const { result } = renderHook(() => useActiveVehicle())
+  await act(() => result.current.setActive(sold.id))
+  await waitFor(() => expect(result.current.vehicle?.id).toBe(a.id))
+
+  await act(() => result.current.setActive(b.id))
+  await waitFor(() => expect(result.current.vehicle?.id).toBe(b.id))
+  await act(() => repos.vehicles.update(b.id, { archived: true }))
+  await waitFor(() => expect(result.current.vehicle?.id).toBe(a.id))
+
+  await act(() => result.current.setActive(a.id))
+  await act(() => repos.vehicles.remove(a.id))
+  await waitFor(() => expect(result.current.vehicle).toBeNull())
+})
+
 test('записи отсортированы и фильтруются по типу', async () => {
   const v = await newVehicle('A', 1)
   await repos.records.create({
