@@ -1,0 +1,16 @@
+/* Кнопка «Сохранить» липнет к низу экрана, пока форма прокручивается. */
+.footer {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-tabbar);
+  padding: var(--space-3) max(var(--space-4), env(safe-area-inset-right, 0px))
+    calc(var(--space-3) + var(--safe-bottom)) max(var(--space-4), env(safe-area-inset-left, 0px));
+  border-top: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+}
+
+/* На планшете кнопка — по ширине колонки формы. */
+.footer > * {
+  max-width: 608px;
+  margin: 0 auto;
+}
