@@ -11,11 +11,16 @@ export interface InitDeps {
 
 /**
  * Запуск приложения: досевает встроенный каталог, затем запускает синхронизацию.
- * Сбой синхронизации (нет сети, Диск недоступен) запуск не ломает — только предупреждение в консоли.
+ * Сбои не ломают запуск — только предупреждение в консоли: без сида экраны всё равно видят встроенный
+ * каталог (хуки подмешивают его), а синхронизация (нет сети, Диск недоступен) повторит попытку сама.
  */
 export async function initApp(deps: InitDeps = {}): Promise<void> {
   const { db = appDb, initSync = appInitSync } = deps
-  await ensureSeed(db, BUILTIN_CATALOG)
+  try {
+    await ensureSeed(db, BUILTIN_CATALOG)
+  } catch (e) {
+    console.warn('Встроенный каталог не записан в базу', e)
+  }
   try {
     await initSync()
   } catch (e) {

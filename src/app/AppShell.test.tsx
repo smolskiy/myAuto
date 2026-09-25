@@ -103,6 +103,40 @@ test.each(['/', '/journal', '/reminders', '/more', '/stats', '/garage', '/places
   },
 )
 
+test('пока машины не загружены — ни панели, ни экрана (нет мелькания перед онбордингом)', async () => {
+  await addVehicle()
+  renderAt('/journal')
+  // Первая отрисовка: живой запрос машин ещё не ответил.
+  expect(screen.queryByRole('navigation', { name: 'Основная навигация' })).not.toBeInTheDocument()
+  expect(screen.getByRole('main')).toBeEmptyDOMElement()
+  expect(await screen.findByRole('navigation', { name: 'Основная навигация' })).toBeInTheDocument()
+})
+
+test('настройки без машин открываются сразу, с панелью', () => {
+  renderAt('/settings')
+  expect(screen.getByRole('navigation', { name: 'Основная навигация' })).toBeInTheDocument()
+})
+
+test('заголовок вкладки браузера — название экрана', async () => {
+  await addVehicle()
+  const router = renderAt('/journal')
+  await waitFor(() => expect(document.title).toBe('Журнал — Мой авто'))
+  await act(() => router.navigate('/stats'))
+  await waitFor(() => expect(document.title).toBe('Статистика — Мой авто'))
+  await act(() => router.navigate('/nope'))
+  await waitFor(() => expect(document.title).toBe('Страница не найдена — Мой авто'))
+})
+
+test('после перехода фокус — на заголовке нового экрана (скринридер объявит его)', async () => {
+  await addVehicle()
+  renderAt('/')
+  const nav = await screen.findByRole('navigation', { name: 'Основная навигация' })
+  await userEvent.click(within(nav).getByRole('link', { name: 'Журнал' }))
+  const h1 = await screen.findByRole('heading', { level: 1, name: 'Журнал' }, LAZY)
+  await waitFor(() => expect(h1).toHaveFocus())
+  expect(h1).toHaveAttribute('tabindex', '-1')
+})
+
 test('без машин — онбординг', async () => {
   const router = renderAt('/journal')
   await waitFor(() => expect(router.state.location.pathname).toBe('/onboarding'))

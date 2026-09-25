@@ -6,11 +6,13 @@ import { ThemeProvider } from './ui'
 import { initApp } from './app/init'
 import { AppProviders } from './app/providers'
 import AppRouter from './app/router'
+import { NEED_REFRESH_EVENT, type NeedRefreshDetail } from './app/useUpdateToast'
 
 const updateSW = registerSW({
   onNeedRefresh() {
     // Оболочка показывает «Доступна новая версия — Обновить» по этому событию (app/useUpdateToast.ts).
-    window.dispatchEvent(new CustomEvent('pwa:need-refresh', { detail: { update: () => updateSW(true) } }))
+    const detail: NeedRefreshDetail = { update: () => updateSW(true) }
+    window.dispatchEvent(new CustomEvent(NEED_REFRESH_EVENT, { detail }))
   },
 })
 

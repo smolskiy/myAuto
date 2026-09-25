@@ -150,7 +150,14 @@ function routeTree(): RouteObject[] {
       element: <AppShell />,
       // Любая ошибка отрисовки (и не найденный после обновления чанк) — русская страница вместо английской.
       errorElement: <ErrorPage />,
-      children: [...ROUTES.map(toRouteObject), { path: '*', element: <NotFoundPage /> }],
+      children: [
+        ...ROUTES.map(toRouteObject),
+        {
+          path: '*',
+          element: <NotFoundPage />,
+          handle: { title: 'Страница не найдена' } satisfies RouteHandle,
+        },
+      ],
     },
   ]
 }

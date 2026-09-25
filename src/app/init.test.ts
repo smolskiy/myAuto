@@ -15,6 +15,21 @@ test('засевает каталог и запускает синхрониза
   expect(initSync).toHaveBeenCalledOnce()
 })
 
+test('сбой сида каталога не мешает запустить синхронизацию', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const broken = {
+    catalogItems: {
+      toCollection() {
+        throw new Error('IndexedDB недоступна')
+      },
+    },
+  } as unknown as MyAutoDB
+  const initSync = vi.fn(async () => {})
+  await expect(initApp({ db: broken, initSync })).resolves.toBeUndefined()
+  expect(initSync).toHaveBeenCalledOnce()
+  expect(warn).toHaveBeenCalled()
+})
+
 test('сбой синхронизации не ломает запуск', async () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   await expect(
