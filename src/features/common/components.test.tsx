@@ -181,6 +181,53 @@ describe('вложения', () => {
     expect(result.current.ownerId).toBe(first)
   })
 
+  const saveRecord = (id: ID) =>
+    repos.records.create({ id, vehicleId: 'v1', kind: 'note', date: '2026-09-25', total: 0, title: 'Стук' })
+
+  test('discard() не трогает вложения уже сохранённой строки', async () => {
+    const { result } = renderHook(() => useDraftAttachments('record'))
+    const att = await addAttachment('record', result.current.ownerId)
+    await saveRecord(result.current.ownerId)
+    await act(() => result.current.discard())
+    expect(store.remove).not.toHaveBeenCalled()
+    expect(await repos.attachments.get(att.id)).toBeDefined()
+  })
+
+  test('discard(): строка сохранена, но удалена — вложения убираются', async () => {
+    const { result } = renderHook(() => useDraftAttachments('record'))
+    const att = await addAttachment('record', result.current.ownerId)
+    await saveRecord(result.current.ownerId)
+    await repos.records.remove(result.current.ownerId)
+    await act(() => result.current.discard())
+    expect(await repos.attachments.get(att.id)).toBeUndefined()
+  })
+
+  test('уход с формы без сохранения (жест «назад», любой переход) убирает вложения черновика', async () => {
+    const { result, unmount } = renderHook(() => useDraftAttachments('record'))
+    const att = await addAttachment('record', result.current.ownerId)
+    unmount()
+    await waitFor(async () => expect(await repos.attachments.get(att.id)).toBeUndefined())
+  })
+
+  test('уход с формы после сохранения вложения не трогает', async () => {
+    const { result, unmount } = renderHook(() => useDraftAttachments('record'))
+    const att = await addAttachment('record', result.current.ownerId)
+    await saveRecord(result.current.ownerId)
+    unmount()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(store.remove).not.toHaveBeenCalled()
+    expect(await repos.attachments.get(att.id)).toBeDefined()
+  })
+
+  test('сбой уборки при уходе — только предупреждение в консоли', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    store.remove.mockRejectedValueOnce(new Error('база недоступна'))
+    const { result, unmount } = renderHook(() => useDraftAttachments('record'))
+    await addAttachment('record', result.current.ownerId)
+    unmount()
+    await waitFor(() => expect(warn).toHaveBeenCalled())
+  })
+
   test('AttachmentsField добавляет фото, показывает превью и удаляет с «Отменить»', async () => {
     inApp(<AttachmentsField ownerType="record" ownerId="r1" />)
     expect(screen.getByRole('group', { name: 'Фото и документы' })).toBeInTheDocument()
@@ -330,6 +377,26 @@ describe('каркасы страниц', () => {
     await userEvent.click(save)
     expect(onSave).toHaveBeenCalledOnce()
     await act(async () => finish())
+  })
+
+  test('FormPage: пока идёт сохранение, «Назад» не срабатывает', async () => {
+    let finish!: () => void
+    const onCancel = vi.fn()
+    const router = withHistory(
+      <FormPage
+        title="Новая заправка"
+        onSave={() => new Promise<void>((r) => (finish = r))}
+        onCancel={onCancel}
+      >
+        <p>Поля</p>
+      </FormPage>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(router.state.location.pathname).toBe('/form')
+    await act(async () => finish())
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })
 
   test('FormPage: onSave вернул путь — форма заменяется этим экраном', async () => {

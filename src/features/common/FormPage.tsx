@@ -73,6 +73,8 @@ export function FormPage({
   }
 
   const cancel = () => {
+    // Пока идёт сохранение, «Назад» молчит: иначе строка сохранится уже после ухода с формы.
+    if (busyRef.current) return
     onCancel?.()
     goBack()
   }
