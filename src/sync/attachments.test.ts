@@ -3,16 +3,21 @@
 // Нативные Blob/File Node переживают запись в IndexedDB так же, как в браузере.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { MyAutoDB } from '../db/schema'
+import { createRepos } from '../db/repos'
 import { FakeDisk } from './yandex/fakeDisk'
-import { Offline } from './yandex/api'
+import { Offline, type DiskClient } from './yandex/api'
 import { createAttachmentStore, remotePaths } from './attachments'
 
+const HOUR = 60 * 60 * 1000
 let db: MyAutoDB, disk: FakeDisk
+/** Сдвиг часов хранилища вперёд — «прошло столько-то времени после удаления». */
+let later = 0
 const compress = vi.fn(async (_f: Blob, maxSide: number) => ({ blob: new Blob([`jpeg${maxSide}`], { type: 'image/jpeg' }), width: maxSide, height: maxSide / 2 }))
 const urls = vi.fn((b: Blob) => `blob:${b.size}`)
-const store = (online = true) => createAttachmentStore({ db, getDisk: () => (online ? disk : null), compress, createObjectURL: urls })
+const store = (online = true) =>
+  createAttachmentStore({ db, getDisk: () => (online ? disk : null), compress, createObjectURL: urls, now: () => Date.now() + later })
 const owner = { ownerType: 'record' as const, ownerId: 'r1' }
-beforeEach(() => { db = new MyAutoDB(`t-${crypto.randomUUID()}`); disk = new FakeDisk() })
+beforeEach(() => { db = new MyAutoDB(`t-${crypto.randomUUID()}`); disk = new FakeDisk(); later = 0 })
 afterEach(async () => { await db.delete() })
 
 test('фото сжимается до 2000 и 320 px и ждёт загрузки', async () => {
@@ -58,14 +63,51 @@ test('на другом устройстве превью скачивается
   await other.delete()
 })
 
-test('удалённое вложение чистится на Диске и локально', async () => {
+test('удалённое больше суток назад вложение чистится на Диске и локально', async () => {
   const s = store()
   const att = await s.addFile(owner, new File(['raw'], 'check.jpg', { type: 'image/jpeg' }))
   await s.uploadPending(disk)
   await s.remove((await db.attachments.get(att.id))!)
+  later = 25 * HOUR
   await s.cleanupDeleted(disk)
   expect(disk.files.has(remotePaths(att).orig)).toBe(false)
+  expect(disk.files.has(remotePaths(att).thumb!)).toBe(false)
   expect(await db.blobs.where('attachmentId').equals(att.id).count()).toBe(0)
+})
+
+test('удалённое минуту назад вложение не чистится — восстановление возвращает файлы', async () => {
+  const s = store()
+  const uploaded = await s.addFile(owner, new File(['raw'], 'a.jpg', { type: 'image/jpeg' }))
+  await s.uploadPending(disk)
+  const pending = await s.addFile(owner, new File(['raw'], 'b.jpg', { type: 'image/jpeg' }))
+  await s.remove((await db.attachments.get(uploaded.id))!)
+  await s.remove(pending)
+  later = 60 * 1000
+  await s.cleanupDeleted(disk)
+  expect(disk.files.has(remotePaths(uploaded).orig)).toBe(true)
+  expect(disk.files.has(remotePaths(uploaded).thumb!)).toBe(true)
+  expect(await db.blobs.where('attachmentId').equals(uploaded.id).count()).toBe(2)
+  expect(await db.blobs.where('attachmentId').equals(pending.id).count()).toBe(2)
+  const repos = createRepos(db)
+  await repos.attachments.restore(uploaded.id)
+  await repos.attachments.restore(pending.id)
+  expect(await s.getThumbUrl((await db.attachments.get(uploaded.id))!)).toMatch(/^blob:/)
+  expect(await s.pendingCount()).toBe(2)
+})
+
+test('вложение удалили, пока оно грузилось, — uploadPending не падает и не ставит uploadedAt', async () => {
+  const s = store()
+  const att = await s.addFile(owner, new File(['raw'], 'check.jpg', { type: 'image/jpeg' }))
+  const deletingDisk: DiskClient = Object.assign(Object.create(disk) as FakeDisk, {
+    uploadBlob: async (path: string, blob: Blob) => {
+      await disk.uploadBlob(path, blob)
+      await createRepos(db).attachments.remove(att.id)
+    },
+  })
+  await expect(s.uploadPending(deletingDisk)).resolves.toBeUndefined()
+  const row = (await db.attachments.get(att.id))!
+  expect(row.deleted).toBe(true)
+  expect(row.uploadedAt).toBeUndefined()
 })
 
 test('кеш вытесняет старые загруженные оригиналы, но не неотправленные', async () => {
@@ -101,6 +143,7 @@ test('вложение, удалённое до загрузки, на Диск 
   expect(await s.pendingCount()).toBe(0)
   await s.uploadPending(disk)
   expect(disk.calls.filter((c) => c.startsWith('uploadBlob'))).toEqual([])
+  later = 25 * HOUR
   await s.cleanupDeleted(disk)
   expect(await db.blobs.where('attachmentId').equals(att.id).count()).toBe(0)
 })

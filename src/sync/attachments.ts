@@ -18,6 +18,8 @@ import { compressImage } from './image'
 
 export const MAX_PDF_BYTES = 20 * 1024 * 1024
 export const CACHE_LIMIT_BYTES = 200 * 1024 * 1024
+/** Сколько файлы удалённого вложения ждут чистки: удаление можно отменить и получить файлы обратно. */
+export const DELETE_GRACE_MS = 24 * 60 * 60 * 1000
 export const ATTACHMENTS_DIR = 'app:/attachments'
 /** id удалённых вложений, чьи файлы уже стёрты (на этом устройстве). */
 const CLEANED_KEY = 'sync.cleanedAttachments'
@@ -36,6 +38,7 @@ export interface AttachmentStoreDeps {
   compress?: typeof compressImage
   createObjectURL?: (b: Blob) => string
   onChanged?: () => void
+  now?: () => number
 }
 
 export type AttachmentService = AttachmentStore & {
@@ -50,6 +53,7 @@ export function createAttachmentStore(deps: AttachmentStoreDeps): AttachmentServ
   const { db, getDisk } = deps
   const compress = deps.compress ?? compressImage
   const createObjectURL = deps.createObjectURL ?? ((b: Blob) => URL.createObjectURL(b))
+  const now = deps.now ?? (() => Date.now())
   const repo = createRepos(db).attachments
   const changed = () => deps.onChanged?.()
 
@@ -60,7 +64,7 @@ export function createAttachmentStore(deps: AttachmentStoreDeps): AttachmentServ
     blob,
     pending,
     size: blob.size,
-    lastAccess: Date.now(),
+    lastAccess: now(),
   })
 
   async function save(draft: Omit<Attachment, 'createdAt' | 'updatedAt' | 'deleted'>, blobs: BlobRow[]): Promise<Attachment> {
@@ -76,7 +80,7 @@ export function createAttachmentStore(deps: AttachmentStoreDeps): AttachmentServ
     const key = `${att.id}:${variant}`
     const local = await db.blobs.get(key)
     if (local) {
-      await db.blobs.update(key, { lastAccess: Date.now() })
+      await db.blobs.update(key, { lastAccess: now() })
       return createObjectURL(local.blob)
     }
     const disk = getDisk()
@@ -162,19 +166,25 @@ export function createAttachmentStore(deps: AttachmentStoreDeps): AttachmentServ
           await disk.uploadBlob(path, row.blob, row.variant === 'thumb' ? 'image/jpeg' : att.mime)
           await db.blobs.update(row.key, { pending: 0 })
         }
-        const current = await db.attachments.get(id)
-        if (current && !current.deleted) await repo.update(id, { uploadedAt: Date.now() })
+        // Проверка и правка — одной транзакцией: строку могли удалить, пока грузились её файлы.
+        await db.transaction('rw', db.attachments, async () => {
+          const current = await db.attachments.get(id)
+          if (current && !current.deleted) await repo.update(id, { uploadedAt: now() })
+        })
         changed()
       }
       await store.evictCache()
     },
 
     /**
-     * Файлы удалённых вложений стираются с Диска (404 — не ошибка) и с устройства, один раз на устройство.
-     * Удаляем и без `uploadedAt`: пометка о загрузке могла проиграть слиянию удалению с другого телефона.
+     * Файлы удалённых вложений стираются с Диска (404 — не ошибка) и с устройства, один раз на устройство,
+     * но не раньше чем через сутки после удаления: пока удаление можно отменить, файлы (и неотправленные
+     * оригиналы) остаются на месте. Удаляем и без `uploadedAt`: пометка о загрузке могла проиграть
+     * слиянию удалению с другого телефона.
      */
     async cleanupDeleted(disk) {
-      const deleted = await db.attachments.filter((a) => !!a.deleted).toArray()
+      const cutoff = now() - DELETE_GRACE_MS
+      const deleted = await db.attachments.filter((a) => !!a.deleted && a.updatedAt < cutoff).toArray()
       if (deleted.length === 0) return
       const cleaned = new Set(await getMeta<ID[]>(db, CLEANED_KEY, []))
       const todo = deleted.filter((a) => !cleaned.has(a.id))
