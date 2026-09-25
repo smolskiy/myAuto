@@ -1,0 +1,83 @@
+# Решения, принятые по ходу разработки
+
+Каждое решение: что решено — почему — чем обернётся, если оно неверно. Источник — журналы исполнения волн.
+
+## 
+
+- Ruling: Tasks 1–6 go to ONE implementer dispatch (sonnet), reviewed by ONE reviewer with per-task verdicts — the tasks are strictly sequential transcription of complete code, per-task dispatch would only add latency — cost if wrong: coarser review, caught by final review.
+- Ruling: Wave 0 runs on `main` — repo holds only docs, user explicitly authorized an end-to-end autonomous run ("запускай… доделай до конца") — cost if wrong: none (single-user repo, nothing pushed).
+- Ruling: `Draft<T>` and the `update` patch type are distributive over unions (`T extends Row ? Omit<T, K> & { id?: ID } : never`; patch likewise) — otherwise record drafts lose kind-specific fields; spec §4 models records as a union — cost if wrong: none, strictly more permissive typing.
+- Ruling: Task 7 (CLAUDE.md + `.claude/agents/*`) authored by the controller in parallel with the implementer (disjoint files, committed after the implementer finishes) — these files encode coordination decisions only the controller holds — cost if wrong: agent-definition quality, covered by final review.
+- Ruling: implementer must `git add` explicit paths, never `git add -A` (controller edits CLAUDE.md/.claude concurrently) — cost if wrong: none.
+- Ruling: wave 1 dispatched in parallel with the wave-0 review — wave-0 code is near-verbatim plan code; any review fixes land on main and get merged into wave-1 branches before their merge — cost if wrong: a rebase/merge of small contract fixes into three branches.
+- Ruling: project agents in .claude/agents are not registered in this session (created mid-session) → dispatched as general-purpose agents told to adopt `.claude/agents/<name>.md` — cost if wrong: none; definitions are read explicitly.
+- Ruling: accept Important 1 — updates/remove/restore use `Math.max(tick(), existing.updatedAt + 1)`; plan recipe was wrong, spec §6.1 LWW requires "my edit wins" — cost if wrong: none.
+- Ruling: fold cheap minors into the same fix round because wave-1 agents build on these files and landing them before their merge avoids conflicts: M2 vitest config import ext, M3 mergeRows first loop via pickRow, M4 merged header from constants, M6 applyRows picks newer of current vs incoming inside its transaction + readSnapshot in one read txn, M7 isolate change listeners, M9 missing repo tests, M10 prettier formatting of wave-0 files, M11 duplicate drops warrantyUntil*/tireSwap — cost if wrong: small scope creep in wave-0 fix.
+
+## 
+
+- Ruling: whole plan executed end-to-end by project agent `domain-data` in its own worktree (branch wave1/domain-data), parallel with the other two wave-1 plans, then ONE reviewer with per-task verdicts — user asked to run all agents at once; zones are disjoint — cost if wrong: coarser review granularity.
+- Ruling: I1 (plan-mandated) — kmDriven interpolates the odometer linearly by date at range bounds (clamped to first/last point); ≤ 0 km → null; plan test "one point → null" stays true for the bundled data — spec §5 "цена км = расходы периода / км за период" needs km actually driven in the period — cost if wrong: small deviation from raw point differences.
+- Ruling: I2 — `useRecords('all', filter)` lists every vehicle; `undefined` keeps meaning "waiting for vehicle id"; place stats/list match placeId OR part supplierPlaceId (supplier-only → sum of those part lines); master stats: record masterId → total, line masterId → those works' prices; only service/fuel/expense count as visits (M7) — places/masters screens need cross-vehicle visits — cost if wrong: none.
+- Ruling: I3 (plan-mandated) — fuel same-date tie-break by createdAt (entry order), never mixing odometer into the comparator — cost if wrong: two same-day fills entered out of order swap intervals.
+- Ruling: I4 — checkOdometer compares with max over all earlier and min over all later records (plan-mandated part a); same-date records: new reason 'sameDayGap' when |diff| > 2000 km (interface widening) — spec §5 says any earlier/later — cost if wrong: extra warning on a legit 2000+ km day.
+- Ruling: fold M1 (km fallback to latest matching record WITH odometer), M3 (shared lineTotal), M5 (depth cap in money parser), M8 (labels in one module), M9 (hook tests) into the fix round; M2 → wave-2 form sets no itemId on one-off reminders; M4 → wave-2 form requires odometer on tire swaps; M6 → wave-2 "В архив" on the active vehicle switches active to first non-archived — cost if wrong: small scope creep.
+- domain: fix round 1/5 implementer DONE (merge 8d6d8c3 + 916c1d8..3989821, 157 tests); extra: deleted vehicles' records excluded from 'all'/stats/brand suggestions — Ruling: accept — spec treats deleted rows as absent everywhere — cost if wrong: one-line change.
+
+## 
+
+- Ruling: whole plan executed end-to-end by project agent `ui-system` in worktree (branch wave1/ui-system), one reviewer with per-task verdicts — parallel wave per user request — cost if wrong: coarser review.
+- Ruling: money-expression parser duplicated in `ui/lib/moneyExpr.ts` (same test cases as domain) — spec §3.2 forbids ui→domain imports — cost if wrong: two parsers may drift; mitigated by identical cases.
+- Ruling: theme preference stored in localStorage `myauto.theme`, not Dexie meta — needed synchronously before first paint to avoid a flash — cost if wrong: theme not synced across devices (not required by spec).
+- Ruling: I2 (product decision delegated by owner) — keep inputmode=decimal and add a «+» operator key (first in the quick-add row, and shown even without quickAdd) that inserts «+» at the caret, preventDefault on pointerdown so focus/keyboard stay — cost if wrong: one extra chip in money fields.
+- Ruling: I3 — MoneyField calls onChange on every keystroke that parses ('' → undefined); error text + grouping on blur; Enter with invalid expression is preventDefault-ed — live totals needed by the service/fuel forms — cost if wrong: none.
+- Ruling: fold minors: BottomSheet always has a close button; SearchField Escape stops propagation; ui money parser gets the 50-depth guard and the same test cases as domain; money display keeps 2 decimals when fractional («54,90»); Spinner visually-hidden text; ModalLayer inert while closing, skip hidden focusables; BottomSheet focusin timer cleanup + reduced-motion scroll; Toast bottom offset via CSS var so it works without a tab bar; Chip remove 44 px; light accent on pressed ≥ 4.5; `.tab > *` selector; RepeatableList keeps child keys — cost if wrong: small scope creep.
+- Ruling: outside-zone requests — approve afterEach(cleanup) in src/test/setup.ts (remove per-file copies) and an `icons` npm script; reject node types in src tsconfig (changes timer typings program-wide); approve dark accent split (#4C8DFF text / #2C68D6 fill); barrel import in main.tsx accepted.
+- ui: fix round 1/5 implementer DONE (merge 68f3cda + d412a76..bc617d3, 434 tests); scoped re-review dispatched; wave 2a shell dispatched in parallel on wave1/ui-system (Ruling: start shell before ui re-review — fixes don't change prop contracts; cost if wrong: shell merges a later ui fix)
+
+## 
+
+- Ruling: whole plan executed end-to-end by project agent `sync-storage` in worktree (branch wave1/sync-storage), one reviewer with per-task verdicts — parallel wave per user request — cost if wrong: coarser review.
+- Ruling: engine writes `garage.json` when it does not exist yet even if the merged snapshot is empty — initializes the Disk and makes the daily backup possible — cost if wrong: one tiny extra file write on first connect.
+- Ruling: "one cycle" is asserted by promise identity of concurrent `syncNow()` calls — it's the contract itself, independent of how many stat calls a cycle makes — cost if wrong: none.
+- Ruling: I3 — "Заменить всё" = in one txn tombstone every live row absent from the file with tick(row.updatedAt), write file rows with updatedAt = tick(max(local, imported)); test compares live rows only; db.replaceAll stays as-is (physical, unused by UI) — spec §6.4 promises restore that survives sync — cost if wrong: replaced rows show as tombstones in snapshot (size).
+- Ruling: I2 — clean remote/local files only for tombstones older than 24 h (grace period) — undo toasts (5 s) and restore must keep files — cost if wrong: deleted photos occupy Disk space a day longer.
+- Ruling: I2 residual — another device deleting while this one sets uploadedAt can resurrect the row via LWW; accepted (single user, rare, row resurrects with files intact because cleanup waits 24 h) — cost if wrong: an attachment reappears once.
+- Ruling: I4 — frozen contract extended by leader: YandexAuth.getLoginError(), YandexAuth.subscribe() (commit 59d7598) — screens must show why login failed — cost if wrong: none.
+- Ruling: fold minors into the same fix round: status → off/idle immediately after disconnect/connect via auth.subscribe; report 507 from daily backup; 401 on pasted code → «Код не подошёл — получите новый»; document loginUrl() is click-only; Excel skips rows of deleted vehicles; initSync retries after failure; cross-tab lock via navigator.locks when available — cost if wrong: small scope creep.
+
+## 
+
+- Ruling: whole plan executed end-to-end by one feature-screens agent in its own worktree; one reviewer with per-task verdicts — parallel wave per user request — cost if wrong: coarser review.
+- Ruling: wave 2b tracks dispatched from wave2/shell before its review completes — features/common exports are fixed by plan and verified present; review fixes will be merged into the track branches — cost if wrong: small merge work.
+- Ruling: I1 — onSave(): Promise<void | string | false>; false = stay, no toast, no navigation — cost if wrong: none.
+- Ruling: I2 — structural: FormPage registers "form mode" via shell context; hideTabBar = routeFlag || formMode; shell alone owns --toast-offset — cost if wrong: none.
+- Ruling: I3 — useDraftAttachments discards on unmount when the owner row does not exist (never touches saved rows); FormPage ignores «Назад» while saving — cost if wrong: none.
+- Ruling: fold minors M1 (ErrorPage remembers failing error text, not timestamp), M2 (show only intentional Russian errors via UserError; else Russian fallback + console.error), M3 (useGoBack uses history.state.idx), M4 (Page back string = fallback of goBack), M5 (no tab bar/page flash before first-run decision), M6 (document.title per route + focus h1 on navigation), M7 (seed failure doesn't block sync), nits NEED_REFRESH_EVENT import + clear toast offset on unmount — cost if wrong: small scope creep.
+
+## 
+
+- Ruling: whole plan executed end-to-end by one feature-screens agent in its own worktree, parallel with the other two tracks; one reviewer with per-task verdicts — user asked to finish everything with agents — cost if wrong: coarser review.
+- Ruling: I-1 — «Повторить» navigates to /record/new/<kind>?from=<id>; the new form is prefilled from the source (today, no odometer, new line ids, warranty and tire swap cleared, expense validity cleared); nothing is written until «Сохранить»; CopyState/dropCopy removed — cost if wrong: none.
+- Ruling: I-2 — sheets keyed by an open-sequence counter (FluidsEditor pattern) — cost if wrong: none.
+- Ruling: I-3 — tire statuses change only when the saved record is the vehicle's latest live swap (date desc, createdAt desc) AND it is a create or its date/tireSwap changed; mounted ≠ removed validated — cost if wrong: owner fixes statuses by hand after a backdated swap.
+- Ruling: fold minors 1 (cleared total → auto), 2 (untouched prefilled odometer cleared when date moves into the past), 3 (journal debounce uses latest filter), 5 (onboarding rules in one rw txn), 6 (blank fluid line not added), 7 (invalid VIN = warning, saving allowed — frame numbers of JDM cars), 8 (aria-live for VIN online result; date chips group label; per-item onboarding labels), 10 (GRADES and DOC_NUMBER_LABEL single source), 12 (copyLines outside reducer; «Год» filter label «12 месяцев») — cost if wrong: small.
+
+## 
+
+- Ruling: whole plan executed end-to-end by one feature-screens agent in its own worktree, parallel with the other two tracks; one reviewer with per-task verdicts — user asked to finish everything with agents — cost if wrong: coarser review.
+- Ruling: I1 fill every month of the range with zeros; I2 «По годам» from full history regardless of period; fold M1 (year km with touching boundaries so years sum to total), M2 (overdue items → event today; text/calendar;charset=utf-8), M6 (home badge pending = photos wording), M7 (catalog item without defaults doesn't clear typed intervals), M8 (import { version }), M9 (mask pasted token field, autocorrect off, clear on failure) — cost if wrong: small.
+
+## 
+
+- Ruling: whole plan executed end-to-end by one feature-screens agent in its own worktree, parallel with the other two tracks; one reviewer with per-task verdicts — user asked to finish everything with agents — cost if wrong: coarser review.
+- Ruling: I-1 — an archived vehicle never becomes active: its card shows its journal inline (records list, «Показать все») and hides/disables Документы/Шины/Статистика links with a hint; useActiveVehicle falls back to the first non-archived vehicle when the stored active one is archived (null if none) — permission to edit src/db/hooks.ts for this; Garage never shows «Активная» on archived rows — cost if wrong: owner can't browse a sold car's stats screen (rare).
+- Ruling: fold M-1 (demote other installed sets first inside one rw transaction; both expectations inside waitFor), M-2 (VehiclePage returns null while loading), M-3 (url without scheme → https://; link when url but no address), M-4 (masters list marks deleted place), M-6 (dead CSS), M-7 (hintLink ≥ 44 px; SpecRow as dl/dt/dd) — cost if wrong: small.
+
+## 
+
+- Ruling: Task 3 + the sync/ui/app part of Task 4 run now in one agent (infra), in parallel with the records fix round — disjoint files (e2e config, .github, src/sync, ui Combobox, app/init + app tests) — cost if wrong: merge conflicts in app tests.
+- Ruling: the fuel-form same-day warning (Task 4) moves to after the records merge (records zone).
+- Ruling: merge wave3/infra now; fix round adds I-1 (size-aware stall budget for uploadBlob), M-1 (settled flag), M-2 (lock-wait timeout → neutral, not error), M-7 (VITE_YANDEX_CLIENT_ID='' in both webServer env), M-9 (.catch on fire-and-forget syncNow) — cost if wrong: none.
+- Ruling: one final fix dispatch covering I-1/DEF-01, DEF-02, DEF-03, DEF-04, SHOULD-FIX (journal filter PlacePicker no create; tire quantity cleared ≠ 4), and cheap minors (storage.persist not awaited; transmission/drive/fuel labels single source in domain/labels used by Excel; placeUrl http(s) only; daily backup before attachment work; parseSnapshot requires tables object; cross-tab auth change via BroadcastChannel; CI action majors bumped; onboarding goToUrl seam) — cost if wrong: small scope creep.
+- Owner on live site: implicit-flow login fails (redirect_uri mismatch) — his Yandex OAuth app type (Disk app-folder) only allows verification_code redirect (same as stats). Ruling: code login becomes the primary and only UI login; implicit flow code kept without UI entry; item 14 sent to final-fixes agent — cost if wrong: one extra copy/paste per device.
