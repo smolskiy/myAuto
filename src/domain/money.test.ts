@@ -23,3 +23,9 @@ test.each([
 test.each(['', '   ', 'abc', '1200+', '100-200', '1/0', '2**3'])('некорректное «%s» → null', (input) => {
   expect(parseMoneyExpression(input)).toBeNull()
 })
+
+test('глубина скобок ограничена: слишком глубокое выражение → null, а не падение', () => {
+  expect(parseMoneyExpression(`${'('.repeat(10)}100${')'.repeat(10)}`)).toBe(10000)
+  expect(parseMoneyExpression(`${'('.repeat(51)}1${')'.repeat(51)}`)).toBeNull()
+  expect(parseMoneyExpression(`${'('.repeat(100000)}1${')'.repeat(100000)}`)).toBeNull()
+})
