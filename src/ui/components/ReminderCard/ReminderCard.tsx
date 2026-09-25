@@ -25,11 +25,17 @@ export interface ReminderCardProps {
   onClick?(): void
 }
 
-const STATE_TONE: Record<StatusState, Tone> = { ok: 'ok', soon: 'soon', overdue: 'overdue', unknown: 'neutral' }
+const STATE_TONE: Record<StatusState, Tone> = {
+  ok: 'ok',
+  soon: 'soon',
+  overdue: 'overdue',
+  unknown: 'neutral',
+}
 const pct = (v: number) => Math.round(Math.max(0, v) * 100)
 
 export function ReminderCard(props: ReminderCardProps) {
-  const { title, state, kmText, timeText, progressKm, progressTime, predicted, lastText, compact, onClick } = props
+  const { title, state, kmText, timeText, progressKm, progressTime, predicted, lastText, compact, onClick } =
+    props
   const tone = STATE_TONE[state]
 
   const heading = onClick ? (
@@ -51,7 +57,9 @@ export function ReminderCard(props: ReminderCardProps) {
           <StatusPill state={state} />
         </div>
         {meta && <p className={cx(styles.meta, shared.truncate)}>{meta}</p>}
-        {hasProgress && <ProgressBar value={worst} tone={tone} label={`${title}: пройдено ${pct(worst)} %`} />}
+        {hasProgress && (
+          <ProgressBar value={worst} tone={tone} label={`${title}: пройдено ${pct(worst)} %`} />
+        )}
       </div>
     )
   }
@@ -80,7 +88,11 @@ export function ReminderCard(props: ReminderCardProps) {
             {timeText && <span className={styles.metricValue}>{timeText}</span>}
           </div>
           {progressTime !== undefined && (
-            <ProgressBar value={progressTime} tone={tone} label={`${title}: по времени ${pct(progressTime)} %`} />
+            <ProgressBar
+              value={progressTime}
+              tone={tone}
+              label={`${title}: по времени ${pct(progressTime)} %`}
+            />
           )}
         </div>
       )}

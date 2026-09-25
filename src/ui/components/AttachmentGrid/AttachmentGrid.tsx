@@ -27,7 +27,12 @@ export function AttachmentGrid({ items, onOpen, onRemove, picker }: AttachmentGr
     <ul className={styles.grid}>
       {items.map((it) => (
         <li key={it.id} className={styles.cell}>
-          <button type="button" className={styles.thumb} aria-label={`Открыть «${it.name}»`} onClick={() => onOpen(it.id)}>
+          <button
+            type="button"
+            className={styles.thumb}
+            aria-label={`Открыть «${it.name}»`}
+            onClick={() => onOpen(it.id)}
+          >
             {it.kind === 'pdf' ? (
               <span className={styles.pdf}>
                 <IconFileTypePdf size={32} stroke={1.5} aria-hidden="true" />
@@ -40,9 +45,9 @@ export function AttachmentGrid({ items, onOpen, onRemove, picker }: AttachmentGr
             )}
           </button>
           {it.pending && (
-            <span className={styles.pending}>
-              <IconCloudUpload size={14} stroke={2} aria-hidden="true" />
-              <span>Не отправлено</span>
+            <span className={styles.pending} title="Не отправлено на Диск">
+              <IconCloudUpload size={16} stroke={2} aria-hidden="true" />
+              <span className="visually-hidden">Не отправлено</span>
             </span>
           )}
           {onRemove && (

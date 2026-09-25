@@ -1,1 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#2563EB"/><path d="M128 300l32-88a40 40 0 0 1 38-26h116a40 40 0 0 1 38 26l32 88v70a14 14 0 0 1-14 14h-28a14 14 0 0 1-14-14v-18H184v18a14 14 0 0 1-14 14h-28a14 14 0 0 1-14-14z" fill="#fff"/><circle cx="182" cy="306" r="18" fill="#2563EB"/><circle cx="330" cy="306" r="18" fill="#2563EB"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="116" fill="#2563EB"/><g transform="translate(35.84 35.84) scale(0.86)">
+  <g transform="translate(0 -21)">
+    <path fill="#FFFFFF" d="M186 150h140c16 0 30 10 36 25l30 79h10c26 0 46 20 46 46v58c0 14-11 26-25 26h-6v26c0 12-10 22-22 22h-32c-12 0-22-10-22-22v-26H171v26c0 12-10 22-22 22h-32c-12 0-22-10-22-22v-26h-6c-14 0-25-12-25-26v-58c0-26 20-46 46-46h10l30-79c6-15 20-25 36-25z"/>
+    <path fill="#2563EB" d="M196 184h120c7 0 13 4 15 11l21 59H160l21-59c2-7 8-11 15-11z"/>
+    <circle fill="#2563EB" cx="150" cy="306" r="24"/>
+    <circle fill="#2563EB" cx="362" cy="306" r="24"/>
+    <rect fill="#2563EB" x="212" y="296" width="88" height="20" rx="10"/>
+  </g></g></svg>

@@ -9,7 +9,13 @@ afterEach(cleanup)
 test('строка журнала: длинный заголовок обрезается, сумма остаётся видимой', () => {
   const long = 'Замена ремня ГРМ с роликами и помпой в автосервисе на Профсоюзной улице дом 128'
   render(
-    <RecordRow kind="service" icon={<IconTool />} title={long} subtitle="145 100 км · Автосервис" amount="12 450 ₽" />,
+    <RecordRow
+      kind="service"
+      icon={<IconTool />}
+      title={long}
+      subtitle="145 100 км · Автосервис"
+      amount="12 450 ₽"
+    />,
   )
   const title = screen.getByText(long)
   expect(title).toHaveAttribute('title', long)

@@ -9,7 +9,9 @@ import {
   type PointerEvent,
   type ReactNode,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { cx } from '../../lib/cx'
+import { usePortalTarget } from '../Overlay/Overlay'
 import styles from './SwipeRow.module.css'
 
 export interface SwipeAction {
@@ -33,6 +35,9 @@ const THRESHOLD = 0.3
 const SLOP = 8
 
 type Gesture = { id: number; x: number; y: number; axis: 'x' | 'y' | null; width: number; dx: number }
+/** Меню рисуется в портале с position: fixed — его не обрезает скруглённая карточка списка. */
+type MenuPos = { top?: number; bottom?: number; right: number }
+const MENU_HEIGHT = 110
 
 /**
  * Строка со свайпом пальцем или мышью (Pointer Events). Вертикальное движение отдаётся прокрутке.
@@ -41,7 +46,9 @@ type Gesture = { id: number; x: number; y: number; axis: 'x' | 'y' | null; width
 export function SwipeRow({ children, left, right }: SwipeRowProps) {
   const [dx, setDx] = useState(0)
   const [width, setWidth] = useState(0)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState<MenuPos | null>(null)
+  const menuOpen = menuPos !== null
+  const portalTarget = usePortalTarget()
   const gesture = useRef<Gesture | null>(null)
   const swiped = useRef(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -106,15 +113,36 @@ export function SwipeRow({ children, left, right }: SwipeRowProps) {
     }
   }
 
-  // Меню: закрыть по нажатию вне и вернуть фокус на кнопку по Escape.
+  const openMenu = () => {
+    const r = buttonRef.current?.getBoundingClientRect()
+    if (!r) return
+    const right = Math.max(8, window.innerWidth - r.right)
+    const below = window.innerHeight - r.bottom
+    setMenuPos(
+      below > MENU_HEIGHT || below > r.top
+        ? { top: r.bottom + 4, right }
+        : { bottom: window.innerHeight - r.top + 4, right },
+    )
+  }
+  const closeMenu = () => setMenuPos(null)
+
+  // Меню: фокус на первый пункт; закрыть по нажатию вне, прокрутке и смене размера окна.
   useEffect(() => {
     if (!menuOpen) return
     menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
     const onDown = (ev: globalThis.PointerEvent) => {
-      if (!rootRef.current?.contains(ev.target as Node)) setMenuOpen(false)
+      const t = ev.target as Node
+      if (!rootRef.current?.contains(t) && !menuRef.current?.contains(t)) setMenuPos(null)
     }
+    const onMove = () => setMenuPos(null)
     document.addEventListener('pointerdown', onDown)
-    return () => document.removeEventListener('pointerdown', onDown)
+    window.addEventListener('scroll', onMove, true)
+    window.addEventListener('resize', onMove)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('scroll', onMove, true)
+      window.removeEventListener('resize', onMove)
+    }
   }, [menuOpen])
 
   const onMenuKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
@@ -123,14 +151,16 @@ export function SwipeRow({ children, left, right }: SwipeRowProps) {
     if (e.key === 'Escape') {
       e.preventDefault()
       e.stopPropagation()
-      setMenuOpen(false)
+      closeMenu()
       buttonRef.current?.focus()
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       const step = e.key === 'ArrowDown' ? 1 : -1
       items[(i + step + items.length) % items.length]?.focus()
     } else if (e.key === 'Tab') {
-      setMenuOpen(false)
+      e.preventDefault()
+      closeMenu()
+      buttonRef.current?.focus()
     }
   }
 
@@ -138,7 +168,7 @@ export function SwipeRow({ children, left, right }: SwipeRowProps) {
   const armed = !!reveal && width > 0 && Math.abs(dx) >= width * THRESHOLD
 
   return (
-    <div ref={rootRef} className={styles.swipe}>
+    <div ref={rootRef} className={styles.swipe} data-swiping={dx !== 0 || undefined}>
       {reveal && (
         <div
           className={cx(styles.under, dx > 0 ? styles.underLeft : styles.underRight, styles[reveal.tone])}
@@ -171,33 +201,44 @@ export function SwipeRow({ children, left, right }: SwipeRowProps) {
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-controls={menuOpen ? menuId : undefined}
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={() => (menuOpen ? closeMenu() : openMenu())}
           >
             <IconDotsVertical size={20} stroke={2} aria-hidden="true" />
           </button>
-          {menuOpen && (
-            <ul id={menuId} ref={menuRef} role="menu" aria-label="Действия" className={styles.menu} onKeyDown={onMenuKeyDown}>
-              {actions.map((a) => (
-                <li key={a.label} role="none">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    tabIndex={-1}
-                    className={cx(styles.menuItem, styles[a.tone])}
-                    onClick={() => {
-                      setMenuOpen(false)
-                      a.onAction()
-                    }}
-                  >
-                    <span className={styles.menuIcon} aria-hidden="true">
-                      {a.icon}
-                    </span>
-                    {a.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {menuPos &&
+            createPortal(
+              <ul
+                id={menuId}
+                ref={menuRef}
+                role="menu"
+                aria-label="Действия"
+                className={styles.menu}
+                style={{ position: 'fixed', ...menuPos }}
+                onKeyDown={onMenuKeyDown}
+              >
+                {actions.map((a) => (
+                  <li key={a.label} role="none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      tabIndex={-1}
+                      className={cx(styles.menuItem, styles[a.tone])}
+                      onClick={() => {
+                        closeMenu()
+                        buttonRef.current?.focus()
+                        a.onAction()
+                      }}
+                    >
+                      <span className={styles.menuIcon} aria-hidden="true">
+                        {a.icon}
+                      </span>
+                      {a.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>,
+              portalTarget ?? document.body,
+            )}
         </div>
       )}
     </div>

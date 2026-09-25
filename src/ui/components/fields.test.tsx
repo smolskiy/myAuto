@@ -2,7 +2,16 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
-import { Combobox, DateField, MoneyField, NumberField, OdometerField, Rating, SearchField, Switch } from '../index'
+import {
+  Combobox,
+  DateField,
+  MoneyField,
+  NumberField,
+  OdometerField,
+  Rating,
+  SearchField,
+  Switch,
+} from '../index'
 
 afterEach(cleanup)
 

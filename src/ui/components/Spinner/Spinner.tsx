@@ -8,9 +8,21 @@ export interface SpinnerProps {
 
 export function Spinner({ size = 24, label }: SpinnerProps) {
   const svg = (
-    <svg className={styles.spinner} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      className={styles.spinner}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <circle className={styles.track} cx="12" cy="12" r="9.5" strokeWidth="2.5" />
-      <path className={styles.arc} d="M12 2.5a9.5 9.5 0 0 1 9.5 9.5" strokeWidth="2.5" strokeLinecap="round" />
+      <path
+        className={styles.arc}
+        d="M12 2.5a9.5 9.5 0 0 1 9.5 9.5"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
     </svg>
   )
   if (!label) return svg

@@ -22,7 +22,16 @@ export interface RecordRowProps {
   onClick?(): void
 }
 
-export function RecordRow({ kind, icon, title, subtitle, amount, date, attachments, onClick }: RecordRowProps) {
+export function RecordRow({
+  kind,
+  icon,
+  title,
+  subtitle,
+  amount,
+  date,
+  attachments,
+  onClick,
+}: RecordRowProps) {
   const body = (
     <>
       <span className={cx(styles.icon, tones[kind])} aria-hidden="true" data-leading="">

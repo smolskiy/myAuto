@@ -6,17 +6,30 @@ export interface SelectProps<T extends string> {
   label: string
   value: T | undefined
   options: { value: T; label: string }[]
-  onChange(v: T): void
+  onChange(v: NoInfer<T>): void
   placeholder?: string
   hint?: string
   error?: string
 }
 
 /** Нативный список выбора — системное колесо на телефоне, оформление токенами. */
-export function Select<T extends string>({ label, value, options, onChange, placeholder, hint, error }: SelectProps<T>) {
+export function Select<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  placeholder,
+  hint,
+  error,
+}: SelectProps<T>) {
   return (
     <Field label={label} hint={hint} error={error}>
-      <SelectBox value={value ?? ''} placeholder={placeholder} options={options} onChange={(v) => onChange(v as T)} />
+      <SelectBox
+        value={value ?? ''}
+        placeholder={placeholder}
+        options={options}
+        onChange={(v) => onChange(v as T)}
+      />
     </Field>
   )
 }

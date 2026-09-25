@@ -53,7 +53,7 @@ export function VehicleCard({ name, subtitle, plate, odometer, photoUrl, onSwitc
             </div>
           )}
           {odometer && (
-            <div className={cx(styles.fact, styles.factEnd)}>
+            <div className={cx(styles.fact, plate && styles.factEnd)}>
               <dt className={styles.factName}>Пробег</dt>
               <dd className={styles.odometer}>{odometer}</dd>
             </div>

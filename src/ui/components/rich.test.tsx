@@ -2,7 +2,15 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { IconTrash, IconCopy } from '@tabler/icons-react'
-import { AttachmentGrid, chartTheme, LineItemRow, PhotoPicker, PullToRefresh, RepeatableList, SwipeRow } from '../index'
+import {
+  AttachmentGrid,
+  chartTheme,
+  LineItemRow,
+  PhotoPicker,
+  PullToRefresh,
+  RepeatableList,
+  SwipeRow,
+} from '../index'
 
 afterEach(cleanup)
 

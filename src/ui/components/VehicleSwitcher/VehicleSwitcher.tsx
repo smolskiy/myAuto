@@ -15,7 +15,15 @@ export interface VehicleSwitcherProps {
 }
 
 /** Шторка выбора активной машины; внизу — «Добавить машину» и «Гараж и архив». */
-export function VehicleSwitcher({ open, onClose, vehicles, activeId, onSelect, onAdd, onGarage }: VehicleSwitcherProps) {
+export function VehicleSwitcher({
+  open,
+  onClose,
+  vehicles,
+  activeId,
+  onSelect,
+  onAdd,
+  onGarage,
+}: VehicleSwitcherProps) {
   const pick = (fn: () => void) => () => {
     fn()
     onClose()

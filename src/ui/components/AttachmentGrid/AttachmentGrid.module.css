@@ -49,22 +49,19 @@
   font-size: var(--text-xs);
 }
 
+/* Значок «ещё не на Диске»; слово — для скринридера и во всплывающей подсказке. */
 .pending {
   position: absolute;
   left: var(--space-1);
   bottom: var(--space-1);
   display: inline-flex;
   align-items: center;
-  gap: calc(var(--space-1) / 2);
-  max-width: calc(100% - var(--space-2));
-  padding: calc(var(--space-1) / 2) var(--space-1);
-  border-radius: var(--radius-sm);
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
   background: var(--color-inverse-surface);
   color: var(--color-on-inverse);
-  font-size: var(--text-xs);
-  line-height: var(--leading-tight);
-  white-space: nowrap;
-  overflow: hidden;
   pointer-events: none;
 }
 

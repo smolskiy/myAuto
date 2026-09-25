@@ -1,4 +1,9 @@
-import { IconAlertTriangleFilled, IconCircleCheckFilled, IconClockFilled, IconHelpCircleFilled } from '@tabler/icons-react'
+import {
+  IconAlertTriangleFilled,
+  IconCircleCheckFilled,
+  IconClockFilled,
+  IconHelpCircleFilled,
+} from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import tones from '../../tones.module.css'

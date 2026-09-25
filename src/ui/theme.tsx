@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 
 export type ThemePreference = 'system' | 'light' | 'dark'
 export type ResolvedTheme = 'light' | 'dark'
@@ -67,7 +76,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setPreferenceState(p)
   }, [])
 
-  const value = useMemo(() => ({ preference, resolved, setPreference }), [preference, resolved, setPreference])
+  const value = useMemo(
+    () => ({ preference, resolved, setPreference }),
+    [preference, resolved, setPreference],
+  )
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
 

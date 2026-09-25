@@ -20,7 +20,17 @@ export interface ListItemProps {
   danger?: boolean
 }
 
-export function ListItem({ title, subtitle, leading, trailing, value, chevron, onClick, href, danger }: ListItemProps) {
+export function ListItem({
+  title,
+  subtitle,
+  leading,
+  trailing,
+  value,
+  chevron,
+  onClick,
+  href,
+  danger,
+}: ListItemProps) {
   const body = (
     <>
       {leading && (

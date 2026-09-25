@@ -66,18 +66,23 @@ export function MoneyField({ label, value, onChange, hint, error, quickAdd }: Mo
   return (
     <Field
       label={label}
-      hint={preview !== null ? <span className={styles.preview}>= {formatMoney(preview)}</span> : hint}
+      hint={hint}
       error={error ?? (invalid ? INVALID : undefined)}
       below={
-        quickAdd && quickAdd.length > 0 ? (
-          <div className={styles.quick}>
-            {quickAdd.map((rub) => (
-              <Button key={rub} variant="secondary" size="sm" onClick={() => add(rub)}>
-                +{groupDigits(String(rub))}
-              </Button>
-            ))}
-          </div>
-        ) : undefined
+        <>
+          <p className={styles.preview} aria-live="polite">
+            {preview !== null ? `= ${formatMoney(preview)}` : ''}
+          </p>
+          {quickAdd && quickAdd.length > 0 && (
+            <div className={styles.quick}>
+              {quickAdd.map((rub) => (
+                <Button key={rub} variant="secondary" size="sm" onClick={() => add(rub)}>
+                  +{groupDigits(String(rub))}
+                </Button>
+              ))}
+            </div>
+          )}
+        </>
       }
     >
       <InputBox

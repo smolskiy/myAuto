@@ -4,12 +4,18 @@ import styles from './SegmentedControl.module.css'
 export interface SegmentedControlProps<T extends string> {
   value: T
   options: { value: T; label: string }[]
-  onChange(v: T): void
+  /** NoInfer: тип берётся из value и options, а не из сеттера useState. */
+  onChange(v: NoInfer<T>): void
   ariaLabel: string
 }
 
 /** Радиогруппа из 2–4 вариантов: стрелки двигают выбор, Tab входит в группу один раз. */
-export function SegmentedControl<T extends string>({ value, options, onChange, ariaLabel }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({
+  value,
+  options,
+  onChange,
+  ariaLabel,
+}: SegmentedControlProps<T>) {
   const refs = useRef<(HTMLButtonElement | null)[]>([])
   const current = Math.max(
     0,

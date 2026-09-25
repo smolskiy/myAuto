@@ -18,6 +18,10 @@ import styles from './Overlay.module.css'
  */
 const PortalTargetContext = createContext<HTMLElement | null>(null)
 export const PortalTargetProvider = PortalTargetContext.Provider
+/** Контейнер для порталов (всплывающие меню): колонка витрины или document.body. */
+export function usePortalTarget(): HTMLElement | null {
+  return useContext(PortalTargetContext)
+}
 
 /** Длительность выхода — как --dur-base. */
 const EXIT_MS = 200
@@ -134,7 +138,12 @@ export function ModalLayer({
   const state = open ? 'open' : 'closed'
   return createPortal(
     <div className={cx(styles.layer, styles[placement])} data-state={state} data-theme={theme}>
-      <div className={styles.backdrop} data-state={state} onClick={() => open && onDismiss()} aria-hidden="true" />
+      <div
+        className={styles.backdrop}
+        data-state={state}
+        onClick={() => open && onDismiss()}
+        aria-hidden="true"
+      />
       <div
         ref={ref}
         role={role}

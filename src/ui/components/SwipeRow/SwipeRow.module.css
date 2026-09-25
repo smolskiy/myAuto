@@ -2,11 +2,6 @@
   position: relative;
   overflow: hidden;
 }
-/* Меню не обрезается строкой. */
-.swipe:has(.menu) {
-  overflow: visible;
-  z-index: 2;
-}
 
 .under {
   position: absolute;
@@ -90,11 +85,13 @@
   opacity: 1;
   pointer-events: auto;
 }
+/* Во время свайпа кнопка не закрывает подпись действия под строкой. */
+.swipe[data-swiping] .more {
+  opacity: 0;
+  pointer-events: none;
+}
 
 .menu {
-  position: absolute;
-  top: calc(100% + var(--space-1));
-  right: 0;
   z-index: var(--z-sheet);
   min-width: 200px;
   padding: var(--space-1);

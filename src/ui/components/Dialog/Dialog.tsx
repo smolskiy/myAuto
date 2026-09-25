@@ -17,7 +17,16 @@ export interface DialogProps {
 }
 
 /** Подтверждение по центру экрана (alertdialog). Escape и нажатие на фон — отмена. */
-export function Dialog({ open, title, text, confirmLabel, cancelLabel = 'Отменить', danger, onConfirm, onCancel }: DialogProps) {
+export function Dialog({
+  open,
+  title,
+  text,
+  confirmLabel,
+  cancelLabel = 'Отменить',
+  danger,
+  onConfirm,
+  onCancel,
+}: DialogProps) {
   const titleId = useId()
   const textId = useId()
   const cancelRef = useRef<HTMLButtonElement>(null)

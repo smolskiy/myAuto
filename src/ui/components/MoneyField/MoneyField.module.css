@@ -1,5 +1,7 @@
+/* Итог выражения сразу под полем; пустой — не занимает места. */
 .preview {
   color: var(--color-text);
+  line-height: var(--leading-tight);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
@@ -9,4 +11,9 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.preview:empty {
+  /* Пустая live-область остаётся в дереве доступности (иначе новое сообщение не объявят), но не даёт отступа. */
+  position: absolute;
 }

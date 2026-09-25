@@ -21,12 +21,24 @@ test.each([
   expect(parseMoneyExpr(input)).toBe(kopecks)
 })
 
-test.each(['', '   ', '12++', '12+', '(1+2', '1+2)', 'abc', '1,2,3', '5/0', '100-200', '-5', '1e3', 'alert(1)', '1..2'])(
-  'некорректное или отрицательное «%s» → null',
-  (input) => {
-    expect(parseMoneyExpr(input)).toBeNull()
-  },
-)
+test.each([
+  '',
+  '   ',
+  '12++',
+  '12+',
+  '(1+2',
+  '1+2)',
+  'abc',
+  '1,2,3',
+  '5/0',
+  '100-200',
+  '-5',
+  '1e3',
+  'alert(1)',
+  '1..2',
+])('некорректное или отрицательное «%s» → null', (input) => {
+  expect(parseMoneyExpr(input)).toBeNull()
+})
 
 test('оператор в выражении виден, знак числа — нет', () => {
   expect(hasOperator('1200+650')).toBe(true)

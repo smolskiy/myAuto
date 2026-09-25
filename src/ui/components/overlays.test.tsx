@@ -78,14 +78,32 @@ test('шторка: фокус внутри, после закрытия — о�
 
 test('диалог подтверждения удаления', async () => {
   const onConfirm = vi.fn()
-  render(<Dialog open title="Удалить запись?" confirmLabel="Удалить" danger onConfirm={onConfirm} onCancel={() => {}} />)
+  render(
+    <Dialog
+      open
+      title="Удалить запись?"
+      confirmLabel="Удалить"
+      danger
+      onConfirm={onConfirm}
+      onCancel={() => {}}
+    />,
+  )
   await userEvent.click(screen.getByRole('button', { name: 'Удалить' }))
   expect(onConfirm).toHaveBeenCalled()
 })
 
 test('диалог: Escape — отмена', async () => {
   const onCancel = vi.fn()
-  render(<Dialog open title="Удалить запись?" confirmLabel="Удалить" danger onConfirm={() => {}} onCancel={onCancel} />)
+  render(
+    <Dialog
+      open
+      title="Удалить запись?"
+      confirmLabel="Удалить"
+      danger
+      onConfirm={() => {}}
+      onCancel={onCancel}
+    />,
+  )
   expect(screen.getByRole('alertdialog', { name: 'Удалить запись?' })).toBeInTheDocument()
   await userEvent.keyboard('{Escape}')
   expect(onCancel).toHaveBeenCalled()
@@ -97,7 +115,9 @@ test('уведомление с «Отменить» исчезает через
   function Trigger() {
     const t = useToast()
     return (
-      <button onClick={() => t.show({ text: 'Запись удалена', action: { label: 'Отменить', onClick: undo } })}>
+      <button
+        onClick={() => t.show({ text: 'Запись удалена', action: { label: 'Отменить', onClick: undo } })}
+      >
         go
       </button>
     )

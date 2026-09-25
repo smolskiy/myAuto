@@ -18,7 +18,13 @@ export function Icon({ icon: Glyph, size = 20, tone, circle = false }: IconProps
   return (
     <span
       aria-hidden="true"
-      className={cx(styles.icon, tone && tones[tone], tone && styles.toned, circle && styles.circle, styles[`s${size}`])}
+      className={cx(
+        styles.icon,
+        tone && tones[tone],
+        tone && styles.toned,
+        circle && styles.circle,
+        styles[`s${size}`],
+      )}
     >
       <Glyph size={size} stroke={size === 16 ? 2 : 1.75} />
     </span>
