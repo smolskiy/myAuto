@@ -1,15 +1,17 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider } from 'react-router'
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { db } from '../db/instance'
 import { repos } from '../db/repos'
 import { AppProviders } from './providers'
 import { ROUTES, createAppRouter } from './routes'
 
-// Ленивые страницы (особенно витрина) на холодном старте грузятся дольше секунды.
+// Ленивые страницы на холодном старте грузятся дольше секунды.
 const LAZY = { timeout: 5000 }
 
+// Витрины здесь нет: она тяжёлая (графики, все секции) и под нагрузкой полного прогона не укладывается в 5 с.
+// Её маршрут проверяет свой тест в AppShell.test.tsx, саму витрину — src/ui/showcase/showcase.test.tsx.
 const samples = [
   '/',
   '/journal',
@@ -17,7 +19,6 @@ const samples = [
   '/record/new/fuel',
   '/items/item.engine_oil',
   '/settings/sync',
-  '/showcase',
 ]
 
 const renderAt = (path: string) => {
@@ -29,10 +30,6 @@ const renderAt = (path: string) => {
   )
   return router
 }
-
-// Витрина тяжёлая (графики, все секции): под нагрузкой полного прогона её холодный импорт бывает дольше 5 с.
-// Прогреваем модуль заранее с запасом — тесты проверяют маршрутизацию, а не скорость диска.
-beforeAll(() => import('../ui/showcase/ShowcasePage'), 60_000)
 
 beforeEach(async () => {
   await db.open()
@@ -52,8 +49,8 @@ afterEach(async () => {
 describe('маршруты', () => {
   test.each(samples)('%s открывает свой экран', async (path) => {
     const router = renderAt(path)
-    // Заголовок экрана (h1) появляется, когда ленивая страница загрузилась (в витрине их несколько — эскизы).
-    expect((await screen.findAllByRole('heading', { level: 1 }, LAZY)).length).toBeGreaterThan(0)
+    // Заголовок экрана (h1) появляется, когда ленивая страница загрузилась.
+    expect(await screen.findByRole('heading', { level: 1 }, LAZY)).toBeInTheDocument()
     expect(router.state.location.pathname).toBe(path)
     expect(screen.queryByRole('heading', { name: 'Страница не найдена' })).not.toBeInTheDocument()
   })

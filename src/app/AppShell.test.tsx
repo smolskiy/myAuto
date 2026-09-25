@@ -23,6 +23,12 @@ const addVehicle = (archived = false) =>
 
 // Холодный импорт тяжёлой витрины под нагрузкой полного прогона бывает дольше 5 с — прогреваем заранее.
 beforeAll(() => import('../ui/showcase/ShowcasePage'), 60_000)
+/**
+ * Витрина рисует все секции с графиками: даже с прогретым модулем рендер в jsdom идёт секунды, а под нагрузкой
+ * полного прогона — дольше 5 с. Запас — только этому тесту; поломку витрины он всё равно поймает (не будет h1).
+ */
+const SHOWCASE_TEST_MS = 20_000
+const SHOWCASE = { timeout: 15_000 }
 
 beforeEach(async () => {
   await db.open()
@@ -168,12 +174,16 @@ test('тост новой версии обновляет приложение',
   expect(update).toHaveBeenCalled()
 })
 
-test('витрина открывается без машин и без нижней панели', async () => {
-  const router = renderAt('/showcase')
-  expect(
-    await screen.findByRole('heading', { level: 1, name: 'Витрина компонентов' }, LAZY),
-  ).toBeInTheDocument()
-  expect(router.state.location.pathname).toBe('/showcase')
-  // В эскизах витрины есть свои панели, поэтому признак скрытой панели оболочки — нулевой отступ уведомлений.
-  expect(document.documentElement.style.getPropertyValue('--toast-offset')).toBe('0px')
-})
+test(
+  'витрина открывается без машин и без нижней панели',
+  async () => {
+    const router = renderAt('/showcase')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Витрина компонентов' }, SHOWCASE),
+    ).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/showcase')
+    // В эскизах витрины есть свои панели, поэтому признак скрытой панели оболочки — нулевой отступ уведомлений.
+    expect(document.documentElement.style.getPropertyValue('--toast-offset')).toBe('0px')
+  },
+  SHOWCASE_TEST_MS,
+)
