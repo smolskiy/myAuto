@@ -7,6 +7,7 @@ import { createAppRouter } from '../../app/routes'
 import { db } from '../../db/instance'
 import { repos } from '../../db/repos'
 import { BUILTIN_CATALOG, CATALOG_ID, STARTER_REMINDER_ITEM_IDS } from '../../domain/catalog'
+import { yandexAuth } from '../../sync/index'
 
 vi.setConfig({ testTimeout: 20_000 })
 
@@ -28,6 +29,8 @@ beforeEach(async () => {
 })
 afterEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  vi.unstubAllEnvs()
+  history.replaceState(null, '', '/')
 })
 
 async function addVehicleStep() {
@@ -101,10 +104,28 @@ test('интервалы узлов подписаны из каталога', a
   expect(within(brake).getByText('каждые 24 мес.')).toBeInTheDocument()
 })
 
+// ClientID сборки приходит из .env.local и попадает в yandexAuth при импорте — тесты «Подключить» задают его сами.
 test('«Подключить Яндекс.Диск» без ClientID ведёт в настройки синхронизации', async () => {
+  vi.stubEnv('VITE_YANDEX_CLIENT_ID', '')
+  vi.spyOn(yandexAuth, 'getClientId').mockReturnValue(null)
+  const loginUrl = vi.spyOn(yandexAuth, 'loginUrl')
   const router = renderAt('/onboarding')
   await addVehicleStep()
   await userEvent.click(screen.getByRole('button', { name: 'Дальше' }))
   await userEvent.click(await screen.findByRole('button', { name: 'Подключить Яндекс.Диск' }))
   await waitFor(() => expect(router.state.location.pathname).toBe('/settings/sync'))
+  expect(loginUrl).not.toHaveBeenCalled()
+})
+
+test('«Подключить Яндекс.Диск» с ClientID уходит на вход в Яндекс', async () => {
+  vi.spyOn(yandexAuth, 'getClientId').mockReturnValue('client-id')
+  // Адрес входа — фрагмент: другие переходы jsdom не выполняет, а по фрагменту видно, что ушли именно на loginUrl().
+  const loginUrl = vi.spyOn(yandexAuth, 'loginUrl').mockReturnValue('#yandex-login')
+  const router = renderAt('/onboarding')
+  await addVehicleStep()
+  await userEvent.click(screen.getByRole('button', { name: 'Дальше' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Подключить Яндекс.Диск' }))
+  await waitFor(() => expect(window.location.hash).toBe('#yandex-login'))
+  expect(loginUrl).toHaveBeenCalledOnce()
+  expect(router.state.location.pathname).toBe('/onboarding')
 })
