@@ -37,6 +37,13 @@ describe('слияние', () => {
     expect(ab.tables.places.map((r) => r.id)).toEqual(['a', 'b', 'c'])
   })
 
+  test('коммутативность при повторе id внутри одного входа', () => {
+    const x5 = p('x', 5)
+    const x1 = p('x', 1, { name: 'старое' })
+    expect(mergeRows([x5, x1], [])).toEqual(mergeRows([], [x5, x1]))
+    expect(mergeRows([x5, x1], [])).toEqual([x5])
+  })
+
   test('неизвестные поля сохраняются', () => {
     const future = { ...p('a', 9), futureField: 42 } as Place
     expect(mergeRows([p('a', 1)], [future])[0]).toHaveProperty('futureField', 42)
