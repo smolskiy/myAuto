@@ -4,6 +4,7 @@ import { registerSW } from 'virtual:pwa-register'
 import './ui/base.css'
 import { ThemeProvider } from './ui'
 import { initApp } from './app/init'
+import { AppProviders } from './app/providers'
 import AppRouter from './app/router'
 
 const updateSW = registerSW({
@@ -19,7 +20,9 @@ initApp().catch((e: unknown) => console.error('Запуск приложения
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
-      <AppRouter />
+      <AppProviders>
+        <AppRouter />
+      </AppProviders>
     </ThemeProvider>
   </StrictMode>,
 )

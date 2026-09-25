@@ -1,0 +1,12 @@
+/* Прокручивается документ (так работает PullToRefresh); панель липнет к низу экрана. */
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.main {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
