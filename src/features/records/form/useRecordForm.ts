@@ -1,5 +1,6 @@
 import { useCallback, useReducer } from 'react'
 import type { Draft } from '../../../db/repo'
+import { solveFuelTriple } from '../../../domain/calc/fuel'
 import { isISODate } from '../../../domain/dates'
 import type {
   CarRecord,
@@ -14,6 +15,9 @@ import type {
   WorkLine,
 } from '../../../domain/types'
 import { linesTotal } from './serviceTotals'
+
+/** Поля «два из трёх» у заправки. */
+export type FuelField = 'liters' | 'pricePerLiter' | 'total'
 
 /** Расходы со сроком действия: полисы и диагностическая карта. */
 export const VALIDITY_CATEGORIES: ReadonlySet<ExpenseCategory> = new Set(['osago', 'kasko', 'inspection'])
@@ -49,6 +53,14 @@ export interface RecordFormValues {
   warrantyUntilKm?: number
   mountedSetId?: ID
   removedSetId?: ID
+  // Заправка
+  liters?: number
+  pricePerLiter?: Kopecks
+  fullTank: boolean
+  missedBefore: boolean
+  fuelGrade: string
+  /** Порядок правки полей «два из трёх», последнее — в конце: пересчитывается то, что правили раньше всех. */
+  fuelOrder: FuelField[]
 }
 
 export type FieldKey = keyof RecordFormValues
@@ -116,12 +128,16 @@ const BLANK: Omit<RecordFormValues, 'kind' | 'vehicleId' | 'date'> = {
   parts: [],
   totalManual: false,
   warrantyUntilDate: '',
+  fullTank: true,
+  missedBefore: false,
+  fuelGrade: '',
+  fuelOrder: [],
 }
 
 /** Новая запись: дата — сегодня, пробег — текущий (кроме заметки, у неё пробег необязателен). */
 export function newRecordValues(
   kind: RecordKind,
-  vehicle: Pick<Vehicle, 'id'>,
+  vehicle: Pick<Vehicle, 'id' | 'defaultFuelGrade'>,
   ctx: { today: ISODate; currentOdometer: number | null },
 ): RecordFormValues {
   return {
@@ -130,6 +146,7 @@ export function newRecordValues(
     vehicleId: vehicle.id,
     date: ctx.today,
     odometer: kind === 'note' ? undefined : (ctx.currentOdometer ?? undefined),
+    fuelGrade: vehicle.defaultFuelGrade ?? '',
   }
 }
 
@@ -173,9 +190,47 @@ export function recordToValues(r: CarRecord): RecordFormValues {
         mountedSetId: r.tireSwap?.mountedSetId,
         removedSetId: r.tireSwap?.removedSetId,
       }
+    case 'fuel':
+      return {
+        ...v,
+        liters: r.liters,
+        pricePerLiter: r.pricePerLiter,
+        fullTank: r.fullTank,
+        missedBefore: r.missedBefore,
+        fuelGrade: r.fuelGrade ?? '',
+        // Все три заданы; цену — производную чаще всего — пересчитываем первой.
+        fuelOrder: ['pricePerLiter', 'liters', 'total'],
+      }
     default:
       return v
   }
+}
+
+const FUEL_FIELDS: FuelField[] = ['liters', 'pricePerLiter', 'total']
+
+/**
+ * Правка одного из полей «литры, цена, сумма»: два последних заполненных поля считают третье.
+ * Только что изменённое поле не перезаписывается — стёртое остаётся пустым, пока в него вводят.
+ */
+export function editFuel(
+  v: RecordFormValues,
+  field: FuelField,
+  value: number | undefined,
+): Partial<RecordFormValues> {
+  const next: Pick<RecordFormValues, FuelField> = {
+    liters: v.liters,
+    pricePerLiter: v.pricePerLiter,
+    total: v.total,
+    [field]: value,
+  }
+  const fuelOrder = [...v.fuelOrder.filter((f) => f !== field), field]
+  const inputs = fuelOrder.filter((f) => (next[f] ?? 0) > 0).slice(-2)
+  const third = FUEL_FIELDS.find((f) => !inputs.includes(f))
+  if (inputs.length === 2 && third && third !== field) {
+    const solved = solveFuelTriple({ [inputs[0]!]: next[inputs[0]!], [inputs[1]!]: next[inputs[1]!] })
+    if (solved) next[third] = solved[third]
+  }
+  return { ...next, fuelOrder }
 }
 
 /** Смена шин с выбранным комплектом: без пробега не посчитать пробег комплекта. */
@@ -203,6 +258,10 @@ export function validate(v: RecordFormValues): FormErrors {
       if (!v.total) e.total = 'Укажите сумму'
       if (VALIDITY_CATEGORIES.has(v.category) && v.validFrom && v.validUntil && v.validUntil < v.validFrom)
         e.validUntil = 'Раньше даты начала'
+      break
+    case 'fuel':
+      if (v.odometer === undefined) e.odometer = 'Укажите пробег'
+      if (!solveFuelTriple(v)) e[v.liters ? 'pricePerLiter' : 'liters'] = 'Укажите литры и цену'
       break
     case 'service':
       if (!v.title.trim()) e.title = 'Добавьте название'
@@ -239,6 +298,19 @@ export function toDraft(v: RecordFormValues): Draft<CarRecord> {
         validFrom: validity ? date(v.validFrom) : undefined,
         validUntil: validity ? date(v.validUntil) : undefined,
         docNumber: validity ? text(v.docNumber) : undefined,
+      }
+    }
+    case 'fuel': {
+      const solved = solveFuelTriple(v)
+      if (!solved) throw new Error('Заправка без литров и цены')
+      return {
+        ...base,
+        kind: 'fuel',
+        ...solved,
+        placeId: v.placeId,
+        fullTank: v.fullTank,
+        missedBefore: v.missedBefore,
+        fuelGrade: text(v.fuelGrade),
       }
     }
     case 'service': {

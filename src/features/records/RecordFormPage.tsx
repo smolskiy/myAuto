@@ -17,6 +17,7 @@ import {
 } from '../common'
 import { CommonFields, type FormContext } from './form/CommonFields'
 import { ExpenseFields } from './form/ExpenseFields'
+import { FuelFields } from './form/FuelFields'
 import { rememberDate } from './form/lastDate'
 import { NoteFields } from './form/NoteFields'
 import { ServiceFields } from './form/ServiceFields'
@@ -31,9 +32,6 @@ import {
 
 const KINDS = Object.keys(RECORD_KIND_LABELS) as RecordKind[]
 const isKind = (k: string | undefined): k is RecordKind => KINDS.includes(k as RecordKind)
-
-/** Текст уведомления, когда форма не прошла проверку: сами ошибки — у полей. */
-const INVALID = 'Заполните отмеченные поля'
 
 interface RecordFormProps {
   title: string
@@ -56,12 +54,13 @@ function RecordForm({ title, initial, ctx, recordId, isNew, onCancel }: RecordFo
     if (focusInvalid) document.querySelector<HTMLElement>('main [aria-invalid="true"]')?.focus()
   }, [focusInvalid])
 
-  const onSave = async (): Promise<string | void> => {
+  const onSave = async (): Promise<string | void | false> => {
     const errors = validate(values)
     if (Object.keys(errors).length > 0) {
       form.setErrors(errors)
       setFocusInvalid((n) => n + 1)
-      throw new Error(INVALID)
+      // Ошибки у полей, фокус на первой: форма остаётся без уведомления.
+      return false
     }
     const draft = toDraft(values)
     if (isNew) await repos.records.create({ ...draft, id: recordId })
@@ -74,6 +73,7 @@ function RecordForm({ title, initial, ctx, recordId, isNew, onCancel }: RecordFo
   return (
     <FormPage title={title} onSave={onSave} onCancel={onCancel}>
       {values.kind === 'service' && <ServiceFields {...fields} />}
+      {values.kind === 'fuel' && <FuelFields {...fields} />}
       {values.kind === 'expense' && <ExpenseFields {...fields} />}
       {values.kind === 'note' && <NoteFields {...fields} />}
       {values.kind === 'odometer' && <CommonFields {...fields} />}
