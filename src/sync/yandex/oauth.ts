@@ -36,7 +36,8 @@ function loginErrorText(e: unknown): string {
 /** Ошибка, которую Яндекс вернул на oauth.html (`#error=…&error_description=…`). */
 function yandexErrorText(error: string, description: string): string {
   if (error === 'access_denied') return 'Вход отменён'
-  if (error === 'invalid_client' || error === 'unauthorized_client') return 'Яндекс не узнал приложение — проверьте ClientID'
+  if (error === 'invalid_client' || error === 'unauthorized_client')
+    return 'Яндекс не узнал приложение — проверьте ClientID'
   return description ? `Яндекс отказал во входе: ${description}` : 'Яндекс отказал во входе'
 }
 

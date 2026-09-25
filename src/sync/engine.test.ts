@@ -197,9 +197,9 @@ describe('цикл синхронизации', () => {
     await engine.syncNow()
     expect(engine.getStatus()).toMatchObject({ state: 'error', error: 'Файл не принят Диском' })
     expect(await disk.list('app:/backups')).toEqual(['2026-09-25.json'])
-    expect(disk.peekJson<Snapshot>('app:/backups/2026-09-25.json')!.tables.places.map((p) => p.name)).toEqual([
-      'СТО',
-    ])
+    expect(disk.peekJson<Snapshot>('app:/backups/2026-09-25.json')!.tables.places.map((p) => p.name)).toEqual(
+      ['СТО'],
+    )
     expect(await getMeta(db, META_KEYS.lastBackupDate, null)).toBe('2026-09-25')
   })
 

@@ -30,12 +30,17 @@ test('useLoginError показывает ошибку входа, новый в�
 
 test('вход сразу запускает синхронизацию, выход сразу переводит статус в off', async () => {
   const API = 'https://cloud-api.yandex.net/v1/disk'
-  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.includes('/resources/upload')) return new Response(JSON.stringify({ href: 'https://uploader/x', method: 'PUT' }))
-    if (url === 'https://uploader/x') return new Response(null, { status: 201 })
-    if (url.startsWith(API) && (init?.method === 'PUT' || url.includes('/resources/copy'))) return new Response(null, { status: 201 })
-    return new Response('{}', { status: 404 })
-  }))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/resources/upload'))
+        return new Response(JSON.stringify({ href: 'https://uploader/x', method: 'PUT' }))
+      if (url === 'https://uploader/x') return new Response(null, { status: 201 })
+      if (url.startsWith(API) && (init?.method === 'PUT' || url.includes('/resources/copy')))
+        return new Response(null, { status: 201 })
+      return new Response('{}', { status: 404 })
+    }),
+  )
   try {
     await yandexAuth.connectWithToken('y0_T')
     await waitFor(() => expect(syncEngine.getStatus().state).toBe('idle'))
@@ -92,7 +97,7 @@ describe('постоянное хранилище', () => {
     if (original) Object.defineProperty(navigator, 'storage', original)
     else delete (navigator as { storage?: unknown }).storage
   })
-  const withinSecond = <T,>(p: Promise<T>) =>
+  const withinSecond = <T>(p: Promise<T>) =>
     Promise.race([p.then(() => 'готово'), new Promise((r) => setTimeout(() => r('ждёт'), 1000))])
 
   test('initSync не ждёт ответа navigator.storage.persist() (браузер может держать запрос долго)', async () => {
@@ -112,7 +117,9 @@ describe('постоянное хранилище', () => {
     const persist = vi.fn(() => Promise.reject(new Error('нет')))
     Object.defineProperty(navigator, 'storage', { configurable: true, value: { persist } })
     expect(await withinSecond(fresh.initSync())).toBe('готово')
-    await waitFor(() => expect(warn).toHaveBeenCalledWith('Постоянное хранилище не выдано', expect.any(Error)))
+    await waitFor(() =>
+      expect(warn).toHaveBeenCalledWith('Постоянное хранилище не выдано', expect.any(Error)),
+    )
     fresh.syncEngine.stop()
   })
 })
@@ -128,10 +135,25 @@ describe('адреса вложений', () => {
     URL.createObjectURL = vi.fn(() => 'blob:thumb')
     URL.revokeObjectURL = vi.fn()
     const att: Attachment = {
-      id: crypto.randomUUID(), ownerType: 'record', ownerId: 'r1', kind: 'photo', name: 'a.jpg', mime: 'image/jpeg',
-      size: 1, createdAt: 1, updatedAt: 1,
+      id: crypto.randomUUID(),
+      ownerType: 'record',
+      ownerId: 'r1',
+      kind: 'photo',
+      name: 'a.jpg',
+      mime: 'image/jpeg',
+      size: 1,
+      createdAt: 1,
+      updatedAt: 1,
     }
-    await db.blobs.put({ key: `${att.id}:thumb`, attachmentId: att.id, variant: 'thumb', blob: new Blob(['x']), pending: 1, size: 1, lastAccess: 1 })
+    await db.blobs.put({
+      key: `${att.id}:thumb`,
+      attachmentId: att.id,
+      variant: 'thumb',
+      blob: new Blob(['x']),
+      pending: 1,
+      size: 1,
+      lastAccess: 1,
+    })
     const { result, unmount } = renderHook(() => useAttachmentUrl(att, 'thumb'))
     expect(result.current).toBeUndefined()
     await waitFor(() => expect(result.current).toBe('blob:thumb'))
@@ -145,11 +167,28 @@ describe('адреса вложений', () => {
     URL.createObjectURL = vi.fn(() => `blob:${++n}`)
     URL.revokeObjectURL = vi.fn()
     const att: Attachment = {
-      id: crypto.randomUUID(), ownerType: 'record', ownerId: 'r1', kind: 'photo', name: 'a.jpg', mime: 'image/jpeg',
-      size: 1, createdAt: 1, updatedAt: 1,
+      id: crypto.randomUUID(),
+      ownerType: 'record',
+      ownerId: 'r1',
+      kind: 'photo',
+      name: 'a.jpg',
+      mime: 'image/jpeg',
+      size: 1,
+      createdAt: 1,
+      updatedAt: 1,
     }
-    await db.blobs.put({ key: `${att.id}:thumb`, attachmentId: att.id, variant: 'thumb', blob: new Blob(['x']), pending: 1, size: 1, lastAccess: 1 })
-    const { result, rerender } = renderHook(({ a }) => useAttachmentUrl(a, 'thumb'), { initialProps: { a: att } })
+    await db.blobs.put({
+      key: `${att.id}:thumb`,
+      attachmentId: att.id,
+      variant: 'thumb',
+      blob: new Blob(['x']),
+      pending: 1,
+      size: 1,
+      lastAccess: 1,
+    })
+    const { result, rerender } = renderHook(({ a }) => useAttachmentUrl(a, 'thumb'), {
+      initialProps: { a: att },
+    })
     await waitFor(() => expect(result.current).toBe('blob:1'))
 
     rerender({ a: { ...att } }) // живой запрос отдал новую копию той же строки

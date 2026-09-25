@@ -14,14 +14,26 @@ import { Offline, Unauthorized, YandexError } from './api'
 
 let db: MyAutoDB
 const store = new Map<string, string>()
-const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) }
+const storage = {
+  getItem: (k: string) => store.get(k) ?? null,
+  setItem: (k: string, v: string) => void store.set(k, v),
+  removeItem: (k: string) => void store.delete(k),
+}
 const location = { href: 'https://smolskiy.github.io/myAuto/#/settings/sync' }
-beforeEach(() => { db = new MyAutoDB(`t-${crypto.randomUUID()}`); store.clear() })
-afterEach(async () => { await db.delete() })
+beforeEach(() => {
+  db = new MyAutoDB(`t-${crypto.randomUUID()}`)
+  store.clear()
+})
+afterEach(async () => {
+  await db.delete()
+})
 
 test.each([
   ['y0_AgAAAAB  ', 'y0_AgAAAAB'],
-  ['https://oauth.yandex.ru/verification_code#access_token=y0_XYZ&token_type=bearer&expires_in=31536000', 'y0_XYZ'],
+  [
+    'https://oauth.yandex.ru/verification_code#access_token=y0_XYZ&token_type=bearer&expires_in=31536000',
+    'y0_XYZ',
+  ],
   ['y0_ab\ncd', 'y0_abcd'],
 ])('токен из текста %j', (input, token) => expect(extractToken(input)).toBe(token))
 
@@ -35,7 +47,9 @@ describe('вход', () => {
     expect(url.searchParams.get('client_id')).toBe('cid')
     expect(url.searchParams.get('redirect_uri')).toBe('https://smolskiy.github.io/myAuto/oauth.html')
     expect(url.searchParams.get('state')).toBe(store.get(OAUTH_STATE_KEY))
-    expect(new URL(auth.verificationCodeUrl()).searchParams.get('redirect_uri')).toBe('https://oauth.yandex.ru/verification_code')
+    expect(new URL(auth.verificationCodeUrl()).searchParams.get('redirect_uri')).toBe(
+      'https://oauth.yandex.ru/verification_code',
+    )
   })
 
   test('ClientID вручную, если его нет в сборке', async () => {
@@ -49,7 +63,14 @@ describe('вход', () => {
 
   test('подключение проверяет доступ и сохраняет токен', async () => {
     const onConnected = vi.fn()
-    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk(), onConnected })
+    const auth = createYandexAuth({
+      db,
+      location,
+      storage,
+      envClientId: 'cid',
+      makeDisk: () => new FakeDisk(),
+      onConnected,
+    })
     await auth.connectWithCode('  y0_TOKEN ')
     expect(auth.isConnected()).toBe(true)
     expect(await getMeta(db, META_KEYS.yandexToken, null)).toBe('y0_TOKEN')
@@ -66,7 +87,13 @@ describe('вход', () => {
   })
 
   test('токен от oauth.html принимается только с совпавшим state', async () => {
-    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk() })
+    const auth = createYandexAuth({
+      db,
+      location,
+      storage,
+      envClientId: 'cid',
+      makeDisk: () => new FakeDisk(),
+    })
     auth.loginUrl()
     const state = store.get(OAUTH_STATE_KEY)!
     store.set(OAUTH_TOKEN_KEY, JSON.stringify({ token: 'y0_OK', state: 'forged' }))
@@ -79,7 +106,13 @@ describe('вход', () => {
   })
 
   test('подписчики узнают о входе и выходе', async () => {
-    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk() })
+    const auth = createYandexAuth({
+      db,
+      location,
+      storage,
+      envClientId: 'cid',
+      makeDisk: () => new FakeDisk(),
+    })
     const seen: boolean[] = []
     const off = auth.subscribe(() => seen.push(auth.isConnected()))
     await auth.connectWithToken('y0_T')
@@ -94,7 +127,13 @@ describe('вход', () => {
     ['invalid_client', '', 'Яндекс не узнал приложение — проверьте ClientID'],
     ['server_error', 'Сбой', 'Яндекс отказал во входе: Сбой'],
   ])('ошибка %s из oauth.html видна приложению', async (error, errorDescription, text) => {
-    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk() })
+    const auth = createYandexAuth({
+      db,
+      location,
+      storage,
+      envClientId: 'cid',
+      makeDisk: () => new FakeDisk(),
+    })
     const state = new URL(auth.loginUrl()).searchParams.get('state')!
     const notified = vi.fn()
     auth.subscribe(notified)
@@ -106,7 +145,13 @@ describe('вход', () => {
   })
 
   test('чужой state — ошибка входа', async () => {
-    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk() })
+    const auth = createYandexAuth({
+      db,
+      location,
+      storage,
+      envClientId: 'cid',
+      makeDisk: () => new FakeDisk(),
+    })
     auth.loginUrl()
     store.set(OAUTH_TOKEN_KEY, JSON.stringify({ token: 'y0_OK', state: 'forged' }))
     expect(await auth.consumeRedirect()).toBe(false)
@@ -115,10 +160,17 @@ describe('вход', () => {
 
   test('отказ в доступе к Диску — текст с подсказкой в ошибке входа', async () => {
     const disk = new FakeDisk()
-    disk.failNext(new YandexError('Яндекс не дал доступ к Диску. Проверьте на oauth.yandex.ru доступ к папке приложения', 403))
+    disk.failNext(
+      new YandexError(
+        'Яндекс не дал доступ к Диску. Проверьте на oauth.yandex.ru доступ к папке приложения',
+        403,
+      ),
+    )
     const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => disk })
     await expect(auth.connectWithCode('y0_T')).rejects.toThrow('Яндекс не дал доступ к Диску')
-    expect(auth.getLoginError()).toBe('Яндекс не дал доступ к Диску. Проверьте на oauth.yandex.ru доступ к папке приложения')
+    expect(auth.getLoginError()).toBe(
+      'Яндекс не дал доступ к Диску. Проверьте на oauth.yandex.ru доступ к папке приложения',
+    )
   })
 
   test('нет сети при возврате с oauth.html — просьба войти, когда появится сеть', async () => {
@@ -154,7 +206,13 @@ describe('вход', () => {
   })
 
   test('выход стирает токен', async () => {
-    const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk() })
+    const auth = createYandexAuth({
+      db,
+      location,
+      storage,
+      envClientId: 'cid',
+      makeDisk: () => new FakeDisk(),
+    })
     await auth.connectWithToken('y0_T')
     await auth.disconnect()
     expect(auth.isConnected()).toBe(false)
@@ -184,7 +242,14 @@ describe('другие вкладки', () => {
   test('вход и выход в одной вкладке — другая перечитывает токен и сообщает подписчикам', async () => {
     const open = channelHub()
     const tab = () =>
-      createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk(), channel: open() })
+      createYandexAuth({
+        db,
+        location,
+        storage,
+        envClientId: 'cid',
+        makeDisk: () => new FakeDisk(),
+        channel: open(),
+      })
     const a = tab()
     const b = tab()
     await a.init()
@@ -208,7 +273,14 @@ describe('другие вкладки', () => {
     try {
       const channel = openAuthChannel()
       expect(channel).toBeNull()
-      const auth = createYandexAuth({ db, location, storage, envClientId: 'cid', makeDisk: () => new FakeDisk(), channel })
+      const auth = createYandexAuth({
+        db,
+        location,
+        storage,
+        envClientId: 'cid',
+        makeDisk: () => new FakeDisk(),
+        channel,
+      })
       await auth.connectWithToken('y0_T')
       expect(auth.isConnected()).toBe(true)
     } finally {
