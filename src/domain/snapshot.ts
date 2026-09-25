@@ -77,7 +77,9 @@ export function parseSnapshot(json: unknown): Snapshot {
   if (version > SCHEMA_VERSION) {
     throw new SnapshotError('Файл создан более новой версией приложения — обновите приложение')
   }
-  const rawTables = isObject(json.tables) ? json.tables : {}
+  // Без таблиц это не копия (иначе «Заменить всё» таким файлом стёрло бы всё); `{}` и недостающие — старый бэкап.
+  if (!isObject(json.tables)) throw new SnapshotError('Это не файл «Мой авто»')
+  const rawTables = json.tables
   const tables = emptyTables()
   for (const name of TABLE_NAMES) {
     const rows = rawTables[name]

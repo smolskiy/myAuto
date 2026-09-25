@@ -38,8 +38,8 @@ test('копия: «Выгрузить копию» → чистый профи�
   await expect(page).toHaveURL(/#\/onboarding$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Добро пожаловать' })).toBeVisible()
 
-  // Экран данных открыт и без машин (настройки не уводят на онбординг). С самого онбординга кнопки туда нет —
-  // DEF-01, отдельный тест ниже; здесь заходим по адресу.
+  // Экран данных открыт и без машин (настройки не уводят на онбординг). Вход с онбординга проверяет тест DEF-01
+  // ниже; здесь заходим по адресу.
   await page.goto('./#/settings/data')
   await expect(page.getByRole('heading', { level: 1, name: 'Данные и выгрузки' })).toBeVisible()
 
@@ -75,17 +75,61 @@ test('копия: «Выгрузить копию» → чистый профи�
   await expect(page.getByRole('button', { name: /^Автосервис/ })).toBeVisible()
 })
 
-// DEF-01 (docs/qa/2026-09-25-e2e.md): на новом устройстве онбординг требует завести машину — ни загрузить копию,
-// ни подключить Диск до этого нельзя; после восстановления у владельца оказывается лишняя машина.
-test.fixme('DEF-01: с онбординга можно перейти к загрузке копии, не добавляя машину', async ({ page }) => {
+// DEF-01 (docs/qa/2026-09-25-e2e.md): на новом устройстве копию загружают прямо с онбординга, не заводя машину, —
+// после восстановления у владельца нет лишней машины-заглушки.
+test('DEF-01: новое устройство — с онбординга «Загрузить копию» → «Объединить» → «Перейти на главную»: машина из копии, лишней нет', async ({
+  page,
+}) => {
+  const now = Date.now()
+  const vehicle = {
+    id: 'v-restored',
+    createdAt: now,
+    updatedAt: now,
+    name: 'Lada 2109',
+    make: 'Lada',
+    model: '2109',
+    purchase: { odometer: 148_000 },
+    archived: false,
+    fluids: [],
+    order: 0,
+  }
+  const snapshot = {
+    format: 'myauto-garage',
+    schemaVersion: 1,
+    exportedAt: now,
+    tables: { vehicles: [vehicle] },
+  }
+
   await page.goto('./')
   await expect(page).toHaveURL(/#\/onboarding$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Добро пожаловать' })).toBeVisible()
   const main = page.getByRole('main')
-  // Подпись кнопки не задана планом — любая про копию: «Загрузить копию», «Восстановить из копии»…
-  const restore = main.getByRole('button', { name: /копи/i }).or(main.getByRole('link', { name: /копи/i }))
-  await expect(restore.first(), 'на онбординге есть вход в загрузку копии').toBeVisible()
-  await restore.first().click()
+  await expect(main.getByRole('button', { name: 'Уже есть данные на Яндекс.Диске' })).toBeVisible()
+  await main.getByRole('button', { name: 'Загрузить копию' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Данные и выгрузки' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Загрузить копию' })).toBeVisible()
+
+  const choosing = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Загрузить копию' }).click()
+  await (
+    await choosing
+  ).setFiles({
+    name: 'moy-avto-2026-09-25.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(snapshot)),
+  })
+  await expect(page.getByText(/^Файл от \d{2}\.\d{2}\.\d{4}: машин 1, записей 0$/)).toBeVisible()
+  await page.getByRole('button', { name: 'Объединить' }).click()
+  await expect(page.getByText('Данные из копии объединены с этими')).toBeVisible()
+  await page.getByRole('button', { name: 'Перейти на главную' }).click()
+
+  // Главная с машиной из копии — она активная.
+  await expectHome(page)
+  await expect(page.getByRole('button', { name: 'Lada 2109, сменить машину' })).toBeVisible()
+  await expect(page.getByText(nb('148 000 км'), { exact: true })).toBeVisible()
+
+  // Лишней машины-заглушки нет: в гараже одна.
+  await tabBar(page).getByRole('link', { name: 'Ещё' }).click()
+  await page.getByRole('button', { name: 'Гараж' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Гараж' })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Мои машины' }).getByRole('listitem')).toHaveCount(1)
 })

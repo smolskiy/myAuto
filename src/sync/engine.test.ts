@@ -7,6 +7,7 @@ import {
   NoSpace,
   Offline,
   Unauthorized,
+  YandexError,
   createDiskClient,
   type DiskClient,
   type ResourceStat,
@@ -178,6 +179,27 @@ describe('цикл синхронизации', () => {
     expect(list).toContain('2026-09-25.json')
     expect(list).toHaveLength(30)
     expect(list).not.toContain('2026-08-01.json')
+    expect(await getMeta(db, META_KEYS.lastBackupDate, null)).toBe('2026-09-25')
+  })
+
+  test('постоянный сбой загрузки вложения не мешает ежедневной копии garage.json', async () => {
+    const db = newDb()
+    await createRepos(db).places.create({ kind: 'service', name: 'СТО' })
+    const broken = new YandexError('Файл не принят Диском', 400)
+    const attachments = {
+      uploadPending: vi.fn(async () => {
+        throw broken
+      }),
+      cleanupDeleted: vi.fn(async () => {}),
+      pendingCount: vi.fn(async () => 1),
+    }
+    const engine = engineFor(db, disk, { attachments })
+    await engine.syncNow()
+    expect(engine.getStatus()).toMatchObject({ state: 'error', error: 'Файл не принят Диском' })
+    expect(await disk.list('app:/backups')).toEqual(['2026-09-25.json'])
+    expect(disk.peekJson<Snapshot>('app:/backups/2026-09-25.json')!.tables.places.map((p) => p.name)).toEqual(
+      ['СТО'],
+    )
     expect(await getMeta(db, META_KEYS.lastBackupDate, null)).toBe('2026-09-25')
   })
 

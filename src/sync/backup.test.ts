@@ -260,6 +260,35 @@ test('Excel: категории расходов подписаны как в п
   ).toEqual(expected)
 })
 
+test('Excel: коробка, привод и топливо машины подписаны как на экранах (domain/labels)', async () => {
+  const repos = createRepos(db)
+  await repos.vehicles.create({
+    name: 'Тигуан',
+    make: 'Volkswagen',
+    model: 'Tiguan',
+    engine: { fuel: 'diesel' },
+    transmission: 'dct',
+    drive: 'awd',
+    archived: false,
+    fluids: [],
+    order: 0,
+  })
+  await repos.vehicles.create({
+    name: 'Девятка',
+    make: 'Lada',
+    model: '2109',
+    transmission: 'mt',
+    archived: false,
+    fluids: [],
+    order: 1,
+  })
+  const wb = XLSX.read(await (await createBackupService({ db }).exportExcel()).arrayBuffer())
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets['Машины']!)
+  expect(rows[0]).toMatchObject({ Топливо: 'Дизель', Коробка: 'Робот с двумя сцеплениями', Привод: 'Полный' })
+  expect(rows[1]).toMatchObject({ Коробка: 'Механика' })
+  expect(rows[1]).not.toHaveProperty('Топливо')
+})
+
 test('имя файла бэкапа', () => {
   expect(backupFileName('json', '2026-09-25')).toBe('moy-avto-2026-09-25.json')
 })

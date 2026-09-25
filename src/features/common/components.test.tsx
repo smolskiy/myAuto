@@ -1,3 +1,4 @@
+import { IconArrowRight } from '@tabler/icons-react'
 import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState, type ReactNode } from 'react'
@@ -113,6 +114,17 @@ describe('выбор места и мастера', () => {
     expect(options.map((o) => o.textContent)).toEqual(['Лукойл', 'Создать «лук»'])
     await userEvent.click(screen.getByRole('option', { name: 'Лукойл' }))
     expect(onChange).toHaveBeenLastCalledWith(station.id)
+  })
+
+  test('PlacePicker allowCreate={false} — только выбор, «Создать «…»» нет', async () => {
+    await repos.places.create({ kind: 'fuel', name: 'Лукойл' })
+    inApp(<PlacePicker label="Место" kinds={['fuel']} allowCreate={false} onChange={() => {}} />)
+    await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'лук')
+    const options = await screen.findAllByRole('option')
+    expect(options.map((o) => o.textContent)).toEqual(['Лукойл'])
+    await userEvent.clear(screen.getByRole('combobox', { name: 'Место' }))
+    await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'Роснефть')
+    expect(screen.queryByRole('option', { name: 'Создать «Роснефть»' })).not.toBeInTheDocument()
   })
 
   test('PlacePicker показывает имя выбранного места, даже удалённого', async () => {
@@ -428,6 +440,53 @@ describe('каркасы страниц', () => {
       new File(['x'], 'p.jpg', { type: 'image/jpeg' }),
     )
     expect(await screen.findByText('Не получилось добавить файл — попробуйте ещё раз')).toBeInTheDocument()
+  })
+
+  test('FormPage: backHidden — без «Назад» (первый экран первого запуска)', () => {
+    withHistory(
+      <FormPage title="Добро пожаловать" onSave={async () => {}} backHidden>
+        <p>Поля</p>
+      </FormPage>,
+    )
+    expect(screen.getByRole('heading', { level: 1, name: 'Добро пожаловать' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Назад' })).not.toBeInTheDocument()
+  })
+
+  test('FormPage: значок «Сохранить» — дискета по умолчанию, свой или никакого', () => {
+    const { unmount } = inApp(
+      <FormPage title="Новая заправка" onSave={async () => {}}>
+        <p>Поля</p>
+      </FormPage>,
+    )
+    const save = () => screen.getByRole('button', { name: 'Дальше' })
+    expect(
+      screen.getByRole('button', { name: 'Сохранить' }).querySelector('.tabler-icon-device-floppy'),
+    ).not.toBeNull()
+    unmount()
+
+    const second = inApp(
+      <FormPage title="Машина" saveLabel="Дальше" saveIcon={<IconArrowRight />} onSave={async () => {}}>
+        <p>Поля</p>
+      </FormPage>,
+    )
+    expect(save().querySelector('.tabler-icon-arrow-right')).not.toBeNull()
+    expect(save().querySelector('.tabler-icon-device-floppy')).toBeNull()
+    second.unmount()
+
+    inApp(
+      <FormPage title="Машина" saveLabel="Дальше" saveIcon={null} onSave={async () => {}}>
+        <p>Поля</p>
+      </FormPage>,
+    )
+    expect(save().querySelector('svg')).toBeNull()
+  })
+
+  test('Page: back — функция: «Назад» вызывает её, без перехода по истории', async () => {
+    const onBack = vi.fn()
+    const router = withHistory(<Page title="Что напоминать" back={onBack} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+    expect(onBack).toHaveBeenCalledOnce()
+    expect(router.state.location.pathname).toBe('/form')
   })
 
   test('FormPage: «Назад» вызывает onCancel и закрывает форму', async () => {

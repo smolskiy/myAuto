@@ -36,19 +36,26 @@
   color: var(--color-accent);
 }
 
+/* Колонка имени берёт всё место справа от фото: иначе она сжималась бы по содержимому. */
 .identity {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: calc(var(--space-1) / 2);
   min-width: 0;
 }
 
+/*
+ * Кнопка имени — по ширине содержимого; отрицательные поля выводят её подложку за край колонки, поэтому
+ * предел ширины — колонка плюс эти поля: имя обрезается, только когда действительно не помещается.
+ */
 .nameButton {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: var(--space-1);
   min-width: 0;
-  max-width: 100%;
+  max-width: calc(100% + var(--space-2) * 2);
   min-height: var(--tap);
   margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1);
   padding: 0 var(--space-2);

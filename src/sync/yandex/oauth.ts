@@ -36,7 +36,8 @@ function loginErrorText(e: unknown): string {
 /** Ошибка, которую Яндекс вернул на oauth.html (`#error=…&error_description=…`). */
 function yandexErrorText(error: string, description: string): string {
   if (error === 'access_denied') return 'Вход отменён'
-  if (error === 'invalid_client' || error === 'unauthorized_client') return 'Яндекс не узнал приложение — проверьте ClientID'
+  if (error === 'invalid_client' || error === 'unauthorized_client')
+    return 'Яндекс не узнал приложение — проверьте ClientID'
   return description ? `Яндекс отказал во входе: ${description}` : 'Яндекс отказал во входе'
 }
 
@@ -54,6 +55,38 @@ export function extractToken(text: string): string {
   return (m ? m[1]! : t).replace(/\s+/g, '')
 }
 
+/** Канал между вкладками: «вход сменился» — остальные перечитывают токен из meta. */
+export interface AuthChannel {
+  post(): void
+  listen(cb: () => void): void
+}
+
+export const AUTH_CHANNEL_NAME = 'myauto-auth'
+const AUTH_CHANGED = 'auth-changed'
+
+/** BroadcastChannel «myauto-auth»; браузер без него (или отказ создать) — null: вкладки узнают о входе при запуске. */
+export function openAuthChannel(): AuthChannel | null {
+  if (typeof BroadcastChannel !== 'function') return null
+  try {
+    const channel = new BroadcastChannel(AUTH_CHANNEL_NAME)
+    return {
+      post() {
+        try {
+          channel.postMessage(AUTH_CHANGED)
+        } catch (e) {
+          console.warn('Другие вкладки не узнали о смене входа', e)
+        }
+      },
+      listen(cb) {
+        channel.onmessage = () => cb()
+      },
+    }
+  } catch (e) {
+    console.warn('Канал между вкладками недоступен', e)
+    return null
+  }
+}
+
 export interface YandexAuthDeps {
   db: MyAutoDB
   location: Pick<Location, 'href'>
@@ -61,6 +94,8 @@ export interface YandexAuthDeps {
   makeDisk?: (token: string) => DiskClient
   envClientId?: string
   onConnected?: () => void
+  /** Вход и выход в другой вкладке: токен перечитывается из meta, подписчики узнают. Нет — без этого. */
+  channel?: AuthChannel | null
 }
 
 export type YandexAuthService = YandexAuth & {
@@ -173,6 +208,7 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
         setLoginError(text)
         throw new Error(text, { cause: e })
       }
+      deps.channel?.post()
       deps.onConnected?.()
     },
 
@@ -181,6 +217,7 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
     async disconnect() {
       await deleteMeta(db, META_KEYS.yandexToken)
       setToken(null)
+      deps.channel?.post()
     },
 
     async consumeRedirect() {
@@ -221,5 +258,10 @@ export function createYandexAuth(deps: YandexAuthDeps): YandexAuthService {
       }
     },
   }
+
+  // Другая вкладка вошла или вышла — токен в общей meta уже другой: перечитываем и сообщаем подписчикам.
+  deps.channel?.listen(() => {
+    auth.init().catch((e: unknown) => console.warn('Не удалось перечитать вход после другой вкладки', e))
+  })
   return auth
 }

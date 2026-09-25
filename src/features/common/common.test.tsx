@@ -7,9 +7,16 @@ import { repos } from '../../db/repos'
 import { expense, fuel, note, odo, service } from '../../domain/calc/fixtures'
 import { CATALOG_ID } from '../../domain/catalog'
 import { NBSP } from '../../domain/format'
-import { EXPENSE_CATEGORY_LABELS as DOMAIN_EXPENSE_LABELS } from '../../domain/labels'
+import * as domainLabels from '../../domain/labels'
 import { ToastProvider } from '../../ui'
-import { EXPENSE_CATEGORY_LABELS, RECORD_KIND_LABELS, SERVICE_TYPE_LABELS } from './labels'
+import {
+  DRIVE_LABELS,
+  EXPENSE_CATEGORY_LABELS,
+  FUEL_TYPE_LABELS,
+  RECORD_KIND_LABELS,
+  SERVICE_TYPE_LABELS,
+  TRANSMISSION_LABELS,
+} from './labels'
 import { RECORD_KIND_ICON, recordRowProps, recordSubtitle, recordTitle } from './recordPresentation'
 import { useLookup } from './useLookup'
 import { UserError } from './errors'
@@ -86,7 +93,11 @@ describe('подписи и представление записей', () => {
     ])
     expect(Object.keys(RECORD_KIND_ICON)).toEqual(Object.keys(RECORD_KIND_LABELS))
     expect(SERVICE_TYPE_LABELS.maintenance).toBe('ТО')
-    expect(EXPENSE_CATEGORY_LABELS).toBe(DOMAIN_EXPENSE_LABELS)
+    expect(EXPENSE_CATEGORY_LABELS).toBe(domainLabels.EXPENSE_CATEGORY_LABELS)
+    // Подписи машины — один источник с выгрузкой в Excel.
+    expect(TRANSMISSION_LABELS).toBe(domainLabels.TRANSMISSION_LABELS)
+    expect(DRIVE_LABELS).toBe(domainLabels.DRIVE_LABELS)
+    expect(FUEL_TYPE_LABELS).toBe(domainLabels.FUEL_TYPE_LABELS)
   })
 })
 

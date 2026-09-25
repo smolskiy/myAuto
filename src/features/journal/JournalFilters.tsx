@@ -121,6 +121,8 @@ export function JournalFilters({ open, filter, today, onApply, onClose }: Journa
         <PlacePicker
           label="Место"
           kinds={ALL_PLACE_KINDS}
+          // Фильтр только выбирает: набранное название не должно заводить место в справочнике.
+          allowCreate={false}
           value={draft.placeId}
           onChange={(placeId) => patch({ placeId })}
         />

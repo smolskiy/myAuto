@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { db } from '../../db/instance'
+import { repos } from '../../db/repos'
 import { todayISO } from '../../domain/dates'
 import { SnapshotError } from '../../domain/snapshot'
 import { ToastProvider } from '../../ui'
@@ -150,6 +151,47 @@ describe('загрузка копии', () => {
     await chooseFile(new File(['hello'], 'notes.json'))
     expect(await screen.findByText('Это не файл «Мой авто»')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Объединить' })).not.toBeInTheDocument()
+  })
+})
+
+describe('восстановление на новом устройстве', () => {
+  const addVehicle = () =>
+    repos.vehicles.create({
+      name: 'Lada 2109',
+      make: 'Lada',
+      model: '2109',
+      archived: false,
+      fluids: [],
+      order: 0,
+    })
+
+  test('копия принесла машину — «Перейти на главную» ведёт на главную', async () => {
+    fake.backupService.importJson.mockImplementationOnce(async () => {
+      await addVehicle()
+    })
+    const router = renderPage()
+    await chooseFile()
+    await userEvent.click(await screen.findByRole('button', { name: 'Объединить' }))
+    const home = await screen.findByRole('button', { name: 'Перейти на главную' })
+    await userEvent.click(home)
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+
+  test('машины уже были, копию не загружали — кнопки нет', async () => {
+    await addVehicle()
+    renderPage()
+    await screen.findByRole('button', { name: 'Загрузить копию' })
+    // Живой запрос машин успевает ответить.
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByRole('button', { name: 'Перейти на главную' })).not.toBeInTheDocument()
+  })
+
+  test('копия без машин — кнопки нет', async () => {
+    renderPage()
+    await chooseFile()
+    await userEvent.click(await screen.findByRole('button', { name: 'Объединить' }))
+    await screen.findByText('Данные из копии объединены с этими')
+    expect(screen.queryByRole('button', { name: 'Перейти на главную' })).not.toBeInTheDocument()
   })
 })
 

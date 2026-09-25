@@ -40,6 +40,10 @@ export interface VehicleFormProps {
   title?: string
   /** Вступление над полями (онбординг: шаг и пояснение). */
   intro?: ReactNode
+  /** Значок кнопки сохранения (FormPage): по умолчанию дискета, `null` — без значка. */
+  saveIcon?: ReactNode | null
+  /** Без «Назад» в шапке (первый шаг онбординга). */
+  backHidden?: boolean
 }
 
 const NONE = 'none'
@@ -69,7 +73,15 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
  * Новая машина встаёт последней в гараже и становится активной. Страницы `/vehicle/new`, `/vehicle/:id/edit`
  * и первый шаг онбординга.
  */
-export function VehicleForm({ initial, onSaved, submitLabel, title, intro }: VehicleFormProps) {
+export function VehicleForm({
+  initial,
+  onSaved,
+  submitLabel,
+  title,
+  intro,
+  saveIcon,
+  backHidden,
+}: VehicleFormProps) {
   const today = useToday()
   const { setActive } = useActiveVehicle()
   const drafts = useDraftAttachments('vehicle')
@@ -123,6 +135,8 @@ export function VehicleForm({ initial, onSaved, submitLabel, title, intro }: Veh
     <FormPage
       title={title ?? (initial ? 'Правка машины' : 'Новая машина')}
       saveLabel={submitLabel}
+      saveIcon={saveIcon}
+      backHidden={backHidden}
       onSave={onSave}
       onCancel={initial ? undefined : () => void drafts.discard()}
     >

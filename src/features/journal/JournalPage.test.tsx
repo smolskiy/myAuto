@@ -195,6 +195,18 @@ test('фильтр по месту из шторки «Фильтры» и чи�
   expect(screen.getByRole('button', { name: /^Фильтры/ })).toHaveTextContent('1')
 })
 
+test('фильтр «Место» ищет среди мест, но не создаёт новое', async () => {
+  await seed()
+  await repos.places.create({ kind: 'fuel', name: 'Лукойл' })
+  renderAt('/journal')
+  await screen.findByText('ТО-6')
+  await userEvent.click(screen.getByRole('button', { name: 'Фильтры' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Фильтры' })
+  await userEvent.type(within(sheet).getByRole('combobox', { name: 'Место' }), 'Роснефть')
+  expect(within(sheet).queryByRole('option', { name: 'Создать «Роснефть»' })).not.toBeInTheDocument()
+  expect((await db.places.toArray()).map((p) => p.name)).toEqual(['Лукойл'])
+})
+
 test('период «Свой» ограничивает даты', async () => {
   await seed()
   renderAt('/journal')

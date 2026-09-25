@@ -30,12 +30,17 @@ test('useLoginError показывает ошибку входа, новый в�
 
 test('вход сразу запускает синхронизацию, выход сразу переводит статус в off', async () => {
   const API = 'https://cloud-api.yandex.net/v1/disk'
-  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.includes('/resources/upload')) return new Response(JSON.stringify({ href: 'https://uploader/x', method: 'PUT' }))
-    if (url === 'https://uploader/x') return new Response(null, { status: 201 })
-    if (url.startsWith(API) && (init?.method === 'PUT' || url.includes('/resources/copy'))) return new Response(null, { status: 201 })
-    return new Response('{}', { status: 404 })
-  }))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/resources/upload'))
+        return new Response(JSON.stringify({ href: 'https://uploader/x', method: 'PUT' }))
+      if (url === 'https://uploader/x') return new Response(null, { status: 201 })
+      if (url.startsWith(API) && (init?.method === 'PUT' || url.includes('/resources/copy')))
+        return new Response(null, { status: 201 })
+      return new Response('{}', { status: 404 })
+    }),
+  )
   try {
     await yandexAuth.connectWithToken('y0_T')
     await waitFor(() => expect(syncEngine.getStatus().state).toBe('idle'))
@@ -56,6 +61,69 @@ test('неудачный initSync не запоминается — следую
   fresh.syncEngine.stop()
 })
 
+test('вход в другой вкладке (канал «myauto-auth») — эта перечитывает токен', async () => {
+  const channels: { name: string; onmessage: ((e: { data: unknown }) => void) | null }[] = []
+  vi.stubGlobal(
+    'BroadcastChannel',
+    class {
+      onmessage: ((e: { data: unknown }) => void) | null = null
+      constructor(readonly name: string) {
+        channels.push(this)
+      }
+      postMessage() {}
+    },
+  )
+  try {
+    vi.resetModules()
+    const fresh = await import('./index')
+    const { db: freshDb } = await import('../db/instance')
+    const { META_KEYS, setMeta } = await import('../db/meta')
+    expect(channels.map((c) => c.name)).toEqual(['myauto-auth'])
+    expect(fresh.yandexAuth.isConnected()).toBe(false)
+    // Другая вкладка вошла: токен уже в общей базе, сюда пришло сообщение.
+    await setMeta(freshDb, META_KEYS.yandexToken, 'y0_OTHER_TAB')
+    channels[0]!.onmessage?.({ data: 'auth-changed' })
+    await waitFor(() => expect(fresh.yandexAuth.isConnected()).toBe(true))
+    await fresh.yandexAuth.disconnect()
+    fresh.syncEngine.stop()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+describe('постоянное хранилище', () => {
+  const original = Object.getOwnPropertyDescriptor(navigator, 'storage')
+  afterEach(() => {
+    if (original) Object.defineProperty(navigator, 'storage', original)
+    else delete (navigator as { storage?: unknown }).storage
+  })
+  const withinSecond = <T>(p: Promise<T>) =>
+    Promise.race([p.then(() => 'готово'), new Promise((r) => setTimeout(() => r('ждёт'), 1000))])
+
+  test('initSync не ждёт ответа navigator.storage.persist() (браузер может держать запрос долго)', async () => {
+    vi.resetModules()
+    const fresh = await import('./index')
+    const persist = vi.fn(() => new Promise<boolean>(() => {}))
+    Object.defineProperty(navigator, 'storage', { configurable: true, value: { persist } })
+    expect(await withinSecond(fresh.initSync())).toBe('готово')
+    expect(persist).toHaveBeenCalledOnce()
+    fresh.syncEngine.stop()
+  })
+
+  test('отказ persist() — только предупреждение, запуск идёт дальше', async () => {
+    vi.resetModules()
+    const fresh = await import('./index')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const persist = vi.fn(() => Promise.reject(new Error('нет')))
+    Object.defineProperty(navigator, 'storage', { configurable: true, value: { persist } })
+    expect(await withinSecond(fresh.initSync())).toBe('готово')
+    await waitFor(() =>
+      expect(warn).toHaveBeenCalledWith('Постоянное хранилище не выдано', expect.any(Error)),
+    )
+    fresh.syncEngine.stop()
+  })
+})
+
 describe('адреса вложений', () => {
   const original = { create: URL.createObjectURL, revoke: URL.revokeObjectURL }
   afterEach(() => {
@@ -67,10 +135,25 @@ describe('адреса вложений', () => {
     URL.createObjectURL = vi.fn(() => 'blob:thumb')
     URL.revokeObjectURL = vi.fn()
     const att: Attachment = {
-      id: crypto.randomUUID(), ownerType: 'record', ownerId: 'r1', kind: 'photo', name: 'a.jpg', mime: 'image/jpeg',
-      size: 1, createdAt: 1, updatedAt: 1,
+      id: crypto.randomUUID(),
+      ownerType: 'record',
+      ownerId: 'r1',
+      kind: 'photo',
+      name: 'a.jpg',
+      mime: 'image/jpeg',
+      size: 1,
+      createdAt: 1,
+      updatedAt: 1,
     }
-    await db.blobs.put({ key: `${att.id}:thumb`, attachmentId: att.id, variant: 'thumb', blob: new Blob(['x']), pending: 1, size: 1, lastAccess: 1 })
+    await db.blobs.put({
+      key: `${att.id}:thumb`,
+      attachmentId: att.id,
+      variant: 'thumb',
+      blob: new Blob(['x']),
+      pending: 1,
+      size: 1,
+      lastAccess: 1,
+    })
     const { result, unmount } = renderHook(() => useAttachmentUrl(att, 'thumb'))
     expect(result.current).toBeUndefined()
     await waitFor(() => expect(result.current).toBe('blob:thumb'))
@@ -84,11 +167,28 @@ describe('адреса вложений', () => {
     URL.createObjectURL = vi.fn(() => `blob:${++n}`)
     URL.revokeObjectURL = vi.fn()
     const att: Attachment = {
-      id: crypto.randomUUID(), ownerType: 'record', ownerId: 'r1', kind: 'photo', name: 'a.jpg', mime: 'image/jpeg',
-      size: 1, createdAt: 1, updatedAt: 1,
+      id: crypto.randomUUID(),
+      ownerType: 'record',
+      ownerId: 'r1',
+      kind: 'photo',
+      name: 'a.jpg',
+      mime: 'image/jpeg',
+      size: 1,
+      createdAt: 1,
+      updatedAt: 1,
     }
-    await db.blobs.put({ key: `${att.id}:thumb`, attachmentId: att.id, variant: 'thumb', blob: new Blob(['x']), pending: 1, size: 1, lastAccess: 1 })
-    const { result, rerender } = renderHook(({ a }) => useAttachmentUrl(a, 'thumb'), { initialProps: { a: att } })
+    await db.blobs.put({
+      key: `${att.id}:thumb`,
+      attachmentId: att.id,
+      variant: 'thumb',
+      blob: new Blob(['x']),
+      pending: 1,
+      size: 1,
+      lastAccess: 1,
+    })
+    const { result, rerender } = renderHook(({ a }) => useAttachmentUrl(a, 'thumb'), {
+      initialProps: { a: att },
+    })
     await waitFor(() => expect(result.current).toBe('blob:1'))
 
     rerender({ a: { ...att } }) // живой запрос отдал новую копию той же строки
