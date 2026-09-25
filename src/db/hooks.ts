@@ -92,17 +92,18 @@ export function useVehicle(id?: ID): Vehicle | null | undefined {
   return useLiveQuery(() => getLive(db.vehicles, id), [id])
 }
 
-/** Активная машина: выбранная в настройках устройства, иначе первая неархивная по порядку, иначе null. */
+/**
+ * Активная машина: выбранная в настройках устройства, иначе первая неархивная по порядку, иначе null.
+ * Архивная (или удалённая) машина активной не бывает: выбор, указывающий на неё, уступает первой неархивной.
+ */
 export function useActiveVehicle(): {
   vehicle: Vehicle | null | undefined
   setActive(id: ID): Promise<void>
 } {
   const vehicle = useLiveQuery(async () => {
     const activeId = await getMeta<ID | null>(db, META_KEYS.activeVehicleId, null)
-    const rows = live(await db.vehicles.orderBy('order').toArray())
-    return (
-      (activeId ? rows.find((v) => v.id === activeId) : undefined) ?? rows.find((v) => !v.archived) ?? null
-    )
+    const rows = live(await db.vehicles.orderBy('order').toArray()).filter((v) => !v.archived)
+    return (activeId ? rows.find((v) => v.id === activeId) : undefined) ?? rows[0] ?? null
   }, [])
   const setActive = useCallback((id: ID) => setMeta(db, META_KEYS.activeVehicleId, id), [])
   return { vehicle, setActive }
