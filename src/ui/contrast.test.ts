@@ -56,6 +56,10 @@ const PAIRS: [string, string, number][] = [
   ['--color-accent-fill', '--color-bg', UI],
   ['--color-accent', '--color-bg', UI],
   ['--color-border-strong', '--color-surface', UI],
+  ['--color-border-strong', '--color-surface-2', UI],
+  ['--color-border-strong', '--color-bg', UI],
+  // Нажатая строка/кнопка-призрак: акцентный текст на --color-surface-pressed.
+  ['--color-accent', '--color-surface-pressed', TEXT],
   ['--color-ok', '--color-surface', TEXT],
   ['--color-ok', '--color-ok-soft', TEXT],
   ['--color-soon', '--color-surface', TEXT],

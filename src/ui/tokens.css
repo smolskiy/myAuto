@@ -15,7 +15,8 @@
  *   text на bg 16.04 / 17.42 · text-2 на bg 4.84 / 7.92 · text-2 на surface-2 5.05 / 6.34
  *   accent на surface 5.17 / 5.34 · accent на accent-soft 4.61 / 4.77 · on-accent на accent-fill 5.17 / 5.17
  *   ok на ok-soft 4.56 / 6.54 · soon на soon-soft 4.64 / 7.80 · overdue на overdue-soft 4.87 / 5.03
- *   рамка поля border-strong на surface 3.30 / 3.73
+ *   рамка поля border-strong на bg / surface / surface-2 3.13 / 3.48 / 3.27 и 4.19 / 3.73 / 3.35
+ *   (светлая #878E99 → #838A95: на bg было 2.97); accent на surface-pressed 4.53 / 4.56 (светлая #ECEEF1 → #EEF0F3: было 4.45)
  */
 
 :root,
@@ -25,11 +26,11 @@
   --color-bg: #f2f3f5;
   --color-surface: #ffffff;
   --color-surface-2: #f7f8fa;
-  --color-surface-pressed: #eceef1;
+  --color-surface-pressed: #eef0f3;
   --color-text: #15181c;
   --color-text-2: #646b77;
   --color-border: #e5e7eb;
-  --color-border-strong: #878e99;
+  --color-border-strong: #838a95;
   --color-track: #e5e7eb;
 
   --color-accent: #2563eb;
