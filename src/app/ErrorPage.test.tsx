@@ -21,6 +21,11 @@ vi.mock('../features/stats/StatsPage', () => ({
     throw new TypeError('Failed to fetch dynamically imported module: https://x/assets/StatsPage-1a2b.js')
   },
 }))
+vi.mock('../features/garage/GaragePage', () => ({
+  default: () => {
+    throw new TypeError('Failed to fetch dynamically imported module: https://x/assets/GaragePage-9f8e.js')
+  },
+}))
 
 const LAZY = { timeout: 5000 }
 
@@ -85,4 +90,14 @@ test('после автоматической перезагрузки ошиб�
     await screen.findByRole('heading', { level: 1, name: 'Что-то пошло не так' }, LAZY),
   ).toBeInTheDocument()
   expect(reloadPage).not.toHaveBeenCalled()
+})
+
+test('другая ошибка чанка (следующий выпуск) сразу после перезагрузки — снова перезагрузка', async () => {
+  renderAt('/stats')
+  await waitFor(() => expect(reloadPage).toHaveBeenCalledOnce(), LAZY)
+  cleanup()
+  vi.mocked(reloadPage).mockClear()
+  // Через секунды после перезагрузки не нашёлся уже другой файл — это не та же поломка, цикла нет.
+  renderAt('/garage')
+  await waitFor(() => expect(reloadPage).toHaveBeenCalledOnce(), LAZY)
 })

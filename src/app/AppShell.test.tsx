@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider } from 'react-router'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../db/instance'
 import { repos } from '../db/repos'
 import { AppProviders } from './providers'
@@ -20,6 +20,9 @@ const renderAt = (path: string) => {
 }
 const addVehicle = (archived = false) =>
   repos.vehicles.create({ name: 'Октавия', make: 'Skoda', model: 'Octavia', archived, fluids: [], order: 0 })
+
+// Холодный импорт тяжёлой витрины под нагрузкой полного прогона бывает дольше 5 с — прогреваем заранее.
+beforeAll(() => import('../ui/showcase/ShowcasePage'), 60_000)
 
 beforeEach(async () => {
   await db.open()
@@ -75,17 +78,19 @@ test.each([
   '/vehicle/new',
   '/vehicle/v1/edit',
   '/reminders/new',
+  '/reminders/r1',
   '/documents/new',
   '/tires/new',
   '/places/new',
   '/masters/new',
   '/onboarding',
-])('форма %s — без панели, уведомления у нижнего края', async (path) => {
+])('форма %s — без панели, уведомления не над панелью', async (path) => {
   await addVehicle()
   renderAt(path)
   await screen.findByRole('main')
   expect(screen.queryByRole('navigation', { name: 'Основная навигация' })).not.toBeInTheDocument()
-  expect(document.documentElement.style.getPropertyValue('--toast-offset')).toBe('0px')
+  // 0px у заглушки; когда экран станет FormPage — высота её кнопки «Сохранить» (см. formMode.test.tsx).
+  expect(document.documentElement.style.getPropertyValue('--toast-offset')).not.toBe('')
 })
 
 test.each(['/', '/journal', '/reminders', '/more', '/stats', '/garage', '/places', '/settings'])(
@@ -97,6 +102,40 @@ test.each(['/', '/journal', '/reminders', '/more', '/stats', '/garage', '/places
     expect(document.documentElement.style.getPropertyValue('--toast-offset')).toBe('')
   },
 )
+
+test('пока машины не загружены — ни панели, ни экрана (нет мелькания перед онбордингом)', async () => {
+  await addVehicle()
+  renderAt('/journal')
+  // Первая отрисовка: живой запрос машин ещё не ответил.
+  expect(screen.queryByRole('navigation', { name: 'Основная навигация' })).not.toBeInTheDocument()
+  expect(screen.getByRole('main')).toBeEmptyDOMElement()
+  expect(await screen.findByRole('navigation', { name: 'Основная навигация' })).toBeInTheDocument()
+})
+
+test('настройки без машин открываются сразу, с панелью', () => {
+  renderAt('/settings')
+  expect(screen.getByRole('navigation', { name: 'Основная навигация' })).toBeInTheDocument()
+})
+
+test('заголовок вкладки браузера — название экрана', async () => {
+  await addVehicle()
+  const router = renderAt('/journal')
+  await waitFor(() => expect(document.title).toBe('Журнал — Мой авто'))
+  await act(() => router.navigate('/stats'))
+  await waitFor(() => expect(document.title).toBe('Статистика — Мой авто'))
+  await act(() => router.navigate('/nope'))
+  await waitFor(() => expect(document.title).toBe('Страница не найдена — Мой авто'))
+})
+
+test('после перехода фокус — на заголовке нового экрана (скринридер объявит его)', async () => {
+  await addVehicle()
+  renderAt('/')
+  const nav = await screen.findByRole('navigation', { name: 'Основная навигация' })
+  await userEvent.click(within(nav).getByRole('link', { name: 'Журнал' }))
+  const h1 = await screen.findByRole('heading', { level: 1, name: 'Журнал' }, LAZY)
+  await waitFor(() => expect(h1).toHaveFocus())
+  expect(h1).toHaveAttribute('tabindex', '-1')
+})
 
 test('без машин — онбординг', async () => {
   const router = renderAt('/journal')

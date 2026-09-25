@@ -8,14 +8,20 @@ const OPEN_WITHOUT_VEHICLE = /^\/(onboarding|showcase|settings)(\/|$)/
 /**
  * Первый запуск: машин нет — ведём на онбординг. Архивные машины считаются — у владельца,
  * продавшего все машины, остаётся история, и онбординг ему не нужен.
+ *
+ * Возвращает `true`, пока экран показывать нельзя: машины ещё грузятся или сейчас будет переход
+ * на онбординг (иначе мелькнули бы экран и нижняя панель).
  */
-export function useFirstRunRedirect(): void {
+export function useFirstRunRedirect(): boolean {
   const vehicles = useVehicles({ includeArchived: true })
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const open = OPEN_WITHOUT_VEHICLE.test(pathname)
   const noVehicles = vehicles?.length === 0
 
   useEffect(() => {
-    if (noVehicles && !OPEN_WITHOUT_VEHICLE.test(pathname)) navigate('/onboarding', { replace: true })
-  }, [noVehicles, pathname, navigate])
+    if (noVehicles && !open) navigate('/onboarding', { replace: true })
+  }, [noVehicles, open, navigate])
+
+  return !open && (vehicles === undefined || noVehicles)
 }

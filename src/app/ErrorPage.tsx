@@ -9,9 +9,11 @@ import { reloadPage } from './reload'
 const CHUNK_ERROR =
   /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Unable to preload CSS/i
 
-/** Когда была автоматическая перезагрузка: вторая подряд (в пределах окна) не делается — так нет цикла. */
-const AUTO_RELOAD_KEY = 'myauto.chunkReloadAt'
-const AUTO_RELOAD_WINDOW_MS = 10_000
+/**
+ * Текст ошибки чанка, из-за которой уже перезагружались. Та же ошибка после перезагрузки — показываем страницу
+ * (перезагрузка не помогла, цикла нет); другая (не нашёлся другой файл, следующий выпуск) — перезагружаем снова.
+ */
+const AUTO_RELOAD_KEY = 'myauto.chunkReloadError'
 
 function errorText(error: unknown): string {
   if (isRouteErrorResponse(error)) return `${error.status} ${error.statusText}`.trim()
@@ -19,18 +21,14 @@ function errorText(error: unknown): string {
   return String(error)
 }
 
-function lastAutoReload(): number | null {
-  try {
-    return Number(sessionStorage.getItem(AUTO_RELOAD_KEY) ?? 0)
-  } catch {
-    return null // хранилище недоступно — автоматически не перезагружаем вовсе
-  }
-}
-
 function canAutoReload(error: unknown): boolean {
-  if (!CHUNK_ERROR.test(errorText(error))) return false
-  const last = lastAutoReload()
-  return last !== null && Date.now() - last > AUTO_RELOAD_WINDOW_MS
+  const text = errorText(error)
+  if (!CHUNK_ERROR.test(text)) return false
+  try {
+    return sessionStorage.getItem(AUTO_RELOAD_KEY) !== text
+  } catch {
+    return false // хранилище недоступно — не запомнить, что уже перезагружались: автоматически не перезагружаем
+  }
 }
 
 /**
@@ -45,12 +43,12 @@ export default function ErrorPage() {
   useEffect(() => {
     if (!autoReload) return
     try {
-      sessionStorage.setItem(AUTO_RELOAD_KEY, String(Date.now()))
+      sessionStorage.setItem(AUTO_RELOAD_KEY, errorText(error))
     } catch {
       // canAutoReload уже проверил хранилище
     }
     reloadPage()
-  }, [autoReload])
+  }, [autoReload, error])
 
   useEffect(() => {
     if (!autoReload) console.error(error)
