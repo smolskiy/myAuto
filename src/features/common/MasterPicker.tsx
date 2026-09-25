@@ -2,6 +2,7 @@ import { useMasters } from '../../db/hooks'
 import { repos } from '../../db/repos'
 import type { ID } from '../../domain/types'
 import { Combobox, useToast } from '../../ui'
+import { SAVE_FAILED, userMessage } from './errors'
 import { matches, usePickerQuery } from './pickerQuery'
 import { useLookup } from './useLookup'
 
@@ -38,7 +39,7 @@ export function MasterPicker({ placeId, value, onChange, label = 'Мастер',
       const master = await repos.masters.create({ name, placeId })
       onChange(master.id)
     } catch (e) {
-      toast.show({ text: (e instanceof Error && e.message) || 'Мастер не сохранился' })
+      toast.show({ text: userMessage(e, SAVE_FAILED) })
     }
   }
 

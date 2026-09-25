@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useToast } from '../../ui'
+import { DELETE_FAILED, RESTORE_FAILED, userMessage } from './errors'
 
 export interface SoftDeleteOptions {
   /** Мягкое удаление через репозиторий (`repos.records.remove(id)`). */
@@ -10,11 +11,9 @@ export interface SoftDeleteOptions {
   text: string
 }
 
-const errorText = (e: unknown, fallback: string) => (e instanceof Error && e.message) || fallback
-
 /**
  * Удаление с «Отменить»: удаляет и 5 секунд показывает уведомление с кнопкой возврата.
- * Ошибку удаления или возврата показывает уведомлением — экрану ловить нечего.
+ * Ошибку удаления или возврата показывает уведомлением (текст `UserError` или общий) — экрану ловить нечего.
  */
 export function useSoftDelete(): (opts: SoftDeleteOptions) => Promise<void> {
   const toast = useToast()
@@ -23,7 +22,7 @@ export function useSoftDelete(): (opts: SoftDeleteOptions) => Promise<void> {
       try {
         await remove()
       } catch (e) {
-        toast.show({ text: errorText(e, 'Не удалось удалить') })
+        toast.show({ text: userMessage(e, DELETE_FAILED) })
         return
       }
       toast.show({
@@ -31,7 +30,7 @@ export function useSoftDelete(): (opts: SoftDeleteOptions) => Promise<void> {
         action: {
           label: 'Отменить',
           onClick: () => {
-            restore().catch((e: unknown) => toast.show({ text: errorText(e, 'Не удалось вернуть') }))
+            restore().catch((e: unknown) => toast.show({ text: userMessage(e, RESTORE_FAILED) }))
           },
         },
       })

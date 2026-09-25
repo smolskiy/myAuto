@@ -12,6 +12,7 @@ import { ToastProvider } from '../../ui'
 import { EXPENSE_CATEGORY_LABELS, RECORD_KIND_LABELS, SERVICE_TYPE_LABELS } from './labels'
 import { RECORD_KIND_ICON, recordRowProps, recordSubtitle, recordTitle } from './recordPresentation'
 import { useLookup } from './useLookup'
+import { UserError } from './errors'
 import { useSoftDelete } from './useSoftDelete'
 import { useToday } from './useToday'
 
@@ -171,20 +172,36 @@ describe('удаление с «Отменить»', () => {
     }
   })
 
-  test('ошибка удаления — уведомлением, без «Отменить»', async () => {
+  test('сбой удаления — общий русский текст без «Отменить», подробности в консоль', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const restore = vi.fn(async () => {})
     const { result } = renderHook(() => useSoftDelete(), { wrapper: withToasts })
     await act(() =>
       result.current({
         remove: async () => {
-          throw new Error('Запись не найдена')
+          throw new Error('Transaction aborted')
         },
         restore,
         text: 'Запись удалена',
       }),
     )
-    expect(screen.getByText('Запись не найдена')).toBeInTheDocument()
+    expect(screen.getByText('Не получилось удалить — попробуйте ещё раз')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Отменить' })).not.toBeInTheDocument()
+    expect(consoleError).toHaveBeenCalled()
+  })
+
+  test('UserError при удалении — её текст', async () => {
+    const { result } = renderHook(() => useSoftDelete(), { wrapper: withToasts })
+    await act(() =>
+      result.current({
+        remove: async () => {
+          throw new UserError('Сначала удалите записи этой машины')
+        },
+        restore: async () => {},
+        text: 'Машина удалена',
+      }),
+    )
+    expect(screen.getByText('Сначала удалите записи этой машины')).toBeInTheDocument()
   })
 })
 

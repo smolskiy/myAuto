@@ -2,6 +2,7 @@ import { usePlaces } from '../../db/hooks'
 import { repos } from '../../db/repos'
 import type { ID, PlaceKind } from '../../domain/types'
 import { Combobox, useToast } from '../../ui'
+import { SAVE_FAILED, userMessage } from './errors'
 import { matches, usePickerQuery } from './pickerQuery'
 import { useLookup } from './useLookup'
 
@@ -34,7 +35,7 @@ export function PlacePicker({ label, kinds, value, onChange, hint, error }: Plac
       const place = await repos.places.create({ kind: kinds[0] ?? 'other', name })
       onChange(place.id)
     } catch (e) {
-      toast.show({ text: (e instanceof Error && e.message) || 'Место не сохранилось' })
+      toast.show({ text: userMessage(e, SAVE_FAILED) })
     }
   }
 
