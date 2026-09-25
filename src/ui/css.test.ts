@@ -15,14 +15,18 @@ function rule(source: string, selector: string): string {
 }
 
 test('уведомление: отступ снизу — переменная --toast-offset (по умолчанию высота нижней панели)', () => {
-  expect(rule(css('components/Toast/Toast.module.css'), '.region')).toMatch(/bottom:\s*calc\(var\(--toast-offset\)/)
+  expect(rule(css('components/Toast/Toast.module.css'), '.region')).toMatch(
+    /bottom:\s*calc\(var\(--toast-offset\)/,
+  )
   expect(css('tokens.css')).toMatch(/--toast-offset:\s*var\(--tabbar-height\);/)
 })
 
 test('крестик чипа: область касания 44×44', () => {
   const after = rule(css('components/Chip/Chip.module.css'), '.remove::after')
   // Кнопка 28 px, область расширена на (44 − 28) / 2 с каждой стороны.
-  expect(rule(css('components/Chip/Chip.module.css'), '.remove')).toMatch(/width:\s*28px;[\s\S]*height:\s*28px;/)
+  expect(rule(css('components/Chip/Chip.module.css'), '.remove')).toMatch(
+    /width:\s*28px;[\s\S]*height:\s*28px;/,
+  )
   expect(after).toMatch(/inset:\s*calc\(\(var\(--tap\) - 28px\) \/ -2\);/)
 })
 

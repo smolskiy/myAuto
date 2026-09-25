@@ -1,4 +1,11 @@
-import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+  type SyntheticEvent,
+} from 'react'
 import { formatMoney, formatMoneyInput, groupDigits, hasOperator, parseMoneyExpr } from '../../lib/moneyExpr'
 import { Button } from '../Button/Button'
 import { Field } from '../Field/Field'
