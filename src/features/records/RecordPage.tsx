@@ -241,7 +241,7 @@ function RecordDetails({ r }: { r: CarRecord }) {
         <ListItem
           leading={<Icon icon={IconRepeat} tone="accent" circle />}
           title="Повторить"
-          onClick={() => void repeat(r.id)}
+          onClick={() => repeat(r)}
         />
         <ListItem
           leading={<Icon icon={IconTrash} tone="overdue" circle />}

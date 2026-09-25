@@ -14,6 +14,7 @@ import type {
   Vehicle,
   WorkLine,
 } from '../../../domain/types'
+import { copyLines } from './serviceLines'
 import { linesTotal } from './serviceTotals'
 
 /** Поля «два из трёх» у заправки. */
@@ -104,8 +105,8 @@ export interface RecordForm {
 }
 
 /** Состояние формы записи: локальный редьюсер, в базу — только по «Сохранить». */
-export function useRecordForm(initial: RecordFormValues): RecordForm {
-  const [state, dispatch] = useReducer(reducer, initial, (values): State => ({ values, errors: {} }))
+export function useRecordForm(initial: () => RecordFormValues): RecordForm {
+  const [state, dispatch] = useReducer(reducer, initial, (init): State => ({ values: init(), errors: {} }))
   const set = useCallback((patch: Partial<RecordFormValues>) => dispatch({ type: 'set', patch }), [])
   const update = useCallback(
     (fn: (v: RecordFormValues) => Partial<RecordFormValues>) => dispatch({ type: 'update', fn }),
@@ -203,6 +204,27 @@ export function recordToValues(r: CarRecord): RecordFormValues {
       }
     default:
       return v
+  }
+}
+
+/**
+ * Копия записи («Повторить»): всё как в источнике, но дата — сегодня, пробег пуст, у строк новые id; гарантия,
+ * смена шин, срок действия и номер полиса не копируются — они про ту, прошлую запись.
+ */
+export function copyRecordValues(r: CarRecord, today: ISODate): RecordFormValues {
+  const lines = r.kind === 'service' ? copyLines(r) : { works: [], parts: [] }
+  return {
+    ...recordToValues(r),
+    date: today,
+    odometer: undefined,
+    ...lines,
+    warrantyUntilDate: '',
+    warrantyUntilKm: undefined,
+    mountedSetId: undefined,
+    removedSetId: undefined,
+    validFrom: '',
+    validUntil: '',
+    docNumber: '',
   }
 }
 

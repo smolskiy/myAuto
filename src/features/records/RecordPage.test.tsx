@@ -1,10 +1,10 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import { db } from '../../db/instance'
 import { repos } from '../../db/repos'
 import { todayISO } from '../../domain/dates'
-import type { ServiceRecord } from '../../domain/types'
+import type { ExpenseRecord, ServiceRecord } from '../../domain/types'
 import { renderAt, vehicle } from './testUtils'
 
 vi.setConfig({ testTimeout: 15_000 })
@@ -131,31 +131,73 @@ test('удаление с подтверждением, «Отменить» в�
   await waitFor(async () => expect((await db.records.get(r.id))?.deleted).toBe(false))
 })
 
-test('«Повторить» создаёт копию на сегодня и открывает её правку; сохранение ведёт на карточку копии', async () => {
+test('«Повторить» ничего не пишет до «Сохранить»: форма копии, уход «назад» — записей столько же', async () => {
   const r = await service()
   const router = renderAt(`/record/${r.id}`)
   await userEvent.click(await screen.findByRole('button', { name: 'Повторить' }))
-  await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\/[0-9a-f-]{36}\/edit$/))
-  const copyId = router.state.location.pathname.split('/')[2]!
-  expect(copyId).not.toBe(r.id)
-  const copy = (await db.records.get(copyId)) as ServiceRecord
-  expect(copy).toMatchObject({ title: 'ТО-6', date: todayISO(), works: [{ name: 'Замена масла' }] })
+  await waitFor(() => expect(router.state.location.pathname).toBe('/record/new/service'))
+  expect(router.state.location.search).toBe(`?from=${r.id}`)
   expect(await screen.findByRole('heading', { name: 'Копия записи' })).toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
-  await waitFor(() => expect(router.state.location.pathname).toBe(`/record/${copyId}`))
+  expect(screen.getByRole('combobox', { name: 'Название' })).toHaveValue('ТО-6')
+  expect(screen.getByLabelText('Дата')).toHaveValue(todayISO())
+  expect(screen.getByLabelText('Пробег')).toHaveValue('')
+  expect(screen.getByText('Замена масла')).toBeInTheDocument()
+  expect(await db.records.count()).toBe(1)
+  await act(() => router.navigate(-1))
+  await waitFor(() => expect(router.state.location.pathname).toBe(`/record/${r.id}`))
+  expect(await db.records.count()).toBe(1)
 })
 
-test('«Назад» из правки копии убирает копию и возвращает к записи', async () => {
-  const r = await service()
+test('копия сохраняется одной новой записью: новые id строк, сегодня, без пробега и гарантии', async () => {
+  const r = await service({ warrantyUntilDate: '2027-03-12', warrantyUntilKm: 155000 })
   const router = renderAt(`/record/${r.id}`)
   await userEvent.click(await screen.findByRole('button', { name: 'Повторить' }))
-  await waitFor(() => expect(router.state.location.pathname).toMatch(/\/edit$/))
-  const copyId = router.state.location.pathname.split('/')[2]!
-  // Форма копии грузится лениво: пока она не встала, на экране ещё карточка со своей «Назад».
   await screen.findByRole('heading', { name: 'Копия записи' })
-  await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
-  await waitFor(() => expect(router.state.location.pathname).toBe(`/record/${r.id}`))
-  await waitFor(async () => expect((await db.records.get(copyId))?.deleted).toBe(true))
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\/[0-9a-f-]{36}$/))
+  const all = (await db.records.toArray()) as ServiceRecord[]
+  expect(all).toHaveLength(2)
+  const copy = all.find((x) => x.id !== r.id)!
+  expect(router.state.location.pathname).toBe(`/record/${copy.id}`)
+  expect(copy).toMatchObject({
+    vehicleId: vehicle.id,
+    title: 'ТО-6',
+    date: todayISO(),
+    total: 330000,
+    works: [{ name: 'Замена масла', price: 200000 }],
+    parts: [{ name: 'Масляный фильтр', brand: 'Mann-Filter', partNumber: 'W 712/95', qty: 2 }],
+  })
+  expect(copy.works[0]!.id).not.toBe('w1')
+  expect(copy.parts[0]!.id).not.toBe('p1')
+  expect(copy.odometer).toBeUndefined()
+  expect(copy.warrantyUntilDate).toBeUndefined()
+  expect(copy.warrantyUntilKm).toBeUndefined()
+  expect(copy.tireSwap).toBeUndefined()
+})
+
+test('копия ОСАГО — без срока действия и номера полиса', async () => {
+  const r = await repos.records.create({
+    vehicleId: vehicle.id,
+    kind: 'expense',
+    date: '2025-08-20',
+    total: 850000,
+    category: 'osago',
+    validFrom: '2025-08-21',
+    validUntil: '2026-08-20',
+    docNumber: 'ХХХ 0123456789',
+  })
+  const router = renderAt(`/record/${r.id}`)
+  await userEvent.click(await screen.findByRole('button', { name: 'Повторить' }))
+  await waitFor(() => expect(router.state.location.pathname).toBe('/record/new/expense'))
+  expect(await screen.findByLabelText('Действует до')).toHaveValue('')
+  expect(screen.getByLabelText('Номер полиса')).toHaveValue('')
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\/[0-9a-f-]{36}$/))
+  const copy = (await db.records.toArray()).find((x) => x.id !== r.id) as ExpenseRecord
+  expect(copy).toMatchObject({ category: 'osago', total: 850000, date: todayISO() })
+  expect(copy.validFrom).toBeUndefined()
+  expect(copy.validUntil).toBeUndefined()
+  expect(copy.docNumber).toBeUndefined()
 })
 
 test('«Изменить» открывает правку', async () => {

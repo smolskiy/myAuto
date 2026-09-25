@@ -143,15 +143,16 @@ test('удаление из меню строки и «Отменить»', asyn
   expect(await screen.findByText('Мойка кузова')).toBeInTheDocument()
 })
 
-test('«Повторить» из меню строки открывает правку копии', async () => {
+test('«Повторить» из меню строки открывает форму копии, ничего не записывая', async () => {
   const { wash } = await seed()
   const router = renderAt('/journal')
   const row = (await screen.findByText('Мойка кузова')).closest('li')!
   await userEvent.click(within(row).getByRole('button', { name: 'Действия' }))
   await userEvent.click(await screen.findByRole('menuitem', { name: 'Повторить' }))
-  await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\/[0-9a-f-]{36}\/edit$/))
-  expect(router.state.location.pathname).not.toContain(wash.id)
-  expect(await db.records.count()).toBe(4)
+  await waitFor(() => expect(router.state.location.pathname).toBe('/record/new/expense'))
+  expect(router.state.location.search).toBe(`?from=${wash.id}`)
+  expect(await screen.findByRole('heading', { name: 'Копия записи' })).toBeInTheDocument()
+  expect(await db.records.count()).toBe(3)
 })
 
 test('фильтр по месту из шторки «Фильтры» и число активных фильтров', async () => {

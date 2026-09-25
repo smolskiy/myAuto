@@ -191,7 +191,7 @@ function Journal({ vehicle }: { vehicle: Vehicle }) {
                         label: 'Повторить',
                         icon: <IconRepeat />,
                         tone: 'accent',
-                        onAction: () => void repeat(r.id),
+                        onAction: () => repeat(r),
                       }}
                       right={{
                         label: 'Удалить',

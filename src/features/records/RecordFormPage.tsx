@@ -1,9 +1,8 @@
 import { IconFileOff } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
-import { useLocation, useParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 import NotFoundPage from '../../app/NotFoundPage'
 import { useCurrentOdometer, useRecord, useRecords } from '../../db/hooks'
-import { repos } from '../../db/repos'
 import type { CarRecord, ID, RecordKind, Vehicle } from '../../domain/types'
 import { EmptyState, TextArea } from '../../ui'
 import {
@@ -20,10 +19,10 @@ import { ExpenseFields } from './form/ExpenseFields'
 import { FuelFields } from './form/FuelFields'
 import { rememberDate } from './form/lastDate'
 import { saveRecord } from './form/saveRecord'
-import { isCopyState } from './repeat'
 import { NoteFields } from './form/NoteFields'
 import { ServiceFields } from './form/ServiceFields'
 import {
+  copyRecordValues,
   newRecordValues,
   recordToValues,
   toDraft,
@@ -37,12 +36,13 @@ const isKind = (k: string | undefined): k is RecordKind => KINDS.includes(k as R
 
 interface RecordFormProps {
   title: string
-  initial: RecordFormValues
+  /** Начальные значения — вызывается один раз, при появлении формы. */
+  initial(): RecordFormValues
   ctx: FormContext
   /** id записи: новой — id черновика вложений, правимой — её id. */
   recordId: ID
-  /** Новая — создаётся по «Сохранить»; правка — обновляется; копия («Повторить») уже создана и правится как новая. */
-  mode: 'new' | 'edit' | 'copy'
+  /** Новая (и копия «Повторить») — создаётся по «Сохранить»; правка — обновляется. */
+  mode: 'new' | 'edit'
   onCancel?(): void
 }
 
@@ -68,11 +68,11 @@ function RecordForm({ title, initial, ctx, recordId, mode, onCancel }: RecordFor
     const draft = toDraft(values)
     await saveRecord(draft, recordId, mode === 'new' ? 'create' : 'update')
     rememberDate(draft.date)
-    // Новая запись и копия заменяются своей карточкой; правка возвращается туда, откуда пришли.
-    if (mode !== 'edit') return `/record/${recordId}`
+    // Новая запись заменяется своей карточкой; правка возвращается туда, откуда пришли.
+    if (mode === 'new') return `/record/${recordId}`
   }
 
-  const fields = { form, ctx, suggestDate: mode !== 'edit' }
+  const fields = { form, ctx, suggestDate: mode === 'new' }
   return (
     <FormPage title={title} onSave={onSave} onCancel={onCancel}>
       {values.kind === 'service' && <ServiceFields {...fields} />}
@@ -93,8 +93,19 @@ function RecordForm({ title, initial, ctx, recordId, mode, onCancel }: RecordFor
   )
 }
 
-/** Новая запись активной машины: форма появляется, когда известны история и текущий пробег. */
-function NewRecord({ kind, vehicle }: { kind: RecordKind; vehicle: Vehicle }) {
+/**
+ * Новая запись: форма появляется, когда известны история машины и текущий пробег. С `source` — копия
+ * («Повторить»): поля предзаполнены из записи-источника, в базу ничего не пишется до «Сохранить».
+ */
+function NewRecord({
+  kind,
+  vehicle,
+  source,
+}: {
+  kind: RecordKind
+  vehicle: Pick<Vehicle, 'id' | 'defaultFuelGrade'>
+  source?: CarRecord
+}) {
   const records = useRecords(vehicle.id)
   const currentOdometer = useCurrentOdometer(vehicle.id)
   const today = useToday()
@@ -102,8 +113,10 @@ function NewRecord({ kind, vehicle }: { kind: RecordKind; vehicle: Vehicle }) {
   if (records === undefined || currentOdometer === undefined) return null
   return (
     <RecordForm
-      title={RECORD_KIND_LABELS[kind]}
-      initial={newRecordValues(kind, vehicle, { today, currentOdometer })}
+      title={source ? 'Копия записи' : RECORD_KIND_LABELS[kind]}
+      initial={() =>
+        source ? copyRecordValues(source, today) : newRecordValues(kind, vehicle, { today, currentOdometer })
+      }
       ctx={{ records, today, currentOdometer }}
       recordId={drafts.ownerId}
       mode="new"
@@ -112,29 +125,36 @@ function NewRecord({ kind, vehicle }: { kind: RecordKind; vehicle: Vehicle }) {
   )
 }
 
-function EditLoaded({ record, copy }: { record: CarRecord; copy: boolean }) {
+function NewActiveRecord({ kind }: { kind: RecordKind }) {
+  return <VehicleGate>{(v) => <NewRecord key={`${kind}:${v.id}`} kind={kind} vehicle={v} />}</VehicleGate>
+}
+
+/** `/record/new/:kind?from=<id>` — копия записи; источника нет (удалён) — обычная новая запись. */
+function CopyRecord({ kind, fromId }: { kind: RecordKind; fromId: ID }) {
+  const source = useRecord(fromId)
+  if (source === undefined) return null
+  if (source === null || source.kind !== kind) return <NewActiveRecord kind={kind} />
+  return <NewRecord kind={kind} vehicle={{ id: source.vehicleId }} source={source} />
+}
+
+function EditLoaded({ record }: { record: CarRecord }) {
   const records = useRecords(record.vehicleId)
   const currentOdometer = useCurrentOdometer(record.vehicleId)
   const today = useToday()
   if (records === undefined || currentOdometer === undefined) return null
-  // «Назад» из копии — передумали повторять: копия убирается молча (жест «назад» её оставляет — это обычная запись).
-  const dropCopy = () =>
-    void repos.records.remove(record.id).catch((e: unknown) => console.error('Копия не убрана', e))
   return (
     <RecordForm
-      title={copy ? 'Копия записи' : 'Правка записи'}
-      initial={recordToValues(record)}
+      title="Правка записи"
+      initial={() => recordToValues(record)}
       ctx={{ records, today, currentOdometer, editingId: record.id }}
       recordId={record.id}
-      mode={copy ? 'copy' : 'edit'}
-      onCancel={copy ? dropCopy : undefined}
+      mode="edit"
     />
   )
 }
 
 function EditRecord({ id }: { id: ID }) {
   const record = useRecord(id)
-  const copy = isCopyState(useLocation().state)
   if (record === undefined) return null
   if (record === null) {
     return (
@@ -148,13 +168,16 @@ function EditRecord({ id }: { id: ID }) {
     )
   }
   // Ключ — id: живой запрос отдаёт новые копии той же записи, форму они не пересоздают.
-  return <EditLoaded key={record.id} record={record} copy={copy} />
+  return <EditLoaded key={record.id} record={record} />
 }
 
-/** `/record/new/:kind` и `/record/:id/edit`. */
+/** `/record/new/:kind` (с `?from=<id>` — копия записи), `/record/:id/edit`. */
 export default function RecordFormPage() {
   const { kind, id } = useParams()
+  const [params] = useSearchParams()
+  const from = params.get('from')
   if (id) return <EditRecord key={id} id={id} />
   if (!isKind(kind)) return <NotFoundPage />
-  return <VehicleGate>{(v) => <NewRecord key={`${kind}:${v.id}`} kind={kind} vehicle={v} />}</VehicleGate>
+  if (from) return <CopyRecord key={`${kind}:${from}`} kind={kind} fromId={from} />
+  return <NewActiveRecord kind={kind} />
 }
