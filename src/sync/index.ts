@@ -63,8 +63,14 @@ yandexAuth.subscribe(() => {
   const connected = yandexAuth.isConnected()
   if (connected === wasConnected) return
   wasConnected = connected
-  if (connected) void syncEngine.syncNow()
-  else void syncEngine.syncNow().then(() => syncEngine.syncNow())
+  const warn = (e: unknown) => console.warn('Синхронизация не удалась', e)
+  if (connected) syncEngine.syncNow().catch(warn)
+  else
+    syncEngine
+      .syncNow()
+      .catch(warn)
+      .then(() => syncEngine.syncNow())
+      .catch(warn)
 })
 
 let initialized: Promise<void> | null = null

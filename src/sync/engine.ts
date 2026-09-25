@@ -72,6 +72,19 @@ export const SYNC_LOCK = 'myauto-sync'
  */
 export const SYNC_STALL_MS = 2 * 60 * 1000
 const STALLED = 'Синхронизация зависла — попробуйте ещё раз'
+/** Самая медленная связь, на которой загрузка ещё не «зависла»: 16 КБ/с ≈ 128 кбит/с. */
+const SLOWEST_UPLOAD_BYTES_PER_S = 16_384
+
+/** Сколько ждать ответа на запрос: загрузке большого файла — по его размеру на самой медленной связи. */
+function silenceBudget(method: PropertyKey, args: unknown[]): number {
+  const bytes =
+    method === 'uploadBlob'
+      ? (args[1] as Blob).size
+      : method === 'writeText'
+        ? (args[1] as string).length * 2 // garage.json: кириллица в UTF-8 — до двух байт на символ
+        : 0
+  return Math.max(SYNC_STALL_MS, (bytes / SLOWEST_UPLOAD_BYTES_PER_S) * 1000)
+}
 
 const browserLocks = (): SyncLocks | null =>
   typeof navigator !== 'undefined' && navigator.locks ? navigator.locks : null
@@ -99,18 +112,27 @@ function parseRemote(text: string): Snapshot {
   }
 }
 
-/** Клиент Диска, который сообщает о каждом запросе и ответе — по ним цикл понимает, что не завис. */
-function watchDisk(disk: DiskClient, onActivity: () => void): DiskClient {
+/**
+ * Клиент Диска, который сообщает о каждом запросе (с бюджетом ожидания ответа) и ответе — по ним цикл понимает,
+ * что не завис.
+ */
+function watchDisk(disk: DiskClient, onActivity: (budgetMs: number) => void): DiskClient {
   return new Proxy(disk, {
     get(target, prop, receiver) {
       const value: unknown = Reflect.get(target, prop, receiver)
       if (typeof value !== 'function') return value
       return (...args: unknown[]) => {
-        onActivity()
-        return Promise.resolve(value.apply(target, args)).finally(onActivity)
+        onActivity(silenceBudget(prop, args))
+        return Promise.resolve(value.apply(target, args)).finally(() => onActivity(SYNC_STALL_MS))
       }
     },
   })
+}
+
+/** Связь цикла со сторожем: активность Диска и статус, который брошенный цикл уже не пишет. */
+interface CycleWatch {
+  activity(budgetMs: number): void
+  report(patch: Partial<SyncStatus>): void
 }
 
 /** Версия файла на Диске: md5, а если его нет — время изменения. null — файла нет. */
@@ -129,6 +151,8 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
   let status: SyncStatus = { state: 'off', pendingUploads: 0 }
   const subscribers = new Set<(s: SyncStatus) => void>()
   let running: Promise<void> | null = null
+  /** Номер последнего начатого цикла: статус пишет только он, брошенный сторожем — уже нет. */
+  let latestCycle = 0
   /** Текст 401: держим его в статусе, пока пользователь не войдёт заново. */
   let authError: string | null = null
   let started = false
@@ -188,31 +212,31 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
     }
   }
 
-  async function refreshPending(): Promise<void> {
+  async function refreshPending(report: CycleWatch['report']): Promise<void> {
     if (!deps.attachments) return
     try {
       const pendingUploads = await deps.attachments.pendingCount()
-      if (pendingUploads !== status.pendingUploads) setStatus({ pendingUploads })
+      if (pendingUploads !== status.pendingUploads) report({ pendingUploads })
     } catch (e) {
       console.warn('Не удалось посчитать неотправленные файлы', e)
     }
   }
 
-  async function cycle(onActivity: () => void): Promise<void> {
+  async function cycle({ activity, report }: CycleWatch): Promise<void> {
     const connected = deps.getDisk()
-    const disk = connected && watchDisk(connected, onActivity)
+    const disk = connected && watchDisk(connected, activity)
     if (!disk) {
-      setStatus(authError ? { state: 'error', error: authError } : { state: 'off' })
-      await refreshPending()
+      report(authError ? { state: 'error', error: authError } : { state: 'off' })
+      await refreshPending(report)
       return
     }
     authError = null
     if (!isOnline()) {
-      setStatus({ state: 'offline' })
-      await refreshPending()
+      report({ state: 'offline' })
+      await refreshPending(report)
       return
     }
-    setStatus({ state: 'syncing' })
+    report({ state: 'syncing' })
     try {
       await syncGarage(disk)
       if (deps.attachments) {
@@ -223,7 +247,7 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
       const at = now()
       await setMeta(db, META_KEYS.lastSyncAt, at)
       const pendingUploads = deps.attachments ? await deps.attachments.pendingCount() : 0
-      setStatus({ state: 'idle', lastSyncAt: at, pendingUploads })
+      report({ state: 'idle', lastSyncAt: at, pendingUploads })
     } catch (e) {
       if (e instanceof Unauthorized) {
         authError = e.message
@@ -232,39 +256,50 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
         } catch (err) {
           console.warn('Не удалось стереть токен', err)
         }
-        setStatus({ state: 'error', error: e.message })
+        report({ state: 'error', error: e.message })
       } else if (e instanceof Offline) {
-        setStatus({ state: 'offline' })
+        report({ state: 'offline' })
       } else if (e instanceof YandexError || e instanceof SyncFailure) {
-        setStatus({ state: 'error', error: e.message })
+        report({ state: 'error', error: e.message })
       } else {
         console.warn('Синхронизация не удалась', e)
-        setStatus({ state: 'error', error: 'Синхронизация не удалась — повторите позже' })
+        report({ state: 'error', error: 'Синхронизация не удалась — повторите позже' })
       }
-      await refreshPending()
+      await refreshPending(report)
     }
   }
 
   /**
-   * Цикл со сторожем: Диск молчит дольше SYNC_STALL_MS — статус «зависла», и цикл считается законченным
-   * (блокировка отпускается, следующий syncNow начнёт заново). Сам зависший запрос отменить нечем — если он
-   * всё же ответит, его цикл доработает: слияние идемпотентно.
+   * Цикл со сторожем: Диск молчит дольше бюджета (SYNC_STALL_MS, загрузке большого файла — больше) — статус
+   * «зависла», и цикл считается законченным (блокировка отпускается, следующий syncNow начнёт заново). Сам
+   * зависший запрос отменить нечем — если он всё же ответит, брошенный цикл доработает (слияние идемпотентно),
+   * но сторожа больше не заводит, а статус пишет, только пока новый цикл не начался.
    */
   function guardedCycle(): Promise<void> {
+    const id = ++latestCycle
     return new Promise<void>((resolve, reject) => {
+      let settled = false
       let timer: ReturnType<typeof setTimeout> | undefined
-      const arm = () => {
+      const activity = (budgetMs: number) => {
+        if (settled) return
         clearTimeout(timer)
         timer = setTimeout(() => {
+          settled = true
           console.warn('Синхронизация зависла: Диск не отвечает')
           setStatus({ state: 'error', error: STALLED })
           resolve()
-        }, SYNC_STALL_MS)
+        }, budgetMs)
       }
-      arm()
-      cycle(arm)
+      const report = (patch: Partial<SyncStatus>) => {
+        if (id === latestCycle) setStatus(patch)
+      }
+      activity(SYNC_STALL_MS)
+      cycle({ activity, report })
         .then(resolve, reject)
-        .finally(() => clearTimeout(timer))
+        .finally(() => {
+          settled = true
+          clearTimeout(timer)
+        })
     })
   }
 
@@ -272,7 +307,8 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
    * Цикл под блокировкой Web Locks, если она есть: две вкладки или окна PWA не синхронизируются разом.
    * Упал сам цикл — ошибка уходит вызвавшему, второй раз без блокировки не запускаем. Блокировку не дали
    * (API нет или он сломан) — синхронизируемся без неё. Другая вкладка держит блокировку дольше SYNC_STALL_MS —
-   * её цикл завис: статус «зависла», без блокировки не идём.
+   * перестаём ждать без ошибки и статус не трогаем: база общая, её синхронизирует та вкладка (а зависнув, она
+   * отпустит блокировку по своему сторожу); следующий цикл — по интервалу или событию.
    */
   function lockedCycle(): Promise<void> {
     if (!locks) return guardedCycle()
@@ -292,8 +328,7 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
           clearTimeout(waitTimer)
           if (granted) throw e
           if (wait.signal.aborted) {
-            console.warn('Блокировку синхронизации держит другая вкладка и не отпускает', e)
-            setStatus({ state: 'error', error: STALLED })
+            console.warn('Блокировку синхронизации держит другая вкладка — этот цикл пропускаем', e)
             return
           }
           console.warn('Блокировка синхронизации не получена — синхронизируемся без неё', e)
@@ -310,13 +345,18 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
     return running
   }
 
+  /** Запуск без ожидания (события, таймеры): упавший цикл — предупреждение, а не необработанная ошибка. */
+  function syncInBackground(): void {
+    syncNow().catch((e: unknown) => console.warn('Синхронизация не удалась', e))
+  }
+
   /** Серия правок уходит одним файлом; правка во время идущего цикла — следующим циклом. */
   function scheduleAfterChange(): void {
     clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       debounceTimer = undefined
-      if (running) void running.then(() => syncNow())
-      else void syncNow()
+      if (running) void running.then(syncInBackground, syncInBackground)
+      else syncInBackground()
     }, debounceMs)
   }
 
@@ -336,13 +376,13 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
       if (started) return
       started = true
       const onVisible = () => {
-        if (document.visibilityState === 'visible') void syncNow()
+        if (document.visibilityState === 'visible') syncInBackground()
       }
-      const onOnline = () => void syncNow()
+      const onOnline = () => syncInBackground()
       document.addEventListener('visibilitychange', onVisible)
       window.addEventListener('online', onOnline)
       const interval = setInterval(() => {
-        if (document.visibilityState !== 'hidden') void syncNow()
+        if (document.visibilityState !== 'hidden') syncInBackground()
       }, intervalMs)
       const unsubscribe = subscribeLocalChanges(scheduleAfterChange)
       cleanups = [
@@ -355,7 +395,7 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
       void getMeta<number | null>(db, META_KEYS.lastSyncAt, null).then((last) => {
         if (last !== null && status.lastSyncAt === undefined) setStatus({ lastSyncAt: last })
       })
-      void syncNow()
+      syncInBackground()
     },
 
     stop() {
