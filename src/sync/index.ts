@@ -75,14 +75,23 @@ yandexAuth.subscribe(() => {
 
 let initialized: Promise<void> | null = null
 
+/**
+ * Просим браузер не чистить данные — без ожидания: ответ может прийти не сразу (запрос разрешения), а запуск
+ * синхронизации от него не зависит.
+ */
+function requestPersistentStorage(): void {
+  const warn = (e: unknown) => console.warn('Постоянное хранилище не выдано', e)
+  try {
+    navigator.storage?.persist?.().catch(warn)
+  } catch (e) {
+    warn(e)
+  }
+}
+
 /** Запуск при старте приложения; повторный вызов ничего не делает, а после неудачи — пробует снова. */
 export function initSync(): Promise<void> {
   initialized ??= (async () => {
-    try {
-      await navigator.storage?.persist?.()
-    } catch (e) {
-      console.warn('Постоянное хранилище не выдано', e)
-    }
+    requestPersistentStorage()
     await yandexAuth.init()
     await yandexAuth.consumeRedirect() // не бросает: неудача входа — в getLoginError
     syncEngine.start()

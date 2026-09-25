@@ -56,6 +56,37 @@ test('неудачный initSync не запоминается — следую
   fresh.syncEngine.stop()
 })
 
+describe('постоянное хранилище', () => {
+  const original = Object.getOwnPropertyDescriptor(navigator, 'storage')
+  afterEach(() => {
+    if (original) Object.defineProperty(navigator, 'storage', original)
+    else delete (navigator as { storage?: unknown }).storage
+  })
+  const withinSecond = <T,>(p: Promise<T>) =>
+    Promise.race([p.then(() => 'готово'), new Promise((r) => setTimeout(() => r('ждёт'), 1000))])
+
+  test('initSync не ждёт ответа navigator.storage.persist() (браузер может держать запрос долго)', async () => {
+    vi.resetModules()
+    const fresh = await import('./index')
+    const persist = vi.fn(() => new Promise<boolean>(() => {}))
+    Object.defineProperty(navigator, 'storage', { configurable: true, value: { persist } })
+    expect(await withinSecond(fresh.initSync())).toBe('готово')
+    expect(persist).toHaveBeenCalledOnce()
+    fresh.syncEngine.stop()
+  })
+
+  test('отказ persist() — только предупреждение, запуск идёт дальше', async () => {
+    vi.resetModules()
+    const fresh = await import('./index')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const persist = vi.fn(() => Promise.reject(new Error('нет')))
+    Object.defineProperty(navigator, 'storage', { configurable: true, value: { persist } })
+    expect(await withinSecond(fresh.initSync())).toBe('готово')
+    await waitFor(() => expect(warn).toHaveBeenCalledWith('Постоянное хранилище не выдано', expect.any(Error)))
+    fresh.syncEngine.stop()
+  })
+})
+
 describe('адреса вложений', () => {
   const original = { create: URL.createObjectURL, revoke: URL.revokeObjectURL }
   afterEach(() => {
