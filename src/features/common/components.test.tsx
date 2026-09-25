@@ -303,8 +303,6 @@ describe('каркасы страниц', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByText('Укажите пробег')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/form')
-    // Уведомление стоит над кнопкой «Сохранить», а не на ней.
-    expect(document.body.style.getPropertyValue('--toast-offset')).not.toBe('')
   })
 
   test('FormPage: «Назад» вызывает onCancel и закрывает форму', async () => {

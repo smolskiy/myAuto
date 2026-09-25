@@ -78,17 +78,19 @@ test.each([
   '/vehicle/new',
   '/vehicle/v1/edit',
   '/reminders/new',
+  '/reminders/r1',
   '/documents/new',
   '/tires/new',
   '/places/new',
   '/masters/new',
   '/onboarding',
-])('форма %s — без панели, уведомления у нижнего края', async (path) => {
+])('форма %s — без панели, уведомления не над панелью', async (path) => {
   await addVehicle()
   renderAt(path)
   await screen.findByRole('main')
   expect(screen.queryByRole('navigation', { name: 'Основная навигация' })).not.toBeInTheDocument()
-  expect(document.documentElement.style.getPropertyValue('--toast-offset')).toBe('0px')
+  // 0px у заглушки; когда экран станет FormPage — высота её кнопки «Сохранить» (см. formMode.test.tsx).
+  expect(document.documentElement.style.getPropertyValue('--toast-offset')).not.toBe('')
 })
 
 test.each(['/', '/journal', '/reminders', '/more', '/stats', '/garage', '/places', '/settings'])(

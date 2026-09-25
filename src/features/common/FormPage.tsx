@@ -1,7 +1,8 @@
 import { IconDeviceFloppy } from '@tabler/icons-react'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { AppBar, Button, useToast } from '../../ui'
+import { useFormMode } from './formMode'
 import styles from './FormPage.module.css'
 import pageStyles from './Page.module.css'
 import { useGoBack } from './useGoBack'
@@ -25,12 +26,9 @@ export interface FormPageProps {
   children: ReactNode
 }
 
-/** Высота нижней полосы с кнопкой: уведомления встают над ней, а не на кнопку. */
-const FOOTER_OFFSET = 'calc(48px + 2 * var(--space-3) + var(--border-width))'
-
 /**
  * Каркас формы: шапка «Назад» и крупная «Сохранить» внизу, в зоне большого пальца.
- * Нижней панели на формах нет (оболочка её прячет).
+ * Нижней панели при открытой форме нет на любом маршруте (оболочка прячет её по useFormMode).
  */
 export function FormPage({
   title,
@@ -54,13 +52,8 @@ export function FormPage({
     }
   }, [])
 
-  // Регион уведомлений живёт выше по дереву (в ToastProvider) — переменную ставим на body, он её наследует.
-  useLayoutEffect(() => {
-    document.body.style.setProperty('--toast-offset', FOOTER_OFFSET)
-    return () => {
-      document.body.style.removeProperty('--toast-offset')
-    }
-  }, [])
+  // Оболочка прячет нижнюю панель на любом маршруте и ставит уведомления над кнопкой «Сохранить».
+  useFormMode()
 
   const save = async () => {
     if (busyRef.current || saving) return

@@ -49,6 +49,7 @@ export const ROUTES: AppRoute[] = [
     path: '/reminders/:id',
     title: 'Напоминание',
     load: () => import('../features/reminders/ReminderRulePage'),
+    hideTabBar: true,
   },
   {
     path: '/items/:itemId',

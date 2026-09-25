@@ -1,6 +1,7 @@
 import { IconDots, IconHome, IconList, IconTool } from '@tabler/icons-react'
-import { useLayoutEffect, useState, type ReactNode } from 'react'
+import { useCallback, useLayoutEffect, useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useMatches } from 'react-router'
+import { FORM_FOOTER_OFFSET, FormModeContext } from '../features/common/formMode'
 import { BottomTabBar, type TabItem } from '../ui'
 import { AddRecordSheet } from './AddRecordSheet'
 import styles from './AppShell.module.css'
@@ -26,29 +27,47 @@ const TABS: { key: TabKey; label: string; icon: ReactNode; href: string }[] = [
   { key: 'more', label: 'Ещё', icon: <IconDots />, href: '/more' },
 ]
 
-/** Оболочка: экран маршрута и нижняя панель с «+»; на формах панели нет. */
+/**
+ * Оболочка: экран маршрута и нижняя панель с «+». Панели нет на маршрутах с `hideTabBar` и под любой
+ * открытой FormPage (она регистрируется через FormModeContext). Отступ уведомлений ставит только оболочка.
+ */
 export default function AppShell() {
   useFirstRunRedirect()
   const { pathname } = useLocation()
   const matches = useMatches()
-  const hideTabBar = matches.some((m) => (m.handle as RouteHandle | undefined)?.hideTabBar)
+  const routeHidesTabBar = matches.some((m) => (m.handle as RouteHandle | undefined)?.hideTabBar)
+  const [openForms, setOpenForms] = useState(0)
   const [adding, setAdding] = useState(false)
 
-  // Уведомления стоят над панелью; без панели — у нижнего края (регион тоста живёт вне этого дерева).
+  const registerForm = useCallback(() => {
+    setOpenForms((n) => n + 1)
+    return () => setOpenForms((n) => n - 1)
+  }, [])
+
+  const formMode = openForms > 0
+  const hideTabBar = routeHidesTabBar || formMode
+
+  // Регион уведомлений живёт вне этого дерева (в ToastProvider), поэтому переменная — на <html>:
+  // над панелью (значение по умолчанию), над кнопкой «Сохранить» формы или у нижнего края.
+  const toastOffset = formMode ? FORM_FOOTER_OFFSET : hideTabBar ? '0px' : null
   useLayoutEffect(() => {
     const root = document.documentElement.style
-    if (hideTabBar) root.setProperty('--toast-offset', '0px')
-    else root.removeProperty('--toast-offset')
-  }, [hideTabBar])
+    if (toastOffset) root.setProperty('--toast-offset', toastOffset)
+    return () => {
+      root.removeProperty('--toast-offset')
+    }
+  }, [toastOffset])
 
   const active = activeTab(pathname)
   const items = TABS.map((t) => ({ ...t, active: t.key === active })) as [TabItem, TabItem, TabItem, TabItem]
 
   return (
     <div className={styles.shell}>
-      <main className={styles.main}>
-        <Outlet />
-      </main>
+      <FormModeContext.Provider value={registerForm}>
+        <main className={styles.main}>
+          <Outlet />
+        </main>
+      </FormModeContext.Provider>
       {!hideTabBar && (
         <>
           <BottomTabBar
