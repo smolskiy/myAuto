@@ -1,4 +1,5 @@
 import { addDays, addMonths, diffDays } from '../dates'
+import { DOCUMENT_KIND_LABELS, EXPENSE_CATEGORY_LABELS } from '../labels'
 import type {
   CarRecord, CatalogItem, DocumentKind, ExpenseCategory, ExpenseRecord, ID, ISODate, ReminderRule, ServiceRecord,
   VehicleDocument,
@@ -32,31 +33,11 @@ export interface ReminderContext {
   avgDailyKm: number | null
 }
 
-export const DOCUMENT_TITLES: Record<DocumentKind, string> = {
-  sts: 'СТС',
-  pts: 'ПТС',
-  osago: 'ОСАГО',
-  kasko: 'КАСКО',
-  diagCard: 'Диагностическая карта',
-  license: 'Водительское удостоверение',
-  other: 'Документ',
-}
+/** Подписи видов документов (источник — `domain/labels.ts`). */
+export const DOCUMENT_TITLES: Record<DocumentKind, string> = DOCUMENT_KIND_LABELS
 
-export const EXPENSE_TITLES: Record<ExpenseCategory, string> = {
-  osago: 'ОСАГО',
-  kasko: 'КАСКО',
-  tax: 'Налог',
-  fine: 'Штрафы',
-  wash: 'Мойка',
-  parking: 'Парковка',
-  toll: 'Платные дороги',
-  tireService: 'Шиномонтаж',
-  tireStorage: 'Хранение шин',
-  inspection: 'Техосмотр',
-  accessories: 'Аксессуары',
-  registration: 'Регистрация',
-  other: 'Прочее',
-}
+/** Подписи категорий расходов (источник — `domain/labels.ts`). */
+export const EXPENSE_TITLES: Record<ExpenseCategory, string> = EXPENSE_CATEGORY_LABELS
 
 const STATE_RANK: Record<ReminderState, number> = { overdue: 0, soon: 1, ok: 2, unknown: 3 }
 const worst = (a: ReminderState, b: ReminderState): ReminderState => (STATE_RANK[a] <= STATE_RANK[b] ? a : b)

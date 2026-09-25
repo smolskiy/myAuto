@@ -1,27 +1,17 @@
 import { diffDays, monthKey } from '../dates'
+import { EXPENSE_CATEGORY_LABELS } from '../labels'
 import type { CarRecord, ExpenseCategory, ISODate, Kopecks } from '../types'
 import { lineTotal } from './lines'
 
 export type CostGroup = 'parts' | 'labor' | 'serviceOther' | 'fuel' | ExpenseCategory
 
+/** Подписи групп расходов; категории расходов — из `domain/labels.ts`. */
 export const COST_GROUP_LABELS: Record<CostGroup, string> = {
   parts: 'Запчасти',
   labor: 'Работы',
   serviceOther: 'ТО и ремонт (без детализации)',
   fuel: 'Топливо',
-  osago: 'ОСАГО',
-  kasko: 'КАСКО',
-  tax: 'Налог',
-  fine: 'Штрафы',
-  wash: 'Мойка',
-  parking: 'Парковка',
-  toll: 'Платные дороги',
-  tireService: 'Шиномонтаж',
-  tireStorage: 'Хранение шин',
-  inspection: 'Техосмотр',
-  accessories: 'Аксессуары',
-  registration: 'Регистрация',
-  other: 'Прочее',
+  ...EXPENSE_CATEGORY_LABELS,
 }
 
 type ByGroup = Partial<Record<CostGroup, Kopecks>>

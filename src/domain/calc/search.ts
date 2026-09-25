@@ -1,5 +1,5 @@
 import type { CarRecord, CatalogItem, ID, Master, Place } from '../types'
-import { EXPENSE_TITLES } from './reminders'
+import { EXPENSE_CATEGORY_LABELS } from '../labels'
 
 export interface SearchLookup {
   places: Map<ID, Place>
@@ -27,7 +27,7 @@ function haystack(r: CarRecord, lookup: SearchLookup): string {
       }
       break
     case 'expense':
-      parts.push(r.title, EXPENSE_TITLES[r.category], r.docNumber)
+      parts.push(r.title, EXPENSE_CATEGORY_LABELS[r.category], r.docNumber)
       break
     case 'fuel':
       parts.push(r.fuelGrade)
