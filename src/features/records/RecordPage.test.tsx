@@ -151,7 +151,9 @@ test('«Назад» из правки копии убирает копию и �
   await userEvent.click(await screen.findByRole('button', { name: 'Повторить' }))
   await waitFor(() => expect(router.state.location.pathname).toMatch(/\/edit$/))
   const copyId = router.state.location.pathname.split('/')[2]!
-  await userEvent.click(await screen.findByRole('button', { name: 'Назад' }))
+  // Форма копии грузится лениво: пока она не встала, на экране ещё карточка со своей «Назад».
+  await screen.findByRole('heading', { name: 'Копия записи' })
+  await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
   await waitFor(() => expect(router.state.location.pathname).toBe(`/record/${r.id}`))
   await waitFor(async () => expect((await db.records.get(copyId))?.deleted).toBe(true))
 })
