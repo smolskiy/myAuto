@@ -58,6 +58,8 @@ export function SwipeRow({ children, left, right }: SwipeRowProps) {
   const actions = [left, right].filter((a): a is SwipeAction => !!a)
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    // Новое касание: флаг прошлого свайпа сбрасываем — после свайпа пальцем click не приходит и сам его не снимет.
+    swiped.current = false
     if (e.button !== 0) return
     gesture.current = {
       id: e.pointerId,

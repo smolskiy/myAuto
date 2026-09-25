@@ -72,6 +72,24 @@ test('свайп влево дальше 30 % ширины — правое де
   expect(onDelete).toHaveBeenCalledTimes(1)
 })
 
+test('после свайпа пальцем (без click) следующее касание строки срабатывает', async () => {
+  const onOpen = vi.fn()
+  render(
+    <SwipeRow right={{ label: 'Удалить', icon: <IconTrash />, tone: 'danger', onAction: () => {} }}>
+      <button onClick={onOpen}>Заправка</button>
+    </SwipeRow>,
+  )
+  const row = screen.getByRole('button', { name: 'Заправка' })
+  // Мышью: click сразу после свайпа — часть жеста, строку не открывает.
+  drag(row.parentElement!, -60)
+  fireEvent.click(row)
+  expect(onOpen).not.toHaveBeenCalled()
+  // Пальцем: click после свайпа не приходит; новое касание должно сработать.
+  drag(row.parentElement!, -60)
+  await userEvent.click(row)
+  expect(onOpen).toHaveBeenCalledTimes(1)
+})
+
 test('вертикальное движение — прокрутка, а не свайп', () => {
   const onDelete = vi.fn()
   render(
