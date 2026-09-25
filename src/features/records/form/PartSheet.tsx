@@ -18,7 +18,14 @@ import {
 import { CatalogItemPicker, PlacePicker, UNIT_LABELS, useLookup } from '../../common'
 import { lastPartText } from '../lineText'
 import styles from './RecordForm.module.css'
-import { applyLastPart, matchesLastPart, type PartDraft } from './serviceLines'
+import {
+  applyLastPart,
+  BLANK_LINE,
+  isBlankLine,
+  lineName,
+  matchesLastPart,
+  type PartDraft,
+} from './serviceLines'
 
 const UNIT_OPTIONS = (Object.keys(UNIT_LABELS) as PartUnit[]).map((value) => ({
   value,
@@ -34,11 +41,11 @@ export interface PartSheetProps {
   onDone(line: PartLine): void
 }
 
-/** Готовая строка: количество по умолчанию 1, пустое название — имя узла. */
-function finish(d: PartDraft, itemName?: string): PartLine {
+/** Готовая строка: количество по умолчанию 1, пустое название — имя узла или набранное в поиске узла. */
+function finish(d: PartDraft, itemName: string | undefined, itemQuery: string): PartLine {
   return {
     ...d,
-    name: d.name.trim() || itemName || '',
+    name: lineName(d, itemName, itemQuery),
     brand: d.brand?.trim() || undefined,
     partNumber: d.partNumber?.trim() || undefined,
     qty: d.qty && d.qty > 0 ? d.qty : 1,
@@ -49,6 +56,8 @@ function finish(d: PartDraft, itemName?: string): PartLine {
 /** Строка запчасти: узел → подсказка «в прошлый раз» → бренд, артикул, количество, цена, где купил. */
 export function PartSheet({ open, line, vehicleId, onDone }: PartSheetProps) {
   const [draft, setDraft] = useState<PartDraft>(line)
+  const [itemQuery, setItemQuery] = useState('')
+  const [error, setError] = useState<string>()
   const lookup = useLookup()
   const last = useLastPart(vehicleId, draft.itemId)
   const brands = useBrandSuggestions(draft.brand ?? '')
@@ -56,7 +65,13 @@ export function PartSheet({ open, line, vehicleId, onDone }: PartSheetProps) {
   const itemName = (id?: ID) => (id ? lookup?.catalog.get(id)?.name : undefined)
 
   const suggestion = last && !matchesLastPart(draft, last.line) ? lastPartText(last.line) : null
-  const done = () => onDone(finish(draft, itemName(draft.itemId)))
+  // Крестик и жест — отмена пустой строки; «Готово» с пустой строкой — подсказка, а не молчаливый выброс.
+  const close = () => onDone(finish(draft, itemName(draft.itemId), itemQuery))
+  const done = () => {
+    const line = finish(draft, itemName(draft.itemId), itemQuery)
+    if (isBlankLine(line)) setError(BLANK_LINE)
+    else onDone(line)
+  }
   const unit = UNIT_LABELS[draft.unit]
   const sum =
     draft.unitPrice !== undefined && draft.qty && draft.qty !== 1
@@ -66,7 +81,7 @@ export function PartSheet({ open, line, vehicleId, onDone }: PartSheetProps) {
   return (
     <BottomSheet
       open={open}
-      onClose={done}
+      onClose={close}
       title="Запчасть"
       footer={
         <Button block onClick={done}>
@@ -76,15 +91,22 @@ export function PartSheet({ open, line, vehicleId, onDone }: PartSheetProps) {
     >
       <div className={styles.sheetBody}>
         <CatalogItemPicker
+          allowCreate
+          error={error}
+          onQueryChange={(q) => {
+            setItemQuery(q)
+            setError(undefined)
+          }}
           value={draft.itemId}
-          onChange={(itemId, item) =>
+          onChange={(itemId, item) => {
+            setError(undefined)
             setDraft((d) => ({
               ...d,
               itemId,
               // Название шло от прежнего узла (или пустое) — берём имя нового узла.
               name: !d.name.trim() || d.name === itemName(d.itemId) ? (item?.name ?? '') : d.name,
             }))
-          }
+          }}
         />
         {suggestion && last && (
           <button
@@ -96,7 +118,14 @@ export function PartSheet({ open, line, vehicleId, onDone }: PartSheetProps) {
             <span>{suggestion}</span>
           </button>
         )}
-        <TextField label="Название" value={draft.name} onChange={(e) => patch({ name: e.target.value })} />
+        <TextField
+          label="Название"
+          value={draft.name}
+          onChange={(e) => {
+            patch({ name: e.target.value })
+            setError(undefined)
+          }}
+        />
         <Combobox
           label="Бренд"
           value={null}

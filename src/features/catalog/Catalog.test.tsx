@@ -82,9 +82,11 @@ describe('каталог узлов', () => {
     await ensureSeed(db, BUILTIN_CATALOG)
     await repos.catalog.update(CATALOG_ID.engineOil, { hidden: true })
     render(
-      <MemoryRouter>
-        <CatalogItemPicker onChange={() => {}} />
-      </MemoryRouter>,
+      <ToastProvider>
+        <MemoryRouter>
+          <CatalogItemPicker onChange={() => {}} />
+        </MemoryRouter>
+      </ToastProvider>,
     )
     await userEvent.type(screen.getByRole('combobox', { name: 'Узел' }), 'масло')
     await waitFor(() => expect(screen.getAllByRole('option').length).toBeGreaterThan(0))

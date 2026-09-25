@@ -531,3 +531,37 @@ test('гарантия сохраняется датой и пробегом', a
     warrantyUntilKm: 180000,
   })
 })
+
+describe('строка, узла которой нет в каталоге', () => {
+  test('набранное в «Узел» становится названием работы', async () => {
+    renderAt('/record/new/service')
+    await typeTitle('Ремонт подвески')
+    await userEvent.click(screen.getByRole('button', { name: 'Добавить работу' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Работа' })
+    await userEvent.type(within(sheet).getByRole('combobox', { name: 'Узел' }), 'Рычаг кривой')
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Готово' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Работа' })).not.toBeInTheDocument())
+    const works = screen.getByRole('region', { name: 'Работы' })
+    expect(within(works).getByText('Рычаг кривой')).toBeInTheDocument()
+  })
+
+  test('пустая строка по «Готово» не пропадает молча — шторка остаётся с подсказкой', async () => {
+    renderAt('/record/new/service')
+    await screen.findByRole('combobox', { name: 'Название' })
+    const sheet = await openPart()
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Готово' }))
+    expect(within(sheet).getByText('Выберите узел или впишите название')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Запчасть' })).toBeInTheDocument()
+  })
+
+  test('«Создать» в выборе узла заводит свой узел и выбирает его', async () => {
+    renderAt('/record/new/service')
+    await screen.findByRole('combobox', { name: 'Название' })
+    const sheet = await openPart()
+    await userEvent.type(within(sheet).getByRole('combobox', { name: 'Узел' }), 'Рычаг кривой')
+    await userEvent.click(await within(sheet).findByRole('option', { name: 'Создать «Рычаг кривой»' }))
+    await waitFor(() => expect(within(sheet).getByLabelText('Название')).toHaveValue('Рычаг кривой'))
+    const created = (await db.catalogItems.toArray()).find((i) => i.name === 'Рычаг кривой')
+    expect(created).toMatchObject({ builtin: false, group: 'other' })
+  })
+})

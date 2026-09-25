@@ -17,6 +17,21 @@ export const blankPart = (ownPart: boolean): PartDraft => ({
 /** Пустая строка (ни названия, ни узла) в список не попадает. */
 export const isBlankLine = (l: { name: string; itemId?: ID }) => !l.name.trim() && !l.itemId
 
+/** Подсказка у выбора узла, когда «Готово» нажали на пустой строке. */
+export const BLANK_LINE = 'Выберите узел или впишите название'
+
+/**
+ * Название готовой строки: вписанное → имя выбранного узла → текст, набранный в поиске узла (узла нет в каталоге:
+ * набранное не должно теряться).
+ */
+export function lineName(
+  line: { name: string; itemId?: ID },
+  itemName: string | undefined,
+  itemQuery: string,
+) {
+  return line.name.trim() || itemName || (line.itemId ? '' : itemQuery.trim())
+}
+
 /** Подсказка «в прошлый раз» одним касанием: бренд, артикул, цена, единица и количество. */
 export function applyLastPart(line: PartDraft, last: PartLine): PartDraft {
   return {

@@ -6,9 +6,12 @@ export function normalize(s: string): string {
   return s.trim().toLowerCase().replaceAll('ё', 'е')
 }
 
+/** Каждое слово запроса — где угодно в тексте: «рычаг перед» находит «Рычаг передний нижний». */
 export function matches(text: string, query: string): boolean {
-  const q = normalize(query)
-  return !q || normalize(text).includes(q)
+  const t = normalize(text)
+  return normalize(query)
+    .split(/\s+/)
+    .every((word) => t.includes(word))
 }
 
 /**
