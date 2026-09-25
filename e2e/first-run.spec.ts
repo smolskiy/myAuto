@@ -68,9 +68,9 @@ test('первый запуск: VIN → машина → все стартов�
   await expect(page.getByRole('button', { name: 'Lada 2109, сменить машину' })).toBeVisible()
 })
 
-// DEF-02 (docs/qa/2026-09-25-e2e.md): короткое имя «Lada 2109» на карточке главной обрезано до «Lada 2…»,
+// DEF-02 (docs/qa/2026-09-25-e2e.md): короткое имя «Lada 2109» на карточке главной обрезалось до «Lada 2…»,
 // хотя справа от него пустое место.
-test.fixme('DEF-02: имя машины на карточке главной видно целиком', async ({ page }) => {
+test('DEF-02: имя машины на карточке главной видно целиком', async ({ page }) => {
   await onboard(page)
   const name = page
     .getByRole('button', { name: 'Lada 2109, сменить машину' })
@@ -80,6 +80,20 @@ test.fixme('DEF-02: имя машины на карточке главной в�
   expect(width.text, 'ширина текста имени не больше ширины его места — без многоточия').toBeLessThanOrEqual(
     width.box,
   )
+})
+
+test('DEF-02: длинное имя машины обрезается многоточием в пределах карточки', async ({ page }) => {
+  await onboard(page, { make: 'Mercedes-Benz', model: 'GLE 450 4MATIC Coupe AMG Line Premium Plus' })
+  const button = page.getByRole('button', { name: /^Mercedes-Benz GLE .*, сменить машину$/ })
+  await expect(button).toBeVisible()
+  const box = await button.evaluate((el) => {
+    const card = el.closest('[class*="card"]')!.getBoundingClientRect()
+    const own = el.getBoundingClientRect()
+    const name = el.querySelector('span')!
+    return { right: own.right, cardRight: card.right, text: name.scrollWidth, room: name.clientWidth }
+  })
+  expect(box.text, 'имя шире своего места — обрезано').toBeGreaterThan(box.room)
+  expect(box.right, 'кнопка имени не вылезает за карточку').toBeLessThanOrEqual(box.cardRight)
 })
 
 // DEF-03 (docs/qa/2026-09-25-e2e.md): редирект на онбординг считается переходом — оболочка переводит фокус на h1,
