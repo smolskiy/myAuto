@@ -26,3 +26,10 @@ export function periodRange(kind: PeriodKind, today: ISODate): { from?: ISODate;
       return {}
   }
 }
+
+/** Месяцы 'YYYY-MM' от `from` до `to` включительно; `from` позже `to` — пусто. */
+export function monthsBetween(from: string, to: string): string[] {
+  const out: string[] = []
+  for (let m = `${from}-01`; m.slice(0, 7) <= to; m = addMonths(m, 1)) out.push(m.slice(0, 7))
+  return out
+}

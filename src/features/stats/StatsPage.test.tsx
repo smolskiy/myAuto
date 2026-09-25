@@ -7,7 +7,7 @@ import { repos } from '../../db/repos'
 import { addDays, todayISO } from '../../domain/dates'
 import { formatDate } from '../../domain/format'
 import { ThemeProvider, ToastProvider } from '../../ui'
-import { periodRange } from './periods'
+import { monthsBetween, periodRange } from './periods'
 import { niceTicks } from './StatsCharts'
 import StatsPage from './StatsPage'
 
@@ -104,6 +104,11 @@ describe('periodRange', () => {
     expect(periodRange('year', TODAY)).toEqual({ from: '2026-01-01', to: TODAY })
     expect(periodRange('12m', TODAY)).toEqual({ from: '2025-09-26', to: TODAY })
     expect(periodRange('all', TODAY)).toEqual({})
+  })
+  test('месяцы между двумя месяцами — через границу года', () => {
+    expect(monthsBetween('2025-11', '2026-02')).toEqual(['2025-11', '2025-12', '2026-01', '2026-02'])
+    expect(monthsBetween('2026-03', '2026-03')).toEqual(['2026-03'])
+    expect(monthsBetween('2026-03', '2026-02')).toEqual([])
   })
   test('12 месяцев от 29 февраля', () => {
     expect(periodRange('12m', '2028-02-29')).toEqual({ from: '2027-03-01', to: '2028-02-29' })
@@ -220,5 +225,67 @@ describe('статистика', () => {
     renderStats()
     expect(await screen.findByText('Добавьте первые записи — здесь появится статистика')).toBeInTheDocument()
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+  })
+})
+
+/** Строки таблицы карточки: заголовок строки и ячейки, пробелы (в т. ч. неразрывные) — обычные. */
+function tableRows(card: HTMLElement): string[][] {
+  const table = within(card).getByRole('table')
+  return within(table)
+    .getAllByRole('row')
+    .slice(1)
+    .map((r) => Array.from(r.querySelectorAll('th, td')).map((c) => c.textContent!.replace(/\s/g, ' ')))
+}
+
+const expense = (vehicleId: string, date: string, rub: number) =>
+  repos.records.create({ vehicleId, kind: 'expense', date, total: rub * 100, category: 'wash' })
+
+const odometer = (vehicleId: string, date: string, km: number) =>
+  repos.records.create({ vehicleId, kind: 'odometer', date, odometer: km, total: 0 })
+
+describe('статистика: месяцы и годы', () => {
+  const year = Number(todayISO().slice(0, 4))
+
+  test('«По месяцам» — каждый месяц периода, пустые с нулями', async () => {
+    const car = await addVehicle()
+    await expense(car.id, '2025-03-10', 1000)
+    await expense(car.id, '2025-06-05', 2000)
+    renderStats()
+    await userEvent.click(await screen.findByRole('radio', { name: 'Всё время' }))
+    const card = await screen.findByRole('region', { name: 'По месяцам' })
+    await waitFor(() =>
+      expect(tableRows(card)).toEqual([
+        ['июн 2025', '2 000', '2 000'],
+        ['май 2025', '0', '0'],
+        ['апр 2025', '0', '0'],
+        ['мар 2025', '1 000', '1 000'],
+      ]),
+    )
+  })
+
+  test('«По годам» — вся история, какой бы период ни был выбран', async () => {
+    const car = await addVehicle()
+    await expense(car.id, `${year - 2}-02-10`, 1000)
+    await expense(car.id, `${year - 2}-11-20`, 2000)
+    await expense(car.id, `${year - 1}-05-05`, 500)
+    renderStats()
+    expect(await screen.findByRole('radio', { name: '12 мес.' })).toBeChecked()
+    const card = await screen.findByRole('region', { name: 'По годам' })
+    const rows = tableRows(card)
+    expect(rows.find((r) => r[0] === String(year - 2))?.[1]).toBe('3 000')
+    expect(rows.find((r) => r[0] === String(year - 1))?.[1]).toBe('500')
+  })
+
+  test('пробег по годам складывается в пробег за всё время', async () => {
+    const car = await addVehicle()
+    await odometer(car.id, `${year - 3}-06-01`, 10000)
+    await odometer(car.id, `${year - 2}-06-01`, 20000)
+    await odometer(car.id, `${year - 1}-06-01`, 30000)
+    renderStats()
+    const card = await screen.findByRole('region', { name: 'По годам' })
+    const rows = tableRows(card)
+    expect(rows.map((r) => r[0])).toEqual([String(year - 3), String(year - 2), String(year - 1)])
+    const sum = rows.reduce((s, r) => s + Number(r[2]!.replace(/\s/g, '')), 0)
+    expect(Math.abs(sum - 20000)).toBeLessThanOrEqual(1)
   })
 })
