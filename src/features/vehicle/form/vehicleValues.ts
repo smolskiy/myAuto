@@ -32,7 +32,7 @@ export interface VehicleValues {
   fluids: Fluid[]
   tireSizeFront: string
   tireSizeRear: string
-  /** Чертёж на главной: '' — подобрать по модели, 'none' — без чертежа, иначе id картинки. */
+  /** Картинка на главной: '' — подобрать по модели, 'none' — без картинки, иначе id картинки. */
   schematic: string
   note: string
 }

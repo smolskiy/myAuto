@@ -57,7 +57,7 @@ export interface Vehicle extends Row {
   tireSizeRear?: string
   photoAttachmentId?: ID
   /**
-   * Чертёж на главной: id картинки (`ui/VehicleSchematic`) или 'none' — без чертежа.
+   * Картинка на главной: id картинки (`ui/VehicleSchematic`) или 'none' — без картинки.
    * Нет поля — подбирается по марке и модели.
    */
   schematic?: string
