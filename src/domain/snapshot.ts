@@ -1,5 +1,13 @@
 import type {
-  Attachment, CarRecord, CatalogItem, Master, Place, ReminderRule, TireSet, Vehicle, VehicleDocument,
+  Attachment,
+  CarRecord,
+  CatalogItem,
+  Master,
+  Place,
+  ReminderRule,
+  TireSet,
+  Vehicle,
+  VehicleDocument,
 } from './types'
 
 /** Формат garage.json и ручного JSON-бэкапа. Замороженный контракт. */
@@ -21,7 +29,15 @@ export interface SnapshotTables {
 export type TableName = keyof SnapshotTables
 
 export const TABLE_NAMES: readonly TableName[] = [
-  'vehicles', 'records', 'places', 'masters', 'catalogItems', 'reminderRules', 'documents', 'tireSets', 'attachments',
+  'vehicles',
+  'records',
+  'places',
+  'masters',
+  'catalogItems',
+  'reminderRules',
+  'documents',
+  'tireSets',
+  'attachments',
 ]
 
 export interface Snapshot {
@@ -35,8 +51,15 @@ export class SnapshotError extends Error {}
 
 export function emptyTables(): SnapshotTables {
   return {
-    vehicles: [], records: [], places: [], masters: [], catalogItems: [],
-    reminderRules: [], documents: [], tireSets: [], attachments: [],
+    vehicles: [],
+    records: [],
+    places: [],
+    masters: [],
+    catalogItems: [],
+    reminderRules: [],
+    documents: [],
+    tireSets: [],
+    attachments: [],
   }
 }
 
@@ -44,7 +67,8 @@ export function emptySnapshot(now: number = Date.now()): Snapshot {
   return { format: SNAPSHOT_FORMAT, schemaVersion: SCHEMA_VERSION, exportedAt: now, tables: emptyTables() }
 }
 
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
 
 /** Проверяет и нормализует снимок из файла или с Диска. Бросает SnapshotError с текстом для пользователя. */
 export function parseSnapshot(json: unknown): Snapshot {

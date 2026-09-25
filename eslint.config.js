@@ -32,7 +32,10 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
-  forbid('domain', LAYERS.filter((l) => l !== 'domain')),
+  forbid(
+    'domain',
+    LAYERS.filter((l) => l !== 'domain'),
+  ),
   forbid('db', ['sync', 'ui', 'features', 'app']),
   forbid('sync', ['ui', 'features', 'app']),
   forbid('ui', ['domain', 'db', 'sync', 'features', 'app']),

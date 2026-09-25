@@ -48,7 +48,7 @@ export function createRepo<T extends Row>(db: MyAutoDB, table: TableName): Repo<
     async update(id, patch) {
       const existing = await t.get(id)
       if (!existing || existing.deleted) throw new Error('Запись не найдена')
-      const updated = { ...existing, ...patch, updatedAt: tick() } as T
+      const updated = { ...existing, ...patch, updatedAt: tick(existing.updatedAt) } as T
       await t.put(updated)
       emitLocalChange(table)
       return updated
@@ -57,14 +57,14 @@ export function createRepo<T extends Row>(db: MyAutoDB, table: TableName): Repo<
     async remove(id) {
       const existing = await t.get(id)
       if (!existing) return
-      await t.put({ ...existing, deleted: true, updatedAt: tick() })
+      await t.put({ ...existing, deleted: true, updatedAt: tick(existing.updatedAt) })
       emitLocalChange(table)
     },
 
     async restore(id) {
       const existing = await t.get(id)
       if (!existing) return
-      await t.put({ ...existing, deleted: false, updatedAt: tick() })
+      await t.put({ ...existing, deleted: false, updatedAt: tick(existing.updatedAt) })
       emitLocalChange(table)
     },
   }

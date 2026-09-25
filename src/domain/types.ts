@@ -17,7 +17,15 @@ export type FuelType = 'petrol' | 'diesel' | 'hybrid' | 'electric' | 'lpg' | 'cn
 export type Transmission = 'mt' | 'at' | 'cvt' | 'amt' | 'dct'
 export type Drive = 'fwd' | 'rwd' | 'awd'
 export type FluidKind =
-  | 'engineOil' | 'coolant' | 'atf' | 'mtf' | 'brake' | 'powerSteering' | 'diffFront' | 'diffRear' | 'transferCase'
+  | 'engineOil'
+  | 'coolant'
+  | 'atf'
+  | 'mtf'
+  | 'brake'
+  | 'powerSteering'
+  | 'diffFront'
+  | 'diffRear'
+  | 'transferCase'
 
 export interface Fluid {
   kind: FluidKind
@@ -117,8 +125,19 @@ export interface FuelRecord extends RecordBase {
 }
 
 export type ExpenseCategory =
-  | 'osago' | 'kasko' | 'tax' | 'fine' | 'wash' | 'parking' | 'toll' | 'tireService'
-  | 'tireStorage' | 'inspection' | 'accessories' | 'registration' | 'other'
+  | 'osago'
+  | 'kasko'
+  | 'tax'
+  | 'fine'
+  | 'wash'
+  | 'parking'
+  | 'toll'
+  | 'tireService'
+  | 'tireStorage'
+  | 'inspection'
+  | 'accessories'
+  | 'registration'
+  | 'other'
 
 export interface ExpenseRecord extends RecordBase {
   kind: 'expense'
@@ -163,8 +182,20 @@ export interface Master extends Row {
 }
 
 export type ItemGroup =
-  | 'engine' | 'fluids' | 'filters' | 'ignition' | 'timing' | 'transmission' | 'brakes'
-  | 'suspension' | 'steering' | 'electrical' | 'climate' | 'body' | 'tires' | 'other'
+  | 'engine'
+  | 'fluids'
+  | 'filters'
+  | 'ignition'
+  | 'timing'
+  | 'transmission'
+  | 'brakes'
+  | 'suspension'
+  | 'steering'
+  | 'electrical'
+  | 'climate'
+  | 'body'
+  | 'tires'
+  | 'other'
 
 export interface CatalogItem extends Row {
   name: string
