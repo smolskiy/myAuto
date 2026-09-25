@@ -1,3 +1,4 @@
+import { withBuiltinDefaults } from '../domain/catalog'
 import {
   DRIVE_LABELS,
   EXPENSE_CATEGORY_LABELS,
@@ -52,7 +53,7 @@ export function buildSheets(snapshot: Snapshot): Sheet[] {
   const vehicle = names(t.vehicles)
   const place = names(t.places)
   const master = names(t.masters)
-  const item = names(t.catalogItems)
+  const item = names(t.catalogItems.map(withBuiltinDefaults))
   const nameOf = (map: Map<ID, string>, id: ID | undefined) => (id ? (map.get(id) ?? null) : null)
 
   const vehicles = [...live(t.vehicles)].sort((a, b) => a.order - b.order)

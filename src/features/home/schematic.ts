@@ -137,11 +137,25 @@ const GROUP_ZONE: Record<ItemGroup, SchematicZone | null> = {
   other: null,
 }
 
+/** Группы, где «задний» в названии значит заднюю ось: подвеска, тормоза, рулевое, трансмиссия, шины. */
+const AXLE_GROUPS: ItemGroup[] = ['suspension', 'brakes', 'steering', 'transmission', 'tires']
+// Стояночный тормоз и барабанные тормоза у легковых машин — на задних колёсах.
+const REAR = /задн|стояночн|ручник|барабан/i
+/** Свет среди «Электрики»: фары, фонари, лампы, ПТФ, повторители, стоп-сигналы. */
+const LIGHT = /фар|фонар|ламп|птф|противотуман|повторител|стоп-сигнал|габарит/i
+
+/**
+ * Зона узла: явная (ITEM_ZONE) → по названию (задняя ось, свет — так раскладываются левые/правые детали и свои
+ * узлы) → по группе каталога.
+ */
 export function zoneOfItem(itemId: ID, catalog: CatalogItem[]): SchematicZone | null {
   const fixed = ITEM_ZONE[itemId]
   if (fixed) return fixed
   const item = catalog.find((i) => i.id === itemId)
-  return item ? GROUP_ZONE[item.group] : null
+  if (!item) return null
+  if (AXLE_GROUPS.includes(item.group) && REAR.test(item.name)) return 'wheelRear'
+  if (item.group === 'electrical' && LIGHT.test(item.name)) return 'lights'
+  return GROUP_ZONE[item.group]
 }
 
 /** Короткие названия для выноски: плашка на чертеже узкая. */

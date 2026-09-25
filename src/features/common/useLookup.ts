@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/instance'
-import { BUILTIN_CATALOG } from '../../domain/catalog'
+import { BUILTIN_CATALOG, withBuiltinDefaults } from '../../domain/catalog'
 import type { CatalogItem, ID, Master, Place } from '../../domain/types'
 
 /** Справочник имён для подписей записей. */
@@ -23,7 +23,7 @@ export function useLookup(): Lookup | undefined {
       db.catalogItems.toArray(),
     ])
     const catalog = new Map<ID, CatalogItem>(BUILTIN_CATALOG.map((i) => [i.id, i]))
-    for (const row of catalogRows) catalog.set(row.id, row)
+    for (const row of catalogRows) catalog.set(row.id, withBuiltinDefaults(row))
     return {
       places: new Map(places.map((p) => [p.id, p])),
       masters: new Map(masters.map((m) => [m.id, m])),

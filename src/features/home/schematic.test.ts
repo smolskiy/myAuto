@@ -147,6 +147,33 @@ test('расширенный каталог: задняя ось — задне�
   expect(zoneOfItem(C.brakeCaliperFront, catalog)).toBe('wheelFront')
 })
 
+test('левые и правые детали и свои узлы: «задн» в названии — заднее колесо, фары и фонари — свет', () => {
+  for (const id of [
+    C.shockRearLeft,
+    C.shockRearRight,
+    C.rearTrailingArmLeft,
+    C.rearLateralArmRight,
+    C.stabilizerLinkRearLeft,
+    C.brakeCaliperRearLeft,
+    C.absSensorRearRight,
+    C.parkingBrakeCableLeft,
+    C.drumBrakeShoes,
+  ])
+    expect(zoneOfItem(id, catalog), id).toBe('wheelRear')
+  for (const id of [C.headlightLeft, C.tailLightRight, C.fogLightLeft])
+    expect(zoneOfItem(id, catalog), id).toBe('lights')
+  expect(zoneOfItem(C.frontLowerArmLeft, catalog)).toBe('wheelFront')
+  expect(zoneOfItem(C.brakeCaliperFrontRight, catalog)).toBe('wheelFront')
+  expect(zoneOfItem(C.drainPlugWasher, catalog)).toBe('engine')
+  const own = [
+    ...catalog,
+    custom('u9', 'suspension', 'Сайлентблок задний'),
+    custom('u10', 'electrical', 'Лампа стоп-сигнала'),
+  ]
+  expect(zoneOfItem('u9', own)).toBe('wheelRear')
+  expect(zoneOfItem('u10', own)).toBe('lights')
+})
+
 test('свои узлы — по группе; кузов, «Прочее» и неизвестное — без зоны', () => {
   expect(zoneOfItem('u1', catalog)).toBe('transmission')
   expect(zoneOfItem('u3', catalog)).toBe('engine')

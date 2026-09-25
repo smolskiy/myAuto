@@ -103,7 +103,9 @@ test('записи отсортированы и фильтруются по т�
 test('каталог: встроенные позиции без сида, удалённая встроенная не воскресает', async () => {
   await db.catalogItems.put({ ...BUILTIN_CATALOG[0]!, deleted: true, updatedAt: 5 })
   const { result } = renderHook(() => useCatalog())
-  await waitFor(() => expect(result.current).toHaveLength(BUILTIN_CATALOG.length - 1))
+  // В подсказках — встроенные без «запасных» (hidden) и без удалённой.
+  const visible = BUILTIN_CATALOG.filter((i) => !i.hidden).length
+  await waitFor(() => expect(result.current).toHaveLength(visible - 1))
   expect(result.current?.some((i) => i.id === BUILTIN_CATALOG[0]!.id)).toBe(false)
 })
 

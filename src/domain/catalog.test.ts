@@ -1,5 +1,11 @@
-import { expect, test } from 'vitest'
-import { BUILTIN_CATALOG, CATALOG_ID, ITEM_GROUP_LABELS, STARTER_REMINDER_ITEM_IDS } from './catalog'
+import { describe, expect, test } from 'vitest'
+import {
+  BUILTIN_CATALOG,
+  CATALOG_ID,
+  ITEM_GROUP_LABELS,
+  STARTER_REMINDER_ITEM_IDS,
+  withBuiltinDefaults,
+} from './catalog'
 import type { ItemGroup } from './types'
 
 /** Как ищет выбор узла: регистр и ё/е не важны, подстрока. */
@@ -132,9 +138,77 @@ test('интервалы по умолчанию — целые положите
   }
 })
 
-test('каталог покрывает основные узлы легковой машины: 110–160 позиций', () => {
-  expect(BUILTIN_CATALOG.length).toBeGreaterThanOrEqual(110)
-  expect(BUILTIN_CATALOG.length).toBeLessThanOrEqual(160)
+test('каталог покрывает основные узлы легковой машины: 150–260 позиций в подсказках', () => {
+  const visible = BUILTIN_CATALOG.filter((i) => !i.hidden)
+  expect(visible.length).toBeGreaterThanOrEqual(150)
+  expect(visible.length).toBeLessThanOrEqual(260)
+})
+
+/** Детали, которые магазины продают отдельно на левую и правую сторону: пара, одна группа, окончания по роду. */
+test.each([
+  ['item.front_lower_arm', 'Рычаг передний нижний', 'suspension'],
+  ['item.front_upper_arm', 'Рычаг передний верхний', 'suspension'],
+  ['item.rear_trailing_arm', 'Рычаг задний продольный', 'suspension'],
+  ['item.rear_lateral_arm', 'Рычаг задний поперечный', 'suspension'],
+  ['item.steering_knuckle', 'Кулак поворотный', 'suspension'],
+  ['item.ball_joint', 'Опора шаровая', 'suspension'],
+  ['item.shock_front', 'Амортизатор передний', 'suspension'],
+  ['item.shock_rear', 'Амортизатор задний', 'suspension'],
+  ['item.stabilizer_link_front', 'Стойка стабилизатора передняя', 'suspension'],
+  ['item.stabilizer_link_rear', 'Стойка стабилизатора задняя', 'suspension'],
+  ['item.tie_rod_end', 'Наконечник рулевой тяги', 'steering'],
+  ['item.tie_rod', 'Тяга рулевая', 'steering'],
+  ['item.drive_shaft_front', 'Привод передний', 'transmission'],
+  ['item.cv_joint_inner', 'ШРУС внутренний', 'transmission'],
+  ['item.cv_joint_outer', 'ШРУС наружный', 'transmission'],
+  ['item.drive_shaft_seal', 'Сальник привода', 'transmission'],
+  ['item.brake_caliper_front', 'Суппорт тормозной передний', 'brakes'],
+  ['item.brake_caliper_rear', 'Суппорт тормозной задний', 'brakes'],
+  ['item.brake_hose_front', 'Шланг тормозной передний', 'brakes'],
+  ['item.abs_sensor_front', 'Датчик ABS передний', 'brakes'],
+  ['item.abs_sensor_rear', 'Датчик ABS задний', 'brakes'],
+  ['item.parking_brake_cable', 'Трос стояночного тормоза', 'brakes'],
+  ['item.headlight', 'Фара', 'electrical'],
+  ['item.tail_light', 'Фонарь задний', 'electrical'],
+  ['item.fog_light', 'Фара противотуманная', 'electrical'],
+  ['item.side_mirror', 'Зеркало боковое', 'body'],
+  ['item.front_fender', 'Крыло переднее', 'body'],
+  ['item.wheel_arch_liner_front', 'Подкрылок передний', 'body'],
+  ['item.window_regulator_front', 'Стеклоподъёмник передний', 'body'],
+])('%s — «%s» левый и правый', (base, name, group) => {
+  const left = byId.get(`${base}_left`)
+  const right = byId.get(`${base}_right`)
+  expect(left, `${base}_left`).toMatchObject({ group })
+  expect(right, `${base}_right`).toMatchObject({ group })
+  expect(left!.name).toMatch(new RegExp(`^${name} лев(ый|ая|ое)$`))
+  expect(right!.name).toMatch(new RegExp(`^${name} прав(ый|ая|ое)$`))
+  expect(left!.hidden).toBeFalsy()
+})
+
+test('общие позиции, которые заменили левая и правая, остаются в каталоге (история), но ушли из подсказок', () => {
+  for (const id of [
+    CATALOG_ID.frontLowerArm,
+    CATALOG_ID.frontUpperArm,
+    CATALOG_ID.ballJoint,
+    CATALOG_ID.frontStruts,
+    CATALOG_ID.shockAbsorbersRear,
+    CATALOG_ID.tieRod,
+    CATALOG_ID.tieRodEnd,
+    CATALOG_ID.cvJointOuter,
+    CATALOG_ID.cvJointInner,
+    CATALOG_ID.driveShaft,
+    CATALOG_ID.brakeCaliperFront,
+    CATALOG_ID.brakeCaliperRear,
+    CATALOG_ID.absSensor,
+    CATALOG_ID.headlights,
+    CATALOG_ID.fogLights,
+    CATALOG_ID.tailLights,
+    CATALOG_ID.sideMirrors,
+  ])
+    expect(byId.get(id)?.hidden, id).toBe(true)
+  // Позиции первой версии не прячем: на них могут стоять напоминания владельца.
+  expect(byId.get(CATALOG_ID.shockAbsorbers)?.hidden).toBeFalsy()
+  expect(byId.get(CATALOG_ID.stabilizerLinks)?.hidden).toBeFalsy()
 })
 
 test.each([
@@ -143,11 +217,14 @@ test.each([
   'Шаровая',
   'ступиц',
   'Суппорт',
-  'Рулевая тяга',
-  'Рулевой наконечник',
+  'Тяга рулевая',
+  'Наконечник рулевой',
   'Рулевая рейка',
-  'Стойки амортизаторов',
-  'Амортизаторы задние',
+  'Амортизатор передний',
+  'Амортизатор задний',
+  'рычаг перед лев',
+  'Кольцо сливной пробки',
+  'Колодки тормозные барабанные',
   'Опоры передних стоек',
   'Пружины',
   'Втулки стабилизатора',
@@ -157,7 +234,7 @@ test.each([
   'Барабан',
   'ШРУС наружный',
   'ШРУС внутренний',
-  'полуось',
+  'Привод передний',
   'Выжимной подшипник',
   'Маховик',
   'Опоры двигателя',
@@ -175,7 +252,7 @@ test.each([
   'Генератор',
   'Стартер',
   'Лампы ближнего света',
-  'Фары',
+  'Фара',
   'Радиатор печки',
   'Компрессор кондиционера',
   'Лобовое стекло',
@@ -184,8 +261,9 @@ test.each([
   'Диагностика двигателя',
   'Мойка',
   'Химчистка',
-])('поиск «%s» находит узел в каталоге', (query) => {
-  expect(BUILTIN_CATALOG.some((i) => norm(i.name).includes(norm(query)))).toBe(true)
+])('поиск «%s» находит узел в подсказках (каждое слово)', (query) => {
+  const words = norm(query).split(/\s+/)
+  expect(BUILTIN_CATALOG.some((i) => !i.hidden && words.every((w) => norm(i.name).includes(w)))).toBe(true)
 })
 
 /** Новые позиции с осью в названии: id стабильны навсегда, по ним чертёж раскладывает узлы по колёсам. */
@@ -207,4 +285,30 @@ test.each<[id: string, name: string, group: ItemGroup]>([
   ['item.brake_drums_rear', 'Барабаны тормозные задние', 'brakes'],
 ])('позиция %s — «%s»', (id, name, group) => {
   expect(byId.get(id)).toMatchObject({ name, group })
+})
+
+describe('встроенные строки базы и код', () => {
+  const code = BUILTIN_CATALOG.find((i) => i.id === CATALOG_ID.engineOil)!
+
+  test('нетронутая встроенная строка (updatedAt 0) берёт название, группу и интервалы из кода', () => {
+    const stale = { ...code, name: 'Старое имя', group: 'other' as const, defaultIntervalKm: 5000 }
+    expect(withBuiltinDefaults(stale)).toMatchObject({
+      name: code.name,
+      group: code.group,
+      defaultIntervalKm: code.defaultIntervalKm,
+    })
+  })
+
+  test('правку владельца (updatedAt > 0), свои узлы и удалённые из кода id не трогаем', () => {
+    const edited = { ...code, name: 'Масло Motul', updatedAt: 5 }
+    expect(withBuiltinDefaults(edited)).toBe(edited)
+    const own = { ...code, id: 'u1', builtin: false, name: 'Своё' }
+    expect(withBuiltinDefaults(own)).toBe(own)
+    const gone = { ...code, id: 'item.removed_from_code', name: 'Был' }
+    expect(withBuiltinDefaults(gone)).toBe(gone)
+  })
+
+  test('надгробие остаётся надгробием', () => {
+    expect(withBuiltinDefaults({ ...code, deleted: true }).deleted).toBe(true)
+  })
 })

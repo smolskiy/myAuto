@@ -10,7 +10,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useCallback, useMemo } from 'react'
 import { db } from './instance'
 import { META_KEYS, getMeta, setMeta } from './meta'
-import { BUILTIN_CATALOG, ITEM_GROUP_LABELS } from '../domain/catalog'
+import { BUILTIN_CATALOG, ITEM_GROUP_LABELS, withBuiltinDefaults } from '../domain/catalog'
 import { suggestBrands } from '../domain/brands'
 import { todayISO } from '../domain/dates'
 import { costBreakdown, type CostBreakdown } from '../domain/calc/costs'
@@ -73,7 +73,8 @@ async function allRecords(): Promise<CarRecord[]> {
 
 /** Каталог: строки базы + встроенные позиции, которых в базе нет (надгробие встроенную позицию не воскрешает). */
 async function loadCatalog(): Promise<CatalogItem[]> {
-  const rows = await db.catalogItems.toArray()
+  // Нетронутые встроенные строки — по текущему коду (переименования доходят до засеянных баз).
+  const rows = (await db.catalogItems.toArray()).map(withBuiltinDefaults)
   const ids = new Set(rows.map((r) => r.id))
   return [...live(rows), ...BUILTIN_CATALOG.filter((i) => !ids.has(i.id))]
 }
