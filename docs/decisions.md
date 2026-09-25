@@ -2,7 +2,7 @@
 
 Каждое решение: что решено — почему — чем обернётся, если оно неверно. Источник — журналы исполнения волн.
 
-## 
+## Волна 0 · каркас и контракты
 
 - Ruling: Tasks 1–6 go to ONE implementer dispatch (sonnet), reviewed by ONE reviewer with per-task verdicts — the tasks are strictly sequential transcription of complete code, per-task dispatch would only add latency — cost if wrong: coarser review, caught by final review.
 - Ruling: Wave 0 runs on `main` — repo holds only docs, user explicitly authorized an end-to-end autonomous run ("запускай… доделай до конца") — cost if wrong: none (single-user repo, nothing pushed).
@@ -14,7 +14,7 @@
 - Ruling: accept Important 1 — updates/remove/restore use `Math.max(tick(), existing.updatedAt + 1)`; plan recipe was wrong, spec §6.1 LWW requires "my edit wins" — cost if wrong: none.
 - Ruling: fold cheap minors into the same fix round because wave-1 agents build on these files and landing them before their merge avoids conflicts: M2 vitest config import ext, M3 mergeRows first loop via pickRow, M4 merged header from constants, M6 applyRows picks newer of current vs incoming inside its transaction + readSnapshot in one read txn, M7 isolate change listeners, M9 missing repo tests, M10 prettier formatting of wave-0 files, M11 duplicate drops warrantyUntil*/tireSwap — cost if wrong: small scope creep in wave-0 fix.
 
-## 
+## Волна 1 · расчёты и данные
 
 - Ruling: whole plan executed end-to-end by project agent `domain-data` in its own worktree (branch wave1/domain-data), parallel with the other two wave-1 plans, then ONE reviewer with per-task verdicts — user asked to run all agents at once; zones are disjoint — cost if wrong: coarser review granularity.
 - Ruling: I1 (plan-mandated) — kmDriven interpolates the odometer linearly by date at range bounds (clamped to first/last point); ≤ 0 km → null; plan test "one point → null" stays true for the bundled data — spec §5 "цена км = расходы периода / км за период" needs km actually driven in the period — cost if wrong: small deviation from raw point differences.
@@ -24,7 +24,7 @@
 - Ruling: fold M1 (km fallback to latest matching record WITH odometer), M3 (shared lineTotal), M5 (depth cap in money parser), M8 (labels in one module), M9 (hook tests) into the fix round; M2 → wave-2 form sets no itemId on one-off reminders; M4 → wave-2 form requires odometer on tire swaps; M6 → wave-2 "В архив" on the active vehicle switches active to first non-archived — cost if wrong: small scope creep.
 - domain: fix round 1/5 implementer DONE (merge 8d6d8c3 + 916c1d8..3989821, 157 tests); extra: deleted vehicles' records excluded from 'all'/stats/brand suggestions — Ruling: accept — spec treats deleted rows as absent everywhere — cost if wrong: one-line change.
 
-## 
+## Волна 1 · дизайн-система
 
 - Ruling: whole plan executed end-to-end by project agent `ui-system` in worktree (branch wave1/ui-system), one reviewer with per-task verdicts — parallel wave per user request — cost if wrong: coarser review.
 - Ruling: money-expression parser duplicated in `ui/lib/moneyExpr.ts` (same test cases as domain) — spec §3.2 forbids ui→domain imports — cost if wrong: two parsers may drift; mitigated by identical cases.
@@ -35,7 +35,7 @@
 - Ruling: outside-zone requests — approve afterEach(cleanup) in src/test/setup.ts (remove per-file copies) and an `icons` npm script; reject node types in src tsconfig (changes timer typings program-wide); approve dark accent split (#4C8DFF text / #2C68D6 fill); barrel import in main.tsx accepted.
 - ui: fix round 1/5 implementer DONE (merge 68f3cda + d412a76..bc617d3, 434 tests); scoped re-review dispatched; wave 2a shell dispatched in parallel on wave1/ui-system (Ruling: start shell before ui re-review — fixes don't change prop contracts; cost if wrong: shell merges a later ui fix)
 
-## 
+## Волна 1 · синхронизация
 
 - Ruling: whole plan executed end-to-end by project agent `sync-storage` in worktree (branch wave1/sync-storage), one reviewer with per-task verdicts — parallel wave per user request — cost if wrong: coarser review.
 - Ruling: engine writes `garage.json` when it does not exist yet even if the merged snapshot is empty — initializes the Disk and makes the daily backup possible — cost if wrong: one tiny extra file write on first connect.
@@ -46,7 +46,7 @@
 - Ruling: I4 — frozen contract extended by leader: YandexAuth.getLoginError(), YandexAuth.subscribe() (commit 59d7598) — screens must show why login failed — cost if wrong: none.
 - Ruling: fold minors into the same fix round: status → off/idle immediately after disconnect/connect via auth.subscribe; report 507 from daily backup; 401 on pasted code → «Код не подошёл — получите новый»; document loginUrl() is click-only; Excel skips rows of deleted vehicles; initSync retries after failure; cross-tab lock via navigator.locks when available — cost if wrong: small scope creep.
 
-## 
+## Волна 2a · оболочка
 
 - Ruling: whole plan executed end-to-end by one feature-screens agent in its own worktree; one reviewer with per-task verdicts — parallel wave per user request — cost if wrong: coarser review.
 - Ruling: wave 2b tracks dispatched from wave2/shell before its review completes — features/common exports are fixed by plan and verified present; review fixes will be merged into the track branches — cost if wrong: small merge work.
@@ -55,7 +55,7 @@
 - Ruling: I3 — useDraftAttachments discards on unmount when the owner row does not exist (never touches saved rows); FormPage ignores «Назад» while saving — cost if wrong: none.
 - Ruling: fold minors M1 (ErrorPage remembers failing error text, not timestamp), M2 (show only intentional Russian errors via UserError; else Russian fallback + console.error), M3 (useGoBack uses history.state.idx), M4 (Page back string = fallback of goBack), M5 (no tab bar/page flash before first-run decision), M6 (document.title per route + focus h1 on navigation), M7 (seed failure doesn't block sync), nits NEED_REFRESH_EVENT import + clear toast offset on unmount — cost if wrong: small scope creep.
 
-## 
+## Волна 2b · записи и журнал
 
 - Ruling: whole plan executed end-to-end by one feature-screens agent in its own worktree, parallel with the other two tracks; one reviewer with per-task verdicts — user asked to finish everything with agents — cost if wrong: coarser review.
 - Ruling: I-1 — «Повторить» navigates to /record/new/<kind>?from=<id>; the new form is prefilled from the source (today, no odometer, new line ids, warranty and tire swap cleared, expense validity cleared); nothing is written until «Сохранить»; CopyState/dropCopy removed — cost if wrong: none.
@@ -63,18 +63,18 @@
 - Ruling: I-3 — tire statuses change only when the saved record is the vehicle's latest live swap (date desc, createdAt desc) AND it is a create or its date/tireSwap changed; mounted ≠ removed validated — cost if wrong: owner fixes statuses by hand after a backdated swap.
 - Ruling: fold minors 1 (cleared total → auto), 2 (untouched prefilled odometer cleared when date moves into the past), 3 (journal debounce uses latest filter), 5 (onboarding rules in one rw txn), 6 (blank fluid line not added), 7 (invalid VIN = warning, saving allowed — frame numbers of JDM cars), 8 (aria-live for VIN online result; date chips group label; per-item onboarding labels), 10 (GRADES and DOC_NUMBER_LABEL single source), 12 (copyLines outside reducer; «Год» filter label «12 месяцев») — cost if wrong: small.
 
-## 
+## Волна 2b · главная, ТО, статистика, настройки
 
 - Ruling: whole plan executed end-to-end by one feature-screens agent in its own worktree, parallel with the other two tracks; one reviewer with per-task verdicts — user asked to finish everything with agents — cost if wrong: coarser review.
 - Ruling: I1 fill every month of the range with zeros; I2 «По годам» from full history regardless of period; fold M1 (year km with touching boundaries so years sum to total), M2 (overdue items → event today; text/calendar;charset=utf-8), M6 (home badge pending = photos wording), M7 (catalog item without defaults doesn't clear typed intervals), M8 (import { version }), M9 (mask pasted token field, autocorrect off, clear on failure) — cost if wrong: small.
 
-## 
+## Волна 2b · гараж и справочники
 
 - Ruling: whole plan executed end-to-end by one feature-screens agent in its own worktree, parallel with the other two tracks; one reviewer with per-task verdicts — user asked to finish everything with agents — cost if wrong: coarser review.
 - Ruling: I-1 — an archived vehicle never becomes active: its card shows its journal inline (records list, «Показать все») and hides/disables Документы/Шины/Статистика links with a hint; useActiveVehicle falls back to the first non-archived vehicle when the stored active one is archived (null if none) — permission to edit src/db/hooks.ts for this; Garage never shows «Активная» on archived rows — cost if wrong: owner can't browse a sold car's stats screen (rare).
 - Ruling: fold M-1 (demote other installed sets first inside one rw transaction; both expectations inside waitFor), M-2 (VehiclePage returns null while loading), M-3 (url without scheme → https://; link when url but no address), M-4 (masters list marks deleted place), M-6 (dead CSS), M-7 (hintLink ≥ 44 px; SpecRow as dl/dt/dd) — cost if wrong: small.
 
-## 
+## Волна 3 · выпуск
 
 - Ruling: Task 3 + the sync/ui/app part of Task 4 run now in one agent (infra), in parallel with the records fix round — disjoint files (e2e config, .github, src/sync, ui Combobox, app/init + app tests) — cost if wrong: merge conflicts in app tests.
 - Ruling: the fuel-form same-day warning (Task 4) moves to after the records merge (records zone).
