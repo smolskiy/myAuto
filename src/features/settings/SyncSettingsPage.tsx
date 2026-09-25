@@ -74,7 +74,8 @@ function LoginBlock() {
       await yandexAuth.connectWithCode(code)
       toast.show({ text: 'Яндекс.Диск подключён' })
     } catch {
-      // Текст неудачи показывает useLoginError над блоком входа.
+      // Текст неудачи показывает useLoginError над блоком входа; неподошедший токен в поле не держим.
+      setCode('')
     } finally {
       setConnecting(false)
     }
@@ -118,11 +119,15 @@ function LoginBlock() {
         )}
         {codeOpen && (
           <>
+            {/* «Код» — это токен доступа к Диску: скрыт, без подсказок клавиатуры и автоисправлений. */}
             <TextField
               label="Код со страницы Яндекса"
               hint="Скопируйте код на открывшейся странице и вставьте сюда"
+              type="password"
               value={code}
               autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
               spellCheck={false}
               onChange={(e) => setCode(e.target.value)}
             />

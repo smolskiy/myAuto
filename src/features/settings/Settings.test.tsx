@@ -177,9 +177,25 @@ describe('синхронизация', () => {
       '_blank',
       'noopener',
     )
-    await userEvent.type(screen.getByRole('textbox', { name: 'Код со страницы Яндекса' }), 'y0_abc')
+    await userEvent.type(screen.getByLabelText('Код со страницы Яндекса'), 'y0_abc')
     await userEvent.click(screen.getByRole('button', { name: 'Подключить' }))
     expect(fake.yandexAuth.connectWithCode).toHaveBeenCalledWith('y0_abc')
+  })
+
+  test('код — это токен: поле скрыто, без автоисправлений, после неудачи очищается', async () => {
+    fake.state.clientId = 'abc'
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    fake.yandexAuth.connectWithCode.mockRejectedValueOnce(new Error('Код не подошёл — получите новый'))
+    renderAt('/settings/sync', <SyncSettingsPage />)
+    await userEvent.click(screen.getByRole('button', { name: 'Войти по коду' }))
+    const field = screen.getByLabelText('Код со страницы Яндекса')
+    expect(field).toHaveAttribute('type', 'password')
+    expect(field).toHaveAttribute('autocapitalize', 'off')
+    expect(field).toHaveAttribute('autocorrect', 'off')
+    expect(field).toHaveAttribute('spellcheck', 'false')
+    await userEvent.type(field, 'y0_wrong')
+    await userEvent.click(screen.getByRole('button', { name: 'Подключить' }))
+    await waitFor(() => expect(field).toHaveValue(''))
   })
 
   test('ошибка входа видна текстом', () => {

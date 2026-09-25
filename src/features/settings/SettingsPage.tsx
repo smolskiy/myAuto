@@ -1,6 +1,6 @@
 import { IconCloud, IconComponents, IconDatabase } from '@tabler/icons-react'
 import { useNavigate } from 'react-router'
-import pkg from '../../../package.json'
+import { version } from '../../../package.json'
 import { useSyncStatus } from '../../sync/react'
 import { Icon, ListGroup, ListItem, SegmentedControl, useTheme, type ThemePreference } from '../../ui'
 import { Page } from '../common'
@@ -47,7 +47,7 @@ export default function SettingsPage() {
       </ListGroup>
 
       <ListGroup title="О приложении">
-        <ListItem title="Версия" value={pkg.version} />
+        <ListItem title="Версия" value={version} />
         <ListItem
           title="Витрина компонентов"
           leading={<Icon icon={IconComponents} tone="accent" circle />}

@@ -220,7 +220,8 @@ export default function HomePage() {
         <SyncStatusBadge
           state={status.state}
           lastSyncText={status.lastSyncAt ? agoText(status.lastSyncAt, now) : undefined}
-          pending={status.pendingUploads}
+          // `pending` значка подписан «Не отправлено изменений», а статус знает только число ждущих фото —
+          // не передаём; «Ждут загрузки: N фото» — на экране «Синхронизация».
           onClick={() => void navigate('/settings/sync')}
         />
       }

@@ -14,11 +14,12 @@ import { ToastProvider } from '../../ui'
 import HomePage from './HomePage'
 import { reminderCardProps } from './reminderText'
 
-// Статус — один и тот же объект: useSyncExternalStore сравнивает снимки по ссылке.
+// Статус — один и тот же объект, пока тест его не заменит: useSyncExternalStore сравнивает снимки по ссылке.
 const OFF = { state: 'off', pendingUploads: 0 }
+const sync = vi.hoisted(() => ({ status: { state: 'off', pendingUploads: 0 } as object }))
 vi.mock('../../sync/index', () => ({
   attachmentStore: { getThumbUrl: async () => null, getOriginalUrl: async () => null },
-  syncEngine: { subscribe: () => () => {}, getStatus: () => OFF, syncNow: async () => {} },
+  syncEngine: { subscribe: () => () => {}, getStatus: () => sync.status, syncNow: async () => {} },
   yandexAuth: { subscribe: () => () => {}, isConnected: () => false, getLoginError: () => null },
 }))
 
@@ -27,6 +28,7 @@ const nb = (s: string) => s.replaceAll(' ', NBSP)
 
 beforeEach(async () => {
   await db.open()
+  sync.status = OFF
 })
 afterEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -133,6 +135,15 @@ describe('главная', () => {
     expect(screen.queryByRole('button', { name: /Потрачено в/ })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Настроить' }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/reminders/new'))
+  })
+
+  test('значок синхронизации не выдаёт ждущие фото за неотправленные изменения', async () => {
+    sync.status = { state: 'idle', pendingUploads: 3, lastSyncAt: Date.now() - 5 * 60_000 }
+    await addVehicle('Октавия', 'Octavia')
+    renderAt(<HomePage />)
+    const badge = await screen.findByRole('button', { name: 'Синхронизация: всё сохранено' })
+    expect(badge).toHaveAttribute('title', `Последняя синхронизация: 5${NBSP}минут назад`)
+    expect(badge).not.toHaveTextContent('3')
   })
 
   test('быстрые кнопки ведут в формы записей', async () => {
