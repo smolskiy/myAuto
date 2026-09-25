@@ -1,7 +1,9 @@
 import { IconDeviceFloppy } from '@tabler/icons-react'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { AppBar, Button, useToast } from '../../ui'
+import { SAVE_FAILED, userMessage } from './errors'
+import { useFormMode } from './formMode'
 import styles from './FormPage.module.css'
 import pageStyles from './Page.module.css'
 import { useGoBack } from './useGoBack'
@@ -9,10 +11,14 @@ import { useGoBack } from './useGoBack'
 export interface FormPageProps {
   title: string
   /**
-   * Проверяет и сохраняет. Бросает ошибку с русским текстом — он показывается уведомлением, форма остаётся.
-   * Успех — форма закрывается «назад»; вернул путь — форма заменяется этим экраном (новая запись → её карточка).
+   * Проверяет и сохраняет. Итог:
+   * - ничего (void) — сохранено, форма закрывается «назад»;
+   * - путь — сохранено, форма заменяется этим экраном (новая запись → её карточка);
+   * - `false` — не сохранено (ошибки уже показаны у полей): форма остаётся, без уведомления и перехода;
+   * - исключение — не сохранено, форма остаётся; в уведомлении текст `UserError`, у любой другой ошибки —
+   *   «Не получилось сохранить — попробуйте ещё раз» (сама ошибка — в консоль).
    */
-  onSave(): Promise<void | string>
+  onSave(): Promise<void | string | false>
   /** По умолчанию «Сохранить». */
   saveLabel?: string
   /** «Назад» без сохранения: сначала onCancel (выбросить вложения черновика), потом закрыть форму. */
@@ -22,12 +28,9 @@ export interface FormPageProps {
   children: ReactNode
 }
 
-/** Высота нижней полосы с кнопкой: уведомления встают над ней, а не на кнопку. */
-const FOOTER_OFFSET = 'calc(48px + 2 * var(--space-3) + var(--border-width))'
-
 /**
  * Каркас формы: шапка «Назад» и крупная «Сохранить» внизу, в зоне большого пальца.
- * Нижней панели на формах нет (оболочка её прячет).
+ * Нижней панели при открытой форме нет на любом маршруте (оболочка прячет её по useFormMode).
  */
 export function FormPage({
   title,
@@ -51,13 +54,8 @@ export function FormPage({
     }
   }, [])
 
-  // Регион уведомлений живёт выше по дереву (в ToastProvider) — переменную ставим на body, он её наследует.
-  useLayoutEffect(() => {
-    document.body.style.setProperty('--toast-offset', FOOTER_OFFSET)
-    return () => {
-      document.body.style.removeProperty('--toast-offset')
-    }
-  }, [])
+  // Оболочка прячет нижнюю панель на любом маршруте и ставит уведомления над кнопкой «Сохранить».
+  useFormMode()
 
   const save = async () => {
     if (busyRef.current || saving) return
@@ -65,11 +63,11 @@ export function FormPage({
     setBusy(true)
     try {
       const to = await onSave()
-      if (!mounted.current) return
+      if (!mounted.current || to === false) return
       if (typeof to === 'string') void navigate(to, { replace: true })
       else goBack()
     } catch (e) {
-      toast.show({ text: (e instanceof Error && e.message) || 'Не удалось сохранить' })
+      toast.show({ text: userMessage(e, SAVE_FAILED) })
     } finally {
       busyRef.current = false
       if (mounted.current) setBusy(false)
@@ -77,6 +75,8 @@ export function FormPage({
   }
 
   const cancel = () => {
+    // Пока идёт сохранение, «Назад» молчит: иначе строка сохранится уже после ухода с формы.
+    if (busyRef.current) return
     onCancel?.()
     goBack()
   }

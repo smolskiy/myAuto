@@ -1,7 +1,7 @@
 import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState, type ReactNode } from 'react'
-import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
+import { createHashRouter, createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { db } from '../../db/instance'
 import { repos } from '../../db/repos'
@@ -15,6 +15,7 @@ import {
   Page,
   PlacePicker,
   useDraftAttachments,
+  UserError,
   VehicleGate,
 } from './index'
 
@@ -181,6 +182,53 @@ describe('вложения', () => {
     expect(result.current.ownerId).toBe(first)
   })
 
+  const saveRecord = (id: ID) =>
+    repos.records.create({ id, vehicleId: 'v1', kind: 'note', date: '2026-09-25', total: 0, title: 'Стук' })
+
+  test('discard() не трогает вложения уже сохранённой строки', async () => {
+    const { result } = renderHook(() => useDraftAttachments('record'))
+    const att = await addAttachment('record', result.current.ownerId)
+    await saveRecord(result.current.ownerId)
+    await act(() => result.current.discard())
+    expect(store.remove).not.toHaveBeenCalled()
+    expect(await repos.attachments.get(att.id)).toBeDefined()
+  })
+
+  test('discard(): строка сохранена, но удалена — вложения убираются', async () => {
+    const { result } = renderHook(() => useDraftAttachments('record'))
+    const att = await addAttachment('record', result.current.ownerId)
+    await saveRecord(result.current.ownerId)
+    await repos.records.remove(result.current.ownerId)
+    await act(() => result.current.discard())
+    expect(await repos.attachments.get(att.id)).toBeUndefined()
+  })
+
+  test('уход с формы без сохранения (жест «назад», любой переход) убирает вложения черновика', async () => {
+    const { result, unmount } = renderHook(() => useDraftAttachments('record'))
+    const att = await addAttachment('record', result.current.ownerId)
+    unmount()
+    await waitFor(async () => expect(await repos.attachments.get(att.id)).toBeUndefined())
+  })
+
+  test('уход с формы после сохранения вложения не трогает', async () => {
+    const { result, unmount } = renderHook(() => useDraftAttachments('record'))
+    const att = await addAttachment('record', result.current.ownerId)
+    await saveRecord(result.current.ownerId)
+    unmount()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(store.remove).not.toHaveBeenCalled()
+    expect(await repos.attachments.get(att.id)).toBeDefined()
+  })
+
+  test('сбой уборки при уходе — только предупреждение в консоли', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    store.remove.mockRejectedValueOnce(new Error('база недоступна'))
+    const { result, unmount } = renderHook(() => useDraftAttachments('record'))
+    await addAttachment('record', result.current.ownerId)
+    unmount()
+    await waitFor(() => expect(warn).toHaveBeenCalled())
+  })
+
   test('AttachmentsField добавляет фото, показывает превью и удаляет с «Отменить»', async () => {
     inApp(<AttachmentsField ownerType="record" ownerId="r1" />)
     expect(screen.getByRole('group', { name: 'Фото и документы' })).toBeInTheDocument()
@@ -276,6 +324,41 @@ describe('каркасы страниц', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })
 
+  test('Page: back="/путь" — это запасной путь «Назад», а не переход вперёд', async () => {
+    const router = withHistory(<Page title="Машина" back="/garage" />)
+    await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+    // История есть — шаг назад, а не новая запись /garage поверх формы.
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+
+  test('Page: back="/путь" с глубокой ссылки — на этот путь, заменой', async () => {
+    const router = createMemoryRouter(
+      [
+        { path: '/garage', element: <p>Гараж</p> },
+        { path: '/vehicle/:id', element: <Page title="Машина" back="/garage" /> },
+      ],
+      { initialEntries: ['/vehicle/v1'] },
+    )
+    render(<RouterProvider router={router} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/garage'))
+    expect(router.state.historyAction).toBe('REPLACE')
+  })
+
+  test('Page (hash-роутер): после замены первой записи истории «Назад» не уводит из приложения', async () => {
+    window.history.replaceState(null, '', '#/')
+    const router = createHashRouter([
+      { path: '/', element: <p>Главная</p> },
+      { path: '/onboarding', element: <Page title="Добро пожаловать" back /> },
+    ])
+    render(<RouterProvider router={router} />)
+    // Как редирект первого запуска: замена первой записи — ключ уже не 'default', но истории в приложении нет.
+    await act(() => router.navigate('/onboarding', { replace: true }))
+    await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+    router.dispose()
+  })
+
   test('FormPage: успешное сохранение закрывает форму', async () => {
     const onSave = vi.fn(async () => {})
     const router = withHistory(
@@ -294,7 +377,7 @@ describe('каркасы страниц', () => {
       <FormPage
         title="Новая заправка"
         onSave={async () => {
-          throw new Error('Укажите пробег')
+          throw new UserError('Укажите пробег')
         }}
       >
         <p>Поля</p>
@@ -303,8 +386,48 @@ describe('каркасы страниц', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByText('Укажите пробег')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/form')
-    // Уведомление стоит над кнопкой «Сохранить», а не на ней.
-    expect(document.body.style.getPropertyValue('--toast-offset')).not.toBe('')
+  })
+
+  test('FormPage: сбой (не UserError) — общий русский текст, подробности в консоль', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const bug = new TypeError("Cannot read properties of undefined (reading 'odometer')")
+    const router = withHistory(
+      <FormPage
+        title="Новая заправка"
+        onSave={async () => {
+          throw bug
+        }}
+      >
+        <p>Поля</p>
+      </FormPage>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(await screen.findByText('Не получилось сохранить — попробуйте ещё раз')).toBeInTheDocument()
+    expect(screen.queryByText(/Cannot read/)).not.toBeInTheDocument()
+    expect(consoleError).toHaveBeenCalledWith(bug)
+    expect(router.state.location.pathname).toBe('/form')
+  })
+
+  test('PlacePicker: место не сохранилось — общий русский текст', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(repos.places, 'create').mockRejectedValueOnce(
+      new DOMException('Quota exceeded', 'QuotaExceededError'),
+    )
+    inApp(<PlacePicker label="Место" kinds={['service']} onChange={() => {}} />)
+    await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'Сервис')
+    await userEvent.click(screen.getByRole('option', { name: 'Создать «Сервис»' }))
+    expect(await screen.findByText('Не получилось сохранить — попробуйте ещё раз')).toBeInTheDocument()
+  })
+
+  test('AttachmentsField: непредвиденный сбой добавления — общий русский текст', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    store.addFile.mockRejectedValueOnce(new DOMException('Quota exceeded', 'QuotaExceededError'))
+    inApp(<AttachmentsField ownerType="record" ownerId="r1" />)
+    await userEvent.upload(
+      screen.getByLabelText('Добавить фото'),
+      new File(['x'], 'p.jpg', { type: 'image/jpeg' }),
+    )
+    expect(await screen.findByText('Не получилось добавить файл — попробуйте ещё раз')).toBeInTheDocument()
   })
 
   test('FormPage: «Назад» вызывает onCancel и закрывает форму', async () => {
@@ -334,6 +457,26 @@ describe('каркасы страниц', () => {
     await act(async () => finish())
   })
 
+  test('FormPage: пока идёт сохранение, «Назад» не срабатывает', async () => {
+    let finish!: () => void
+    const onCancel = vi.fn()
+    const router = withHistory(
+      <FormPage
+        title="Новая заправка"
+        onSave={() => new Promise<void>((r) => (finish = r))}
+        onCancel={onCancel}
+      >
+        <p>Поля</p>
+      </FormPage>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(router.state.location.pathname).toBe('/form')
+    await act(async () => finish())
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+
   test('FormPage: onSave вернул путь — форма заменяется этим экраном', async () => {
     const router = createMemoryRouter(
       [
@@ -361,5 +504,22 @@ describe('каркасы страниц', () => {
     // Форма заменена, а не добавлена: «назад» с карточки ведёт туда, откуда форму открыли.
     await act(() => router.navigate(-1))
     expect(router.state.location.pathname).toBe('/journal')
+  })
+
+  test('FormPage: onSave вернул false — форма остаётся, без уведомления и перехода', async () => {
+    const onSave = vi.fn(async () => false as const)
+    const router = withHistory(
+      <FormPage title="Новая заправка" onSave={onSave}>
+        <p>Поля</p>
+      </FormPage>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(onSave).toHaveBeenCalledOnce()
+    await new Promise((r) => setTimeout(r, 30))
+    expect(router.state.location.pathname).toBe('/form')
+    expect(screen.queryByRole('status')).toBeEmptyDOMElement()
+    // Кнопка снова доступна — можно исправить поле и сохранить ещё раз.
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(onSave).toHaveBeenCalledTimes(2)
   })
 })
