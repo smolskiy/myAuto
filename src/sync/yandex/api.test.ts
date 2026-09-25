@@ -49,6 +49,44 @@ describe('клиент Диска', () => {
     await expect(disk.stat('app:/x')).rejects.toBeInstanceOf(Offline)
   })
 
+  test('сбой сети на сервере скачивания → Offline', async () => {
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (url.startsWith(API)) return json({ href: 'https://downloader.disk.yandex.ru/x' })
+      throw new TypeError('Load failed')
+    })
+    const disk = createDiskClient('tok', fetchImpl as unknown as typeof fetch)
+    const err = await disk.readText('app:/garage.json').catch((e) => e)
+    expect(err).toBeInstanceOf(Offline)
+    expect(err.message).toBe('Нет связи с Яндекс.Диском')
+    await expect(disk.downloadBlob('app:/attachments/x.jpg')).rejects.toBeInstanceOf(Offline)
+  })
+
+  test('сбой сети на сервере загрузки → Offline', async () => {
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (url.startsWith(API)) return json({ href: 'https://uploader/x', method: 'PUT' })
+      throw new TypeError('Load failed')
+    })
+    const disk = createDiskClient('tok', fetchImpl as unknown as typeof fetch)
+    const err = await disk.writeText('app:/garage.json', '{}').catch((e) => e)
+    expect(err).toBeInstanceOf(Offline)
+    expect(err.message).toBe('Нет связи с Яндекс.Диском')
+    await expect(disk.uploadBlob('app:/attachments/x.jpg', new Blob(['x']), 'image/jpeg')).rejects.toBeInstanceOf(Offline)
+  })
+
+  test('ответ с ошибкой — человеческий текст без кодов и технических деталей', async () => {
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/resources/download')) return json({ href: 'https://downloader.disk.yandex.ru/x' })
+      if (url.includes('/resources/upload')) return json({ href: 'https://uploader/x', method: 'PUT' })
+      if (url.startsWith(API)) return json({ error: 'InternalError', message: 'Internal server error' }, 500)
+      return new Response('oops', { status: init?.method === 'PUT' ? 500 : 503 })
+    })
+    const disk = createDiskClient('tok', fetchImpl as unknown as typeof fetch)
+    const message = (p: Promise<unknown>) => p.catch((e: Error) => e.message)
+    expect(await message(disk.readText('app:/garage.json'))).toBe('Не удалось скачать файл с Диска')
+    expect(await message(disk.writeText('app:/garage.json', '{}'))).toBe('Не удалось загрузить файл на Диск')
+    expect(await message(disk.stat('app:/garage.json'))).toBe('Не удалось получить сведения о файле')
+  })
+
   test('удаление: 404 — не ошибка; список папки', async () => {
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === 'DELETE') return json({}, 404)

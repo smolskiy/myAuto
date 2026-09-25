@@ -60,8 +60,11 @@ async function fail(res: Response, what: string): Promise<never> {
     /* тело не JSON */
   }
   console.warn(what, res.status, detail)
-  throw new YandexError(`${what}: ${detail || `код ${res.status}`}`, res.status)
+  throw new YandexError(what, res.status)
 }
+
+const OFFLINE_TEXT = 'Нет связи с Яндекс.Диском'
+const errorText = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e))
 
 export function createDiskClient(token: string, fetchImpl?: typeof fetch): DiskClient {
   const doFetch: typeof fetch = fetchImpl ?? ((input, init) => fetch(input, init))
@@ -74,8 +77,8 @@ export function createDiskClient(token: string, fetchImpl?: typeof fetch): DiskC
         headers: { Authorization: `OAuth ${token}`, Accept: 'application/json', ...(init.headers ?? {}) },
       })
     } catch (e) {
-      console.warn('Запрос к Яндекс.Диску не прошёл', e instanceof Error ? e.message : e)
-      throw new Offline('Нет связи с Яндекс.Диском', 0)
+      console.warn('Запрос к Яндекс.Диску не прошёл', errorText(e))
+      throw new Offline(OFFLINE_TEXT, 0)
     }
     if (res.status === 401) throw new Unauthorized('Вход в Яндекс истёк — войдите заново', 401)
     if (res.status === 507) throw new NoSpace('На Яндекс.Диске нет места', 507)
@@ -85,25 +88,30 @@ export function createDiskClient(token: string, fetchImpl?: typeof fetch): DiskC
   /**
    * Файл отдаёт отдельный сервер Яндекса (downloader…, затем storage…) через редирект.
    * Safari строже Chrome к таким запросам, поэтому при неудаче повторяем «чистый» запрос:
-   * без cookie, без Referer и без кеша. Подробность — в console.warn.
+   * без cookie, без Referer и без кеша. Хост и подробность отказа — только в console.warn (по ним видно,
+   * на каком шаге и почему браузер отказал); наружу — Offline, чтобы цикл повторился по расписанию.
    */
   async function download<T>(href: string, read: (res: Response) => Promise<T>): Promise<T> {
     const attempts: RequestInit[] = [
       {},
       { credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store', mode: 'cors' },
     ]
-    let last = ''
+    let status = 0
+    let detail = ''
     for (const init of attempts) {
       try {
         const file = await doFetch(href, init)
         if (file.ok) return await read(file)
-        last = `код ${file.status}`
+        status = file.status
+        detail = `код ${file.status}`
       } catch (e) {
-        last = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+        status = 0
+        detail = errorText(e)
       }
     }
-    console.warn('Скачивание с Диска не удалось', hostOf(href), last)
-    throw new YandexError(`Не удалось скачать файл с Диска (${hostOf(href)} — ${last})`, 0)
+    console.warn('Скачивание с Диска не удалось', hostOf(href), detail)
+    if (status === 0) throw new Offline(OFFLINE_TEXT, 0)
+    throw new YandexError('Не удалось скачать файл с Диска', status)
   }
 
   async function fetchFile<T>(path: string, read: (res: Response) => Promise<T>): Promise<T | null> {
@@ -122,14 +130,14 @@ export function createDiskClient(token: string, fetchImpl?: typeof fetch): DiskC
     try {
       put = await doFetch(href, { method: method || 'PUT', body, headers: { 'Content-Type': contentType } })
     } catch (e) {
-      const detail = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
-      console.warn('Загрузка на Диск не удалась', hostOf(href), detail)
-      throw new YandexError(`Не удалось загрузить файл на Диск (${hostOf(href)} — ${detail})`, 0)
+      // Хост и подробность — только в console.warn (диагностика Safari); наружу — Offline, цикл повторится.
+      console.warn('Загрузка на Диск не удалась', hostOf(href), errorText(e))
+      throw new Offline(OFFLINE_TEXT, 0)
     }
     if (put.status === 507) throw new NoSpace('На Яндекс.Диске нет места', 507)
     if (!put.ok && put.status !== 201 && put.status !== 202) {
       console.warn('Загрузка на Диск не удалась', hostOf(href), put.status)
-      throw new YandexError(`Не удалось загрузить файл на Диск: код ${put.status}`, put.status)
+      throw new YandexError('Не удалось загрузить файл на Диск', put.status)
     }
   }
 

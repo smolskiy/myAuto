@@ -3,7 +3,7 @@ import { MyAutoDB } from '../db/schema'
 import { createRepos } from '../db/repos'
 import { META_KEYS, getMeta } from '../db/meta'
 import { FakeDisk } from './yandex/fakeDisk'
-import { NoSpace, Offline, Unauthorized } from './yandex/api'
+import { NoSpace, Offline, Unauthorized, createDiskClient } from './yandex/api'
 import { GARAGE_PATH, createSyncEngine } from './engine'
 import type { Snapshot } from '../domain/snapshot'
 
@@ -88,6 +88,19 @@ describe('цикл синхронизации', () => {
     disk.failNext(new NoSpace('На Яндекс.Диске нет места', 507), { method: 'writeText' })
     await engine.syncNow()
     expect(engine.getStatus()).toMatchObject({ state: 'error', error: 'На Яндекс.Диске нет места' })
+  })
+
+  test('сбой сети на сервере загрузки → offline, а не ошибка', async () => {
+    const API = 'https://cloud-api.yandex.net/v1/disk'
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (url.startsWith(`${API}/resources/upload`)) return new Response(JSON.stringify({ href: 'https://uploader/x', method: 'PUT' }))
+      if (url.startsWith(API)) return new Response('{}', { status: 404 })
+      throw new TypeError('Load failed')
+    })
+    const realDisk = createDiskClient('tok', fetchImpl as unknown as typeof fetch)
+    const engine = createSyncEngine({ db: newDb(), getDisk: () => realDisk, today: () => '2026-09-25', isOnline: () => true })
+    await engine.syncNow()
+    expect(engine.getStatus().state).toBe('offline')
   })
 
   test('без подключения — off, без сети — offline без запросов', async () => {
