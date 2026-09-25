@@ -1,0 +1,41 @@
+/* Блок с подписью, как у ListGroup, но с произвольным содержимым (переключатель темы, поля входа). */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionTitle {
+  padding: 0 var(--space-4);
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}
+
+/* Сегменты по ширине подписи: «Как в системе» длиннее «Светлая» и не должна обрезаться на 390 px. */
+.segments [role='radio'] {
+  flex: 1 1 auto;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.reason {
+  padding: 0 var(--space-1);
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
+
+.error {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-overdue-soft);
+  color: var(--color-overdue);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}

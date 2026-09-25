@@ -91,7 +91,7 @@ function StatsContent({ vehicle }: { vehicle: Vehicle }) {
 
 export default function StatsPage() {
   return (
-    <Page title="Статистика" back>
+    <Page title="Статистика" back="/more">
       <VehicleGate>{(vehicle) => <StatsContent vehicle={vehicle} />}</VehicleGate>
     </Page>
   )

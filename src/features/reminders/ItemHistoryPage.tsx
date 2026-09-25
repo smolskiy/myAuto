@@ -178,7 +178,7 @@ export default function ItemHistoryPage() {
   const lookup = useLookup()
   const title = lookup?.catalog.get(itemId)?.name ?? 'История узла'
   return (
-    <Page title={title} back>
+    <Page title={title} back="/reminders">
       <VehicleGate>{(vehicle) => <HistoryContent vehicle={vehicle} itemId={itemId} />}</VehicleGate>
     </Page>
   )

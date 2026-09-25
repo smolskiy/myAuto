@@ -32,6 +32,8 @@ import {
   VehicleSwitcher,
 } from '../../ui'
 import { Page, VehicleGate, recordRowProps, useLookup, useToday } from '../common'
+import { agoText } from '../settings/syncText'
+import { useNow } from '../settings/useNow'
 import { periodRange } from '../stats/periods'
 import styles from './HomePage.module.css'
 import { reminderCardProps } from './reminderText'
@@ -209,6 +211,7 @@ function HomeContent({ vehicle }: { vehicle: Vehicle }) {
 export default function HomePage() {
   const navigate = useNavigate()
   const status = useSyncStatus()
+  const now = useNow()
   return (
     <Page
       title="Мой авто"
@@ -216,6 +219,7 @@ export default function HomePage() {
       actions={
         <SyncStatusBadge
           state={status.state}
+          lastSyncText={status.lastSyncAt ? agoText(status.lastSyncAt, now) : undefined}
           pending={status.pendingUploads}
           onClick={() => void navigate('/settings/sync')}
         />
