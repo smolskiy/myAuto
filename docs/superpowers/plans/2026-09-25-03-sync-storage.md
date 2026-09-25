@@ -438,8 +438,10 @@ describe('цикл синхронизации', () => {
 
   test('параллельные вызовы — один цикл', async () => {
     const engine = engineFor(newDb(), disk)
-    await Promise.all([engine.syncNow(), engine.syncNow(), engine.syncNow()])
-    expect(disk.calls.filter((c) => c.startsWith('stat')).length).toBe(1)
+    const first = engine.syncNow()
+    expect(engine.syncNow()).toBe(first)
+    await first
+    expect(engine.syncNow()).not.toBe(first)
   })
 
   test('ежедневная копия и чистка старше 30', async () => {
@@ -457,11 +459,14 @@ describe('цикл синхронизации', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
     const db = newDb()
     const engine = engineFor(db, disk)
-    engine.start()
+    engine.start() // сразу запускает синхронизацию «при открытии»
+    await engine.syncNow()
+    disk.calls.length = 0
     await createRepos(db).places.create({ kind: 'service', name: 'СТО' })
+    await vi.advanceTimersByTimeAsync(1000)
     expect(disk.calls).toEqual([])
-    await vi.advanceTimersByTimeAsync(2600)
-    await vi.waitFor(() => expect(disk.peekJson(GARAGE_PATH)).toBeDefined())
+    await vi.advanceTimersByTimeAsync(1600)
+    await vi.waitFor(() => expect(disk.peekJson<Snapshot>(GARAGE_PATH)!.tables.places).toHaveLength(1))
     engine.stop()
   })
 })
@@ -477,10 +482,10 @@ describe('цикл синхронизации', () => {
   2. `stat(GARAGE_PATH)` → `remoteMd5`; `readText` → `parseSnapshot` (нет файла → `emptySnapshot()`);
      повреждённый файл на Диске → статус `error` «Файл синхронизации на Диске повреждён», ничего не записывать;
   3. `local = readSnapshot(db)`; `merged = mergeSnapshots(local, remote)`; `applyRows(db, diffTables(local.tables, merged.tables))`;
-  4. если `!sameSnapshot(merged, remote)`: `stat` ещё раз; если `md5` изменился — повторить с шага 2 (до 3 попыток,
+  4. если файла на Диске ещё нет или `!sameSnapshot(merged, remote)`: `stat` ещё раз; если `md5` изменился — повторить с шага 2 (до 3 попыток,
      затем `error` «Не удалось синхронизироваться — повторите позже»); иначе `writeText(GARAGE_PATH, JSON.stringify(merged))`;
   5. `attachments?.uploadPending(disk)` и `cleanupDeleted(disk)`;
-  6. если `getMeta(lastBackupDate) !== today()` — `ensureFolder(BACKUP_DIR)`, `copy(GARAGE_PATH, BACKUP_DIR/<today>.json)`,
+  6. если `garage.json` на Диске есть и `getMeta(lastBackupDate) !== today()` — `ensureFolder(BACKUP_DIR)`, `copy(GARAGE_PATH, BACKUP_DIR/<today>.json)`,
      удалить самые старые сверх 30 (сортировка имён), `setMeta(lastBackupDate)`;
   7. `idle`, `lastSyncAt = now()`, `setMeta(lastSyncAt)`, `pendingUploads = attachments?.pendingCount() ?? 0`.
   Ошибки: `Unauthorized` → `onUnauthorized()`, `error`; `Offline` → `offline`; прочие `YandexError`/`Error` → `error` с `message`.
@@ -698,10 +703,11 @@ test('имя файла бэкапа', () => {
   `previewImport` — `JSON.parse` (ошибка → `SnapshotError('Это не файл «Мой авто»')`) → `parseSnapshot` → число живых строк
   по `TABLE_NAMES`; `importJson('merge')` — `mergeSnapshots(local, imported)` → `applyRows(diffTables)` → `emitLocalChange`
   для каждой изменённой таблицы; `importJson('replace')` — `replaceAll` → `emitLocalChange('vehicles')`.
-  Excel — столбцы с русскими заголовками: «Журнал» (Машина, Дата, Тип, Название, Пробег, Сумма ₽, Место, Заметка),
-  «Запчасти» (Машина, Дата, Пробег, Узел, Название, Бренд, Артикул, Кол-во, Ед., Цена ₽, Своя), «Работы», «Заправки»
-  (…Литры, Цена за литр ₽, Полный бак, Марка), «Расходы» (…Категория, Действует до), «Напоминания» (Машина, Название,
-  Интервал км, Интервал мес.).
+  Excel — столбцы с русскими заголовками, денежные — с суффиксом «, ₽» (как в тесте): «Журнал» (Машина, Дата, Тип,
+  Название, Пробег, «Сумма, ₽», Место, Заметка), «Запчасти» (Машина, Дата, Пробег, Узел, Название, Бренд, Артикул,
+  Кол-во, Ед., «Цена, ₽», Своя), «Работы» (Машина, Дата, Пробег, Узел, Название, «Цена, ₽», Мастер), «Заправки»
+  (Машина, Дата, Пробег, Литры, «Цена за литр, ₽», «Сумма, ₽», Полный бак, Марка, АЗС), «Расходы» (Машина, Дата,
+  Категория, Название, «Сумма, ₽», Действует до), «Напоминания» (Машина, Название, Интервал км, Интервал мес.).
 
 - [ ] **Step 4: PASS**
 
