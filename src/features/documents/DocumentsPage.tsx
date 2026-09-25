@@ -4,8 +4,9 @@ import { useAttachments, useDeadlines, useDocuments } from '../../db/hooks'
 import type { DeadlineStatus } from '../../domain/calc/reminders'
 import { formatDate, formatNumber, NBSP, pluralize } from '../../domain/format'
 import type { Vehicle, VehicleDocument } from '../../domain/types'
-import { Button, EmptyState, Icon, ListGroup, ListItem } from '../../ui'
+import { Button, EmptyState, ListGroup, ListItem } from '../../ui'
 import { Page, useToday, VehicleGate } from '../common'
+import { SubtitleLines } from '../garage/RowText'
 import { documentStatus, documentTitle } from './documentStatus'
 import { StatusMark } from './StatusMark'
 
@@ -22,19 +23,22 @@ function DocumentRow({
 }) {
   const files = useAttachments('document', doc.id)?.length ?? 0
   const status = deadlines ? documentStatus(doc, deadlines) : undefined
-  const subtitle = [
+  const details = [
     doc.number?.trim(),
-    doc.validUntil ? `до ${formatDate(doc.validUntil)}` : undefined,
     files > 0 ? `${formatNumber(files)}${NBSP}${pluralize(files, FILE_FORMS)}` : undefined,
   ]
     .filter(Boolean)
     .join(' · ')
+  // Срок с плашкой — первой строкой под названием: справа плашка отнимала место у названия и даты.
+  const validity = doc.validUntil ? (
+    <>
+      {status && <StatusMark status={status} />} до {formatDate(doc.validUntil)}
+    </>
+  ) : undefined
   return (
     <ListItem
-      leading={<Icon icon={IconFileText} tone="accent" circle />}
       title={documentTitle(doc)}
-      subtitle={subtitle || undefined}
-      trailing={status && <StatusMark status={status} />}
+      subtitle={<SubtitleLines lines={[validity, details]} />}
       chevron
       onClick={onOpen}
     />

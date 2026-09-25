@@ -5,10 +5,11 @@ import { useMasters, usePlace, usePlaceStats, useRecords } from '../../db/hooks'
 import { repos } from '../../db/repos'
 import { placeSpend } from '../../domain/calc/visits'
 import type { Place, PlaceKind, Rating as Stars } from '../../domain/types'
-import { Button, EmptyState, Icon, ListGroup, ListItem, Rating, Select, TextArea, TextField } from '../../ui'
+import { Button, EmptyState, Icon, ListGroup, ListItem, Select, TextArea, TextField } from '../../ui'
 import { FormPage, Page, PLACE_KIND_LABELS, useGoBack, useSoftDelete } from '../common'
 import { optional } from '../garage/kit'
 import { mapsHref, telHref } from './links'
+import { RatingMark } from '../garage/RowText'
 import { RatingField, VisitsList, VisitStatsSection } from './parts'
 import styles from './places.module.css'
 
@@ -159,7 +160,7 @@ function PlaceExtras({ place }: { place: Place }) {
             leading={<Icon icon={IconUser} tone="accent" circle />}
             title={m.name}
             subtitle={m.specialization}
-            trailing={m.rating ? <Rating value={m.rating} /> : undefined}
+            trailing={m.rating ? <RatingMark value={m.rating} /> : undefined}
             chevron
             onClick={() => void navigate(`/masters/${m.id}`)}
           />

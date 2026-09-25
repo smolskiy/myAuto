@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { useMasters, usePlaces, usePlaceStats } from '../../db/hooks'
 import { formatMoney, formatNumber, NBSP, pluralize } from '../../domain/format'
 import type { Master, Place, PlaceKind } from '../../domain/types'
-import { Button, EmptyState, ListGroup, ListItem, Rating, SegmentedControl } from '../../ui'
+import { Button, EmptyState, ListGroup, ListItem, SegmentedControl } from '../../ui'
 import { Page, PLACE_KIND_LABELS, useLookup } from '../common'
+import { RatingMark } from '../garage/RowText'
 
 type Tab = 'places' | 'masters'
 
@@ -27,7 +28,7 @@ function PlaceRow({ place, onOpen }: { place: Place; onOpen(): void }) {
     <ListItem
       title={place.name}
       subtitle={subtitle}
-      trailing={place.rating ? <Rating value={place.rating} /> : undefined}
+      trailing={place.rating ? <RatingMark value={place.rating} /> : undefined}
       chevron
       onClick={onOpen}
     />
@@ -39,7 +40,7 @@ function MasterRow({ master, placeName, onOpen }: { master: Master; placeName?: 
     <ListItem
       title={master.name}
       subtitle={[placeName, master.specialization?.trim()].filter(Boolean).join(' · ') || undefined}
-      trailing={master.rating ? <Rating value={master.rating} /> : undefined}
+      trailing={master.rating ? <RatingMark value={master.rating} /> : undefined}
       chevron
       onClick={onOpen}
     />

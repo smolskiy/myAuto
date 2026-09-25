@@ -6,11 +6,12 @@ import type { Vehicle } from '../../domain/types'
 import { Badge, Button, EmptyState, ListGroup, ListItem } from '../../ui'
 import { Page } from '../common'
 import { VehicleThumb } from '../vehicle/details/VehicleThumb'
-import { vehicleSubtitle } from '../vehicle/details/vehicleText'
+import { shownOdometer, vehicleSubtitle } from '../vehicle/details/vehicleText'
 import styles from './Garage.module.css'
+import { SubtitleLines } from './RowText'
 
 function VehicleRow({ vehicle, active, onOpen }: { vehicle: Vehicle; active: boolean; onOpen(): void }) {
-  const odometer = useCurrentOdometer(vehicle.id)
+  const odometer = shownOdometer(vehicle, useCurrentOdometer(vehicle.id))
   return (
     <ListItem
       leading={<VehicleThumb vehicle={vehicle} />}
@@ -20,8 +21,12 @@ function VehicleRow({ vehicle, active, onOpen }: { vehicle: Vehicle; active: boo
           {active && <Badge tone="accent">Активная</Badge>}
         </span>
       }
-      subtitle={vehicleSubtitle(vehicle) || undefined}
-      value={odometer != null ? formatKm(odometer) : undefined}
+      // Марка с номером и пробег — двумя строками: справа пробег обрезал бы номер.
+      subtitle={
+        <SubtitleLines
+          lines={[vehicleSubtitle(vehicle), odometer !== undefined ? formatKm(odometer) : undefined]}
+        />
+      }
       chevron
       onClick={onOpen}
     />

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router'
 import { useTireSetMileage, useTireSets } from '../../db/hooks'
 import { formatKm } from '../../domain/format'
 import type { TireSet, TireSetStatus, Vehicle } from '../../domain/types'
-import { Button, EmptyState, Icon, ListGroup, ListItem } from '../../ui'
+import { Button, EmptyState, ListGroup, ListItem } from '../../ui'
 import { Page, TIRE_STATUS_LABELS, VehicleGate } from '../common'
+import { SubtitleLines } from '../garage/RowText'
 import { tireSetSubtitle, tireSetTitle } from './tireText'
 
 const STATUSES = Object.keys(TIRE_STATUS_LABELS) as TireSetStatus[]
@@ -12,11 +13,12 @@ const STATUSES = Object.keys(TIRE_STATUS_LABELS) as TireSetStatus[]
 function TireSetRow({ set, onOpen }: { set: TireSet; onOpen(): void }) {
   const mileage = useTireSetMileage(set.id)
   return (
+    // Пробег — второй строкой: справа он обрезал бы бренд с размером и DOT.
     <ListItem
-      leading={<Icon icon={IconWheel} tone={set.status === 'installed' ? 'accent' : 'neutral'} circle />}
       title={tireSetTitle(set)}
-      subtitle={tireSetSubtitle(set)}
-      value={mileage ? formatKm(mileage) : undefined}
+      subtitle={
+        <SubtitleLines lines={[tireSetSubtitle(set), mileage ? `пробег ${formatKm(mileage)}` : undefined]} />
+      }
       chevron
       onClick={onOpen}
     />

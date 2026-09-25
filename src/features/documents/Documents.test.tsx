@@ -83,7 +83,8 @@ describe('список документов', () => {
     renderAt('/documents')
 
     const row = await screen.findByRole('button', { name: /ОСАГО/ })
-    expect(row).toHaveTextContent(`ХХХ 0123456789 · до ${formatDate(until)}`)
+    expect(row).toHaveTextContent(`до ${formatDate(until)}`)
+    expect(row).toHaveTextContent('ХХХ 0123456789')
     await waitFor(() => expect(within(row).getByText('Скоро')).toBeInTheDocument())
 
     const stsRow = screen.getByRole('button', { name: /СТС/ })

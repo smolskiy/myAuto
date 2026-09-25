@@ -33,6 +33,23 @@ export function formatDeal(deal: Vehicle['purchase']): string | undefined {
 }
 
 /**
+ * Пробег для показа: текущий по записям и покупке, а у проданной — не меньше пробега при продаже
+ * (у старой машины записей часто нет, и без этого выходило бы «0 км» с покупки).
+ */
+export function shownOdometer(v: Vehicle, current: number | null | undefined): number | undefined {
+  const known = [current ?? undefined, v.sale?.odometer].filter((n): n is number => n !== undefined)
+  return known.length > 0 ? Math.max(...known) : undefined
+}
+
+/** «Итого с покупкой и продажей» — или только с тем, что указано. */
+export function ownershipTotalLabel(v: Vehicle): string {
+  const bought = v.purchase?.price !== undefined
+  const sold = v.sale?.price !== undefined
+  if (bought && sold) return 'Итого с покупкой и продажей'
+  return bought ? 'Итого с покупкой' : 'Итого с продажей'
+}
+
+/**
  * Итог владения: расходы за всё время + цена покупки − цена продажи.
  * Ни покупки, ни продажи с ценой — undefined (строка «Итого» не нужна).
  */

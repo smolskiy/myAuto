@@ -186,7 +186,11 @@ function TireSetForm({ set, vehicleId, defaults }: TireSetFormProps) {
           error={dotError}
         />
       </div>
-      {season !== 'summer' && <Switch label="Шипы" checked={studded} onChange={setStudded} />}
+      {season !== 'summer' && (
+        <ListGroup>
+          <Switch label="Шипы" checked={studded} onChange={setStudded} />
+        </ListGroup>
+      )}
       <div className={styles.pair}>
         <NumberField label="Количество" value={count} onChange={setCount} decimals={0} min={1} unit="шт" />
         <NumberField

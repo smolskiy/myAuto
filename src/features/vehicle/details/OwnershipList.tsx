@@ -2,7 +2,7 @@ import { formatKm, formatMoney } from '../../../domain/format'
 import type { CarRecord, Kopecks, Vehicle } from '../../../domain/types'
 import { ListGroup } from '../../../ui'
 import { SpecRow } from './SpecRow'
-import { formatDeal, ownershipKm, ownershipTotal } from './vehicleText'
+import { formatDeal, ownershipKm, ownershipTotal, ownershipTotalLabel } from './vehicleText'
 
 export interface OwnershipListProps {
   vehicle: Vehicle
@@ -21,12 +21,12 @@ export function OwnershipList({ vehicle, records, expenses }: OwnershipListProps
   return (
     <ListGroup
       title="Владение"
-      footer={total !== undefined ? 'Итого: расходы плюс цена покупки минус цена продажи.' : undefined}
+      footer={total !== undefined ? 'Расходы за всё время плюс цена покупки минус цена продажи.' : undefined}
     >
       {bought && <SpecRow label="Куплена">{bought}</SpecRow>}
       {sold && <SpecRow label="Продана">{sold}</SpecRow>}
       <SpecRow label="Расходы за всё время">{formatMoney(expenses)}</SpecRow>
-      {total !== undefined && <SpecRow label="Итого с покупкой и продажей">{formatMoney(total)}</SpecRow>}
+      {total !== undefined && <SpecRow label={ownershipTotalLabel(vehicle)}>{formatMoney(total)}</SpecRow>}
       {km !== null && <SpecRow label="Проехал">{formatKm(km)}</SpecRow>}
     </ListGroup>
   )

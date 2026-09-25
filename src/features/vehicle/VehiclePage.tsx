@@ -37,7 +37,7 @@ import { failureText } from '../garage/kit'
 import { OwnershipList } from './details/OwnershipList'
 import { FluidsList, SpecsList } from './details/SpecsList'
 import { useVehiclePhoto } from './details/useVehiclePhoto'
-import { makeModelYear } from './details/vehicleText'
+import { makeModelYear, shownOdometer } from './details/vehicleText'
 import styles from './details/VehiclePage.module.css'
 
 const RECENT = 3
@@ -63,7 +63,7 @@ function VehicleDetails({ vehicle }: { vehicle: Vehicle }) {
   const toast = useToast()
   const lookup = useLookup()
   const { vehicle: active, setActive } = useActiveVehicle()
-  const odometer = useCurrentOdometer(vehicle.id)
+  const odometer = shownOdometer(vehicle, useCurrentOdometer(vehicle.id))
   const records = useRecords(vehicle.id)
   const costs = useCostBreakdown(vehicle.id)
   const photo = useVehiclePhoto(vehicle)
@@ -119,34 +119,36 @@ function VehicleDetails({ vehicle }: { vehicle: Vehicle }) {
           name={vehicle.name}
           subtitle={makeModelYear(vehicle) || undefined}
           plate={vehicle.plate?.trim() || undefined}
-          odometer={odometer != null ? formatKm(odometer) : undefined}
+          odometer={odometer !== undefined ? formatKm(odometer) : undefined}
           photoUrl={photo}
         />
-        {status && <div className={styles.status}>{status}</div>}
-        {/* Пока неизвестно, какая машина активна, действий нет: «В архив» должно знать, передавать ли активность. */}
-        {active !== undefined && (
-          <div className={styles.actions}>
-            {!vehicle.archived && !isActive && (
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={<IconCircleCheck />}
-                onClick={() => run(() => setActive(vehicle.id))}
-              >
-                Сделать активной
-              </Button>
-            )}
-            {vehicle.archived ? (
-              <Button variant="secondary" size="sm" icon={<IconArchiveOff />} onClick={unarchive}>
-                Вернуть из архива
-              </Button>
-            ) : (
-              <Button variant="secondary" size="sm" icon={<IconArchive />} onClick={archive}>
-                В архив
-              </Button>
-            )}
-          </div>
-        )}
+        <div className={styles.state}>
+          {status}
+          {/* Пока неизвестно, какая машина активна, действий нет: «В архив» должно знать, передавать ли активность. */}
+          {active !== undefined && (
+            <div className={styles.actions}>
+              {!vehicle.archived && !isActive && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<IconCircleCheck />}
+                  onClick={() => run(() => setActive(vehicle.id))}
+                >
+                  Сделать активной
+                </Button>
+              )}
+              {vehicle.archived ? (
+                <Button variant="secondary" size="sm" icon={<IconArchiveOff />} onClick={unarchive}>
+                  Вернуть из архива
+                </Button>
+              ) : (
+                <Button variant="secondary" size="sm" icon={<IconArchive />} onClick={archive}>
+                  В архив
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </section>
 
       <ListGroup title="Разделы">

@@ -101,6 +101,19 @@ describe('гараж', () => {
     expect(within(mine).getAllByRole('button')[1]).not.toHaveTextContent('Активная')
   })
 
+  test('у проданной машины пробег — пробег при продаже, а не «0 км» с покупки', async () => {
+    await addVehicle({ name: 'Рапид' })
+    await addVehicle({
+      name: 'Старая Лада',
+      archived: true,
+      purchase: { date: '2013-06-01', odometer: 0 },
+      sale: { date: '2019-03-01', odometer: 112000 },
+    })
+    renderAt('/garage')
+    const archive = await screen.findByRole('list', { name: 'Архив' })
+    await waitFor(() => expect(archive.textContent).toContain(`112${NBSP}000${NBSP}км`))
+  })
+
   test('строка машины открывает её карточку, «Добавить машину» — форму', async () => {
     const v = await addVehicle()
     const router = renderAt('/garage')
