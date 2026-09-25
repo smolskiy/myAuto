@@ -9,8 +9,9 @@ export interface PageProps {
   /**
    * Кнопка «Назад»: шаг по истории. Истории в приложении нет (открыли по ссылке) — на запасной путь заменой:
    * `true` — на главную, строка — на этот путь (`back="/garage"` у карточки машины).
+   * Функция — свой шаг назад без перехода по истории (шаги онбординга).
    */
-  back?: boolean | string
+  back?: boolean | string | (() => void)
   /** Кнопки справа в шапке (IconButton, SyncStatusBadge). */
   actions?: ReactNode
   /** Крупный заголовок — для корневых разделов (Главная, Журнал, ТО, Ещё). */
@@ -21,7 +22,8 @@ export interface PageProps {
 /** Каркас экрана: липкая шапка и колонка содержимого с отступами и безопасными зонами по бокам. */
 export function Page({ title, back, actions, large, children }: PageProps) {
   const goBack = useGoBack()
-  const onBack = back ? () => goBack(typeof back === 'string' ? back : '/') : undefined
+  const onBack =
+    typeof back === 'function' ? back : back ? () => goBack(typeof back === 'string' ? back : '/') : undefined
   return (
     <>
       <AppBar title={title} onBack={onBack} actions={actions} large={large} />

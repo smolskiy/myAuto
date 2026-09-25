@@ -7,7 +7,11 @@ import { createAppRouter } from '../../app/routes'
 import { db } from '../../db/instance'
 import { repos } from '../../db/repos'
 import { BUILTIN_CATALOG, CATALOG_ID, STARTER_REMINDER_ITEM_IDS } from '../../domain/catalog'
+import { NBSP } from '../../domain/format'
 import { yandexAuth } from '../../sync/index'
+import { goToUrl } from '../settings/leave'
+
+vi.mock('../settings/leave', () => ({ goToUrl: vi.fn(), reloadPage: vi.fn() }))
 
 vi.setConfig({ testTimeout: 20_000 })
 
@@ -26,6 +30,7 @@ beforeAll(async () => {
 })
 beforeEach(async () => {
   await db.open()
+  vi.mocked(goToUrl).mockClear()
 })
 afterEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -117,17 +122,68 @@ test('«Подключить Яндекс.Диск» без ClientID ведёт 
   expect(loginUrl).not.toHaveBeenCalled()
 })
 
-test('«Подключить Яндекс.Диск» с ClientID уходит на вход в Яндекс', async () => {
+test('«Подключить Яндекс.Диск» с ClientID уходит на вход в Яндекс через goToUrl', async () => {
   vi.spyOn(yandexAuth, 'getClientId').mockReturnValue('client-id')
-  // Адрес входа — фрагмент: другие переходы jsdom не выполняет, а по фрагменту видно, что ушли именно на loginUrl().
-  const loginUrl = vi.spyOn(yandexAuth, 'loginUrl').mockReturnValue('#yandex-login')
+  const loginUrl = vi.spyOn(yandexAuth, 'loginUrl').mockReturnValue('https://oauth.yandex.ru/authorize?x=1')
   const router = renderAt('/onboarding')
   await addVehicleStep()
   await userEvent.click(screen.getByRole('button', { name: 'Дальше' }))
   await userEvent.click(await screen.findByRole('button', { name: 'Подключить Яндекс.Диск' }))
-  await waitFor(() => expect(window.location.hash).toBe('#yandex-login'))
+  await waitFor(() => expect(goToUrl).toHaveBeenCalledWith('https://oauth.yandex.ru/authorize?x=1'))
   expect(loginUrl).toHaveBeenCalledOnce()
   expect(router.state.location.pathname).toBe('/onboarding')
+})
+
+// DEF-04: «Назад» на первом шаге стирал форму машины и её фото; «Дальше» был с дискетой.
+test('шаг 1: без «Назад», у «Дальше» нет дискеты', async () => {
+  renderAt('/onboarding')
+  await screen.findByRole('heading', { name: 'Добавьте машину' })
+  expect(screen.queryByRole('button', { name: 'Назад' })).not.toBeInTheDocument()
+  const next = screen.getByRole('button', { name: 'Дальше' })
+  expect(next.querySelector('.tabler-icon-device-floppy')).toBeNull()
+})
+
+test('шаг 2 «Назад» — снова шаг 1 с введённым; повторное «Дальше» правит ту же машину', async () => {
+  renderAt('/onboarding')
+  await addVehicleStep()
+  const [created] = await db.vehicles.toArray()
+  await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+  await screen.findByRole('heading', { name: 'Добавьте машину' })
+  expect(screen.getByLabelText('Марка')).toHaveValue('Skoda')
+  expect(screen.getByLabelText('Модель')).toHaveValue('Octavia')
+  await userEvent.type(screen.getByLabelText('Госномер'), 'а123вс77')
+  await userEvent.click(screen.getByRole('button', { name: 'Дальше' }))
+  await screen.findByRole('heading', { name: 'Что напоминать' })
+  const vehicles = await db.vehicles.toArray()
+  expect(vehicles).toHaveLength(1)
+  expect(vehicles[0]).toMatchObject({ id: created!.id, make: 'Skoda', plate: 'А123ВС77' })
+})
+
+test('шаг 3 «Назад» — снова шаг 2 с тем же выбором; повторное «Дальше» не плодит напоминания', async () => {
+  renderAt('/onboarding')
+  await addVehicleStep()
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Свечи зажигания' }))
+  await userEvent.type(screen.getByLabelText('Моторное масло: когда делали последний раз'), '140000')
+  await userEvent.click(screen.getByRole('button', { name: 'Дальше' }))
+  await screen.findByRole('heading', { name: 'Синхронизация' })
+  expect(await db.reminderRules.count()).toBe(7)
+
+  await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+  await screen.findByRole('heading', { name: 'Что напоминать' })
+  expect(screen.getByRole('checkbox', { name: 'Свечи зажигания' })).not.toBeChecked()
+  expect(screen.getByLabelText('Моторное масло: когда делали последний раз')).toHaveValue(`140${NBSP}000`)
+  // Передумал: свечи тоже напоминать, а воздушный фильтр — нет.
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Свечи зажигания' }))
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Воздушный фильтр' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Дальше' }))
+  await screen.findByRole('heading', { name: 'Синхронизация' })
+
+  const rules = (await db.reminderRules.toArray()).filter((r) => !r.deleted)
+  expect(rules).toHaveLength(7)
+  expect(rules.some((r) => r.itemId === CATALOG_ID.sparkPlugs)).toBe(true)
+  expect(rules.some((r) => r.itemId === CATALOG_ID.airFilter)).toBe(false)
+  expect(rules.filter((r) => r.itemId === CATALOG_ID.engineOil)).toHaveLength(1)
+  expect(rules.find((r) => r.itemId === CATALOG_ID.engineOil)!.baseline).toEqual({ odometer: 140000 })
 })
 
 // DEF-01: на новом устройстве данные восстанавливают до того, как заведена машина.

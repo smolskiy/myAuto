@@ -21,8 +21,12 @@ export interface FormPageProps {
   onSave(): Promise<void | string | false>
   /** По умолчанию «Сохранить». */
   saveLabel?: string
+  /** Значок кнопки сохранения: по умолчанию дискета; `null` — без значка (шаг «Дальше» онбординга). */
+  saveIcon?: ReactNode | null
   /** «Назад» без сохранения: сначала onCancel (выбросить вложения черновика), потом закрыть форму. */
   onCancel?(): void
+  /** Без «Назад» в шапке: первому экрану первого запуска возвращаться некуда. */
+  backHidden?: boolean
   /** Внешний признак занятости (например, идёт сжатие фото). */
   saving?: boolean
   children: ReactNode
@@ -36,7 +40,9 @@ export function FormPage({
   title,
   onSave,
   saveLabel = 'Сохранить',
+  saveIcon = <IconDeviceFloppy />,
   onCancel,
+  backHidden = false,
   saving = false,
   children,
 }: FormPageProps) {
@@ -83,10 +89,10 @@ export function FormPage({
 
   return (
     <>
-      <AppBar title={title} onBack={cancel} />
+      <AppBar title={title} onBack={backHidden ? undefined : cancel} />
       <div className={pageStyles.body}>{children}</div>
       <div className={styles.footer}>
-        <Button block icon={<IconDeviceFloppy />} loading={busy || saving} onClick={() => void save()}>
+        <Button block icon={saveIcon ?? undefined} loading={busy || saving} onClick={() => void save()}>
           {saveLabel}
         </Button>
       </div>

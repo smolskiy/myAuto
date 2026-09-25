@@ -113,9 +113,9 @@ test('DEF-03: на первом запуске заголовок онборди
   await expect(focused).not.toHaveCSS('outline-style', 'none')
 })
 
-// DEF-04 (docs/qa/2026-09-25-e2e.md): «Назад» на первом шаге онбординга некуда вести — экран пересоздаётся
-// редиректом, и введённое в форму машины пропадает.
-test.fixme('DEF-04: «Назад» на первом шаге онбординга не стирает введённое', async ({ page }) => {
+// DEF-04 (docs/qa/2026-09-25-e2e.md): «Назад» на первом шаге онбординга было некуда вести — экран пересоздавался
+// редиректом, и введённое в форму машины пропадало. Теперь на шаге 1 «Назад» нет, а со шага 2 он возвращает на шаг 1.
+test('DEF-04: «Назад» на первом шаге онбординга не стирает введённое', async ({ page }) => {
   await page.goto('./')
   await expect(page.getByRole('heading', { level: 1, name: 'Добро пожаловать' })).toBeVisible()
   await page.getByLabel('Марка', { exact: true }).fill('Lada')
@@ -126,4 +126,30 @@ test.fixme('DEF-04: «Назад» на первом шаге онбординг
   await page.waitForTimeout(500)
   await expect(page.getByRole('heading', { level: 1, name: 'Добро пожаловать' })).toBeVisible()
   await expect(page.getByLabel('Марка', { exact: true })).toHaveValue('Lada')
+})
+
+test('DEF-04: «Назад» со второго шага — снова шаг 1 с введённым, машина одна', async ({ page }) => {
+  await page.goto('./')
+  await expect(page.getByRole('heading', { level: 1, name: 'Добро пожаловать' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Назад' })).toHaveCount(0)
+  await page.getByLabel('Марка', { exact: true }).fill('Lada')
+  await page.getByLabel('Модель', { exact: true }).fill('2109')
+  await page.getByRole('button', { name: 'Дальше' }).click()
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Что напоминать' })).toBeVisible()
+  await page.getByRole('button', { name: 'Назад' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Добро пожаловать' })).toBeVisible()
+  await expect(page.getByLabel('Марка', { exact: true })).toHaveValue('Lada')
+  await expect(page.getByLabel('Модель', { exact: true })).toHaveValue('2109')
+
+  await page.getByRole('button', { name: 'Дальше' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Что напоминать' })).toBeVisible()
+  await page.getByRole('button', { name: 'Дальше' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Синхронизация' })).toBeVisible()
+  await page.getByRole('button', { name: 'Позже' }).click()
+  await expectHome(page)
+
+  await tabBar(page).getByRole('link', { name: 'Ещё' }).click()
+  await page.getByRole('button', { name: 'Гараж' }).click()
+  await expect(page.getByRole('list', { name: 'Мои машины' }).getByRole('listitem')).toHaveCount(1)
 })
