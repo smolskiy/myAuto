@@ -1,27 +1,68 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { RouterProvider } from 'react-router'
-import { describe, expect, test } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest'
+import { db } from '../db/instance'
+import { repos } from '../db/repos'
+import { AppProviders } from './providers'
 import { ROUTES, createAppRouter } from './routes'
 
-const samples: Record<string, string> = {
-  '/': 'Главная',
-  '/journal': 'Журнал',
-  '/record/abc': 'Запись',
-  '/record/new/fuel': 'Запись',
-  '/items/item.engine_oil': 'История узла',
-  '/settings/sync': 'Синхронизация',
-  '/showcase': 'Витрина компонентов',
+// Ленивые страницы (особенно витрина) на холодном старте грузятся дольше секунды.
+const LAZY = { timeout: 5000 }
+
+const samples = [
+  '/',
+  '/journal',
+  '/record/abc',
+  '/record/new/fuel',
+  '/items/item.engine_oil',
+  '/settings/sync',
+  '/showcase',
+]
+
+const renderAt = (path: string) => {
+  const router = createAppRouter({ initialPath: path })
+  render(
+    <AppProviders>
+      <RouterProvider router={router} />
+    </AppProviders>,
+  )
+  return router
 }
 
+// Витрина тяжёлая (графики, все секции): под нагрузкой полного прогона её холодный импорт бывает дольше 5 с.
+// Прогреваем модуль заранее с запасом — тесты проверяют маршрутизацию, а не скорость диска.
+beforeAll(() => import('../ui/showcase/ShowcasePage'), 60_000)
+
+beforeEach(async () => {
+  await db.open()
+  await repos.vehicles.create({
+    name: 'Октавия',
+    make: 'Skoda',
+    model: 'Octavia',
+    archived: false,
+    fluids: [],
+    order: 0,
+  })
+})
+afterEach(async () => {
+  await Promise.all(db.tables.map((t) => t.clear()))
+})
+
 describe('маршруты', () => {
-  test.each(Object.entries(samples))('%s открывает «%s»', async (path, title) => {
-    render(<RouterProvider router={createAppRouter({ initialPath: path })} />)
-    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument()
+  test.each(samples)('%s открывает свой экран', async (path) => {
+    const router = renderAt(path)
+    // Заголовок экрана (h1) появляется, когда ленивая страница загрузилась (в витрине их несколько — эскизы).
+    expect((await screen.findAllByRole('heading', { level: 1 }, LAZY)).length).toBeGreaterThan(0)
+    expect(router.state.location.pathname).toBe(path)
+    expect(screen.queryByRole('heading', { name: 'Страница не найдена' })).not.toBeInTheDocument()
   })
 
-  test('неизвестный путь показывает «Страница не найдена»', async () => {
-    render(<RouterProvider router={createAppRouter({ initialPath: '/nope/42' })} />)
-    expect(await screen.findByRole('heading', { name: 'Страница не найдена' })).toBeInTheDocument()
+  test('неизвестный путь показывает «Страница не найдена» с дорогой на главную', async () => {
+    const router = renderAt('/nope/42')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Страница не найдена' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'На главную' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })
 
   test('у каждого маршрута есть заголовок', () => {
