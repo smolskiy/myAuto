@@ -1,6 +1,6 @@
 import { IconFileOff } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router'
+import { useLocation, useParams } from 'react-router'
 import NotFoundPage from '../../app/NotFoundPage'
 import { useCurrentOdometer, useRecord, useRecords } from '../../db/hooks'
 import { repos } from '../../db/repos'
@@ -19,6 +19,7 @@ import { CommonFields, type FormContext } from './form/CommonFields'
 import { ExpenseFields } from './form/ExpenseFields'
 import { FuelFields } from './form/FuelFields'
 import { rememberDate } from './form/lastDate'
+import { isCopyState } from './repeat'
 import { NoteFields } from './form/NoteFields'
 import { ServiceFields } from './form/ServiceFields'
 import {
@@ -39,12 +40,13 @@ interface RecordFormProps {
   ctx: FormContext
   /** id записи: новой — id черновика вложений, правимой — её id. */
   recordId: ID
-  isNew: boolean
+  /** Новая — создаётся по «Сохранить»; правка — обновляется; копия («Повторить») уже создана и правится как новая. */
+  mode: 'new' | 'edit' | 'copy'
   onCancel?(): void
 }
 
 /** Форма записи любого вида: поля вида, заметка, фото и «Сохранить» внизу. */
-function RecordForm({ title, initial, ctx, recordId, isNew, onCancel }: RecordFormProps) {
+function RecordForm({ title, initial, ctx, recordId, mode, onCancel }: RecordFormProps) {
   const form = useRecordForm(initial)
   const { values, set } = form
   const [focusInvalid, setFocusInvalid] = useState(0)
@@ -63,13 +65,14 @@ function RecordForm({ title, initial, ctx, recordId, isNew, onCancel }: RecordFo
       return false
     }
     const draft = toDraft(values)
-    if (isNew) await repos.records.create({ ...draft, id: recordId })
+    if (mode === 'new') await repos.records.create({ ...draft, id: recordId })
     else await repos.records.update(recordId, draft)
     rememberDate(draft.date)
-    if (isNew) return `/record/${recordId}`
+    // Новая запись и копия заменяются своей карточкой; правка возвращается туда, откуда пришли.
+    if (mode !== 'edit') return `/record/${recordId}`
   }
 
-  const fields = { form, ctx, suggestDate: isNew }
+  const fields = { form, ctx, suggestDate: mode !== 'edit' }
   return (
     <FormPage title={title} onSave={onSave} onCancel={onCancel}>
       {values.kind === 'service' && <ServiceFields {...fields} />}
@@ -103,30 +106,35 @@ function NewRecord({ kind, vehicle }: { kind: RecordKind; vehicle: Vehicle }) {
       initial={newRecordValues(kind, vehicle, { today, currentOdometer })}
       ctx={{ records, today, currentOdometer }}
       recordId={drafts.ownerId}
-      isNew
+      mode="new"
       onCancel={() => void drafts.discard()}
     />
   )
 }
 
-function EditLoaded({ record }: { record: CarRecord }) {
+function EditLoaded({ record, copy }: { record: CarRecord; copy: boolean }) {
   const records = useRecords(record.vehicleId)
   const currentOdometer = useCurrentOdometer(record.vehicleId)
   const today = useToday()
   if (records === undefined || currentOdometer === undefined) return null
+  // «Назад» из копии — передумали повторять: копия убирается молча (жест «назад» её оставляет — это обычная запись).
+  const dropCopy = () =>
+    void repos.records.remove(record.id).catch((e: unknown) => console.error('Копия не убрана', e))
   return (
     <RecordForm
-      title="Правка записи"
+      title={copy ? 'Копия записи' : 'Правка записи'}
       initial={recordToValues(record)}
       ctx={{ records, today, currentOdometer, editingId: record.id }}
       recordId={record.id}
-      isNew={false}
+      mode={copy ? 'copy' : 'edit'}
+      onCancel={copy ? dropCopy : undefined}
     />
   )
 }
 
 function EditRecord({ id }: { id: ID }) {
   const record = useRecord(id)
+  const copy = isCopyState(useLocation().state)
   if (record === undefined) return null
   if (record === null) {
     return (
@@ -140,7 +148,7 @@ function EditRecord({ id }: { id: ID }) {
     )
   }
   // Ключ — id: живой запрос отдаёт новые копии той же записи, форму они не пересоздают.
-  return <EditLoaded key={record.id} record={record} />
+  return <EditLoaded key={record.id} record={record} copy={copy} />
 }
 
 /** `/record/new/:kind` и `/record/:id/edit`. */
