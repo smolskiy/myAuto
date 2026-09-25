@@ -8,15 +8,27 @@ import { GARAGE_PATH, createSyncEngine } from './engine'
 import type { Snapshot } from '../domain/snapshot'
 
 const dbs: MyAutoDB[] = []
-const newDb = () => { const d = new MyAutoDB(`t-${crypto.randomUUID()}`); dbs.push(d); return d }
-afterEach(async () => { await Promise.all(dbs.splice(0).map((d) => d.delete())); vi.useRealTimers() })
+const newDb = () => {
+  const d = new MyAutoDB(`t-${crypto.randomUUID()}`)
+  dbs.push(d)
+  return d
+}
+afterEach(async () => {
+  await Promise.all(dbs.splice(0).map((d) => d.delete()))
+  vi.useRealTimers()
+})
 
-const engineFor = (db: MyAutoDB, disk: FakeDisk | null, extra: Partial<Parameters<typeof createSyncEngine>[0]> = {}) =>
-  createSyncEngine({ db, getDisk: () => disk, today: () => '2026-09-25', isOnline: () => true, ...extra })
+const engineFor = (
+  db: MyAutoDB,
+  disk: FakeDisk | null,
+  extra: Partial<Parameters<typeof createSyncEngine>[0]> = {},
+) => createSyncEngine({ db, getDisk: () => disk, today: () => '2026-09-25', isOnline: () => true, ...extra })
 
 describe('цикл синхронизации', () => {
   let disk: FakeDisk
-  beforeEach(() => { disk = new FakeDisk() })
+  beforeEach(() => {
+    disk = new FakeDisk()
+  })
 
   test('первая синхронизация выгружает локальные данные', async () => {
     const db = newDb()
@@ -29,22 +41,33 @@ describe('цикл синхронизации', () => {
   })
 
   test('два устройства сходятся, удаление доходит', async () => {
-    const a = newDb(), b = newDb()
-    const ra = createRepos(a), rb = createRepos(b)
+    const a = newDb(),
+      b = newDb()
+    const ra = createRepos(a),
+      rb = createRepos(b)
     const pa = await ra.places.create({ kind: 'service', name: 'A' })
     await rb.places.create({ kind: 'fuel', name: 'B' })
-    const ea = engineFor(a, disk), eb = engineFor(b, disk)
-    await ea.syncNow(); await eb.syncNow(); await ea.syncNow()
-    const names = async (d: MyAutoDB) => (await d.places.toArray()).filter((p) => !p.deleted).map((p) => p.name).sort()
+    const ea = engineFor(a, disk),
+      eb = engineFor(b, disk)
+    await ea.syncNow()
+    await eb.syncNow()
+    await ea.syncNow()
+    const names = async (d: MyAutoDB) =>
+      (await d.places.toArray())
+        .filter((p) => !p.deleted)
+        .map((p) => p.name)
+        .sort()
     expect(await names(a)).toEqual(['A', 'B'])
     expect(await names(b)).toEqual(['A', 'B'])
     await ra.places.remove(pa.id)
-    await ea.syncNow(); await eb.syncNow()
+    await ea.syncNow()
+    await eb.syncNow()
     expect(await names(b)).toEqual(['B'])
   })
 
   test('гонка: файл изменился между чтением и записью — повтор, ничего не потеряно', async () => {
-    const a = newDb(), b = newDb()
+    const a = newDb(),
+      b = newDb()
     await createRepos(b).places.create({ kind: 'fuel', name: 'B' })
     await engineFor(b, disk).syncNow()
     await createRepos(a).places.create({ kind: 'service', name: 'A' })
@@ -55,7 +78,10 @@ describe('цикл синхронизации', () => {
       await engineFor(b, disk).syncNow()
     }
     await engineFor(a, disk).syncNow()
-    const onDisk = disk.peekJson<Snapshot>(GARAGE_PATH)!.tables.places.map((p) => p.name).sort()
+    const onDisk = disk
+      .peekJson<Snapshot>(GARAGE_PATH)!
+      .tables.places.map((p) => p.name)
+      .sort()
     expect(onDisk).toEqual(['A', 'B', 'B2'])
   })
 
@@ -74,7 +100,10 @@ describe('цикл синхронизации', () => {
     disk.failNext(new Unauthorized('Вход в Яндекс истёк — войдите заново', 401))
     const engine = engineFor(newDb(), disk, { onUnauthorized })
     await engine.syncNow()
-    expect(engine.getStatus()).toMatchObject({ state: 'error', error: 'Вход в Яндекс истёк — войдите заново' })
+    expect(engine.getStatus()).toMatchObject({
+      state: 'error',
+      error: 'Вход в Яндекс истёк — войдите заново',
+    })
     expect(onUnauthorized).toHaveBeenCalled()
   })
 
@@ -93,18 +122,32 @@ describe('цикл синхронизации', () => {
   test('сбой сети на сервере загрузки → offline, а не ошибка', async () => {
     const API = 'https://cloud-api.yandex.net/v1/disk'
     const fetchImpl = vi.fn(async (url: string) => {
-      if (url.startsWith(`${API}/resources/upload`)) return new Response(JSON.stringify({ href: 'https://uploader/x', method: 'PUT' }))
+      if (url.startsWith(`${API}/resources/upload`))
+        return new Response(JSON.stringify({ href: 'https://uploader/x', method: 'PUT' }))
       if (url.startsWith(API)) return new Response('{}', { status: 404 })
       throw new TypeError('Load failed')
     })
     const realDisk = createDiskClient('tok', fetchImpl as unknown as typeof fetch)
-    const engine = createSyncEngine({ db: newDb(), getDisk: () => realDisk, today: () => '2026-09-25', isOnline: () => true })
+    const engine = createSyncEngine({
+      db: newDb(),
+      getDisk: () => realDisk,
+      today: () => '2026-09-25',
+      isOnline: () => true,
+    })
     await engine.syncNow()
     expect(engine.getStatus().state).toBe('offline')
   })
 
   test('без подключения — off, без сети — offline без запросов', async () => {
-    expect((await (async () => { const e = engineFor(newDb(), null); await e.syncNow(); return e.getStatus() })()).state).toBe('off')
+    expect(
+      (
+        await (async () => {
+          const e = engineFor(newDb(), null)
+          await e.syncNow()
+          return e.getStatus()
+        })()
+      ).state,
+    ).toBe('off')
     const e = engineFor(newDb(), disk, { isOnline: () => false })
     await e.syncNow()
     expect(e.getStatus().state).toBe('offline')
@@ -120,7 +163,8 @@ describe('цикл синхронизации', () => {
   })
 
   test('ежедневная копия и чистка старше 30', async () => {
-    for (let i = 1; i <= 31; i++) await disk.writeText(`app:/backups/2026-08-${String(i).padStart(2, '0')}.json`, '{}')
+    for (let i = 1; i <= 31; i++)
+      await disk.writeText(`app:/backups/2026-08-${String(i).padStart(2, '0')}.json`, '{}')
     const db = newDb()
     await engineFor(db, disk).syncNow()
     const list = await disk.list('app:/backups')
@@ -175,24 +219,39 @@ describe('цикл синхронизации', () => {
     disk.calls.length = 0
     const engine = engineFor(db, disk)
     await engine.syncNow()
-    expect(engine.getStatus()).toMatchObject({ state: 'error', error: 'Файл синхронизации на Диске повреждён' })
+    expect(engine.getStatus()).toMatchObject({
+      state: 'error',
+      error: 'Файл синхронизации на Диске повреждён',
+    })
     expect(disk.calls.filter((c) => c.startsWith('writeText') || c.startsWith('copy'))).toEqual([])
   })
 
   test('после 401 и стёртого токена статус по-прежнему просит войти заново', async () => {
     let current: FakeDisk | null = disk
     disk.failNext(new Unauthorized('Вход в Яндекс истёк — войдите заново', 401))
-    const engine = engineFor(newDb(), null, { getDisk: () => current, onUnauthorized: async () => { current = null } })
+    const engine = engineFor(newDb(), null, {
+      getDisk: () => current,
+      onUnauthorized: async () => {
+        current = null
+      },
+    })
     await engine.syncNow()
     await engine.syncNow()
-    expect(engine.getStatus()).toMatchObject({ state: 'error', error: 'Вход в Яндекс истёк — войдите заново' })
+    expect(engine.getStatus()).toMatchObject({
+      state: 'error',
+      error: 'Вход в Яндекс истёк — войдите заново',
+    })
     current = disk
     await engine.syncNow()
     expect(engine.getStatus().state).toBe('idle')
   })
 
   test('без сети счётчик ждущих файлов всё равно обновляется', async () => {
-    const attachments = { uploadPending: vi.fn(async () => {}), cleanupDeleted: vi.fn(async () => {}), pendingCount: vi.fn(async () => 2) }
+    const attachments = {
+      uploadPending: vi.fn(async () => {}),
+      cleanupDeleted: vi.fn(async () => {}),
+      pendingCount: vi.fn(async () => 2),
+    }
     const engine = engineFor(newDb(), disk, { isOnline: () => false, attachments })
     await engine.syncNow()
     expect(engine.getStatus()).toMatchObject({ state: 'offline', pendingUploads: 2 })

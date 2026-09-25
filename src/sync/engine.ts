@@ -4,7 +4,13 @@ import { applyRows, readSnapshot } from '../db/snapshotIO'
 import { subscribeLocalChanges } from '../db/changes'
 import { META_KEYS, getMeta, setMeta } from '../db/meta'
 import { diffTables, mergeSnapshots, sameSnapshot } from '../domain/merge'
-import { SCHEMA_VERSION, SnapshotError, emptySnapshot, parseSnapshot, type Snapshot } from '../domain/snapshot'
+import {
+  SCHEMA_VERSION,
+  SnapshotError,
+  emptySnapshot,
+  parseSnapshot,
+  type Snapshot,
+} from '../domain/snapshot'
 import { todayISO } from '../domain/dates'
 import type { SyncEngine, SyncStatus } from './contracts'
 import { NoSpace, Offline, Unauthorized, YandexError, type DiskClient, type ResourceStat } from './yandex/api'
@@ -79,14 +85,16 @@ function parseRemote(text: string): Snapshot {
     return parseSnapshot(json)
   } catch (e) {
     const version = (json as { schemaVersion?: unknown } | null)?.schemaVersion
-    if (e instanceof SnapshotError && typeof version === 'number' && version > SCHEMA_VERSION) throw new SyncFailure(e.message)
+    if (e instanceof SnapshotError && typeof version === 'number' && version > SCHEMA_VERSION)
+      throw new SyncFailure(e.message)
     console.warn('Файл синхронизации не прошёл проверку', e)
     throw new SyncFailure(CORRUPTED)
   }
 }
 
 /** Версия файла на Диске: md5, а если его нет — время изменения. null — файла нет. */
-const revision = (stat: ResourceStat | null): string | null => (stat ? (stat.md5 ?? stat.modified ?? '') : null)
+const revision = (stat: ResourceStat | null): string | null =>
+  stat ? (stat.md5 ?? stat.modified ?? '') : null
 
 export function createSyncEngine(deps: EngineDeps): SyncEngine {
   const { db } = deps
@@ -121,12 +129,16 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
       const remote = text === null ? emptySnapshot(0) : parseRemote(text)
 
       // Чтение, слияние и запись — одной транзакцией: правка пользователя не вклинится между ними.
-      const merged = await db.transaction('rw', SYNC_TABLES.map((name) => db.table(name)), async () => {
-        const local = await readSnapshot(db, now())
-        const result = mergeSnapshots(local, remote)
-        await applyRows(db, diffTables(local.tables, result.tables))
-        return result
-      })
+      const merged = await db.transaction(
+        'rw',
+        SYNC_TABLES.map((name) => db.table(name)),
+        async () => {
+          const local = await readSnapshot(db, now())
+          const result = mergeSnapshots(local, remote)
+          await applyRows(db, diffTables(local.tables, result.tables))
+          return result
+        },
+      )
 
       if (text !== null && sameSnapshot(merged, remote)) return
       const check = await disk.stat(GARAGE_PATH)
