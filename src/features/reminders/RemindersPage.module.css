@@ -1,0 +1,15 @@
+/* Карточка «Нет данных» и кнопка под ней — одна строка группы. */
+.unknown {
+  display: flex;
+  flex-direction: column;
+}
+
+.unknownAction {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
