@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, MouseEvent, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, MouseEvent, ReactNode, Ref } from 'react'
 import { cx } from '../../lib/cx'
 import { Spinner } from '../Spinner/Spinner'
 import styles from './Button.module.css'
@@ -11,6 +11,7 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   loading?: boolean
   /** На всю ширину контейнера. */
   block?: boolean
+  ref?: Ref<HTMLButtonElement>
 }
 
 export function Button({

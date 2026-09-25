@@ -1,4 +1,5 @@
 .button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -44,4 +45,18 @@
 .icon svg {
   width: 24px;
   height: 24px;
+}
+
+.sm {
+  width: 32px;
+  height: 32px;
+}
+.sm .icon svg {
+  width: 20px;
+  height: 20px;
+}
+.sm::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }

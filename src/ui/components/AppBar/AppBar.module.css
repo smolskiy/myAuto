@@ -1,0 +1,54 @@
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-appbar);
+  padding-top: var(--safe-top);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--appbar-height);
+  padding: 0 var(--space-2);
+}
+
+.back {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+.back + .title {
+  padding-left: 0;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.largeTitle {
+  padding: 0 var(--space-4) var(--space-2);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
+}

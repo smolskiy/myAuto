@@ -42,3 +42,13 @@ export { Switch, type SwitchProps } from './components/Switch/Switch'
 export { Checkbox, type CheckboxProps } from './components/Checkbox/Checkbox'
 export { Rating, type RatingProps } from './components/Rating/Rating'
 export { SearchField, type SearchFieldProps } from './components/SearchField/SearchField'
+
+// Навигация и оверлеи
+export { AppBar, type AppBarProps } from './components/AppBar/AppBar'
+export { BottomTabBar, type BottomTabBarProps, type TabItem } from './components/BottomTabBar/BottomTabBar'
+export { BottomSheet, type BottomSheetProps } from './components/BottomSheet/BottomSheet'
+export { ActionSheet, type ActionSheetProps, type ActionSheetAction } from './components/ActionSheet/ActionSheet'
+export { Dialog, type DialogProps } from './components/Dialog/Dialog'
+export { ToastProvider, useToast, type ToastApi, type ToastOptions } from './components/Toast/Toast'
+export { VehicleSwitcher, type VehicleSwitcherProps } from './components/VehicleSwitcher/VehicleSwitcher'
+export { SyncStatusBadge, type SyncStatusBadgeProps } from './components/SyncStatusBadge/SyncStatusBadge'

@@ -7,16 +7,26 @@ export type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string
   icon: ReactNode
   variant?: 'ghost' | 'filled'
+  /** sm — видимо 32 px (область касания всё равно 44 px). */
+  size?: 'md' | 'sm'
 }
 
-export function IconButton({ label, icon, variant = 'ghost', type = 'button', className, ...rest }: IconButtonProps) {
+export function IconButton({
+  label,
+  icon,
+  variant = 'ghost',
+  size = 'md',
+  type = 'button',
+  className,
+  ...rest
+}: IconButtonProps) {
   return (
     <button
       {...rest}
       type={type}
       aria-label={label}
       title={rest.title ?? label}
-      className={cx(styles.button, styles[variant], className)}
+      className={cx(styles.button, styles[variant], styles[size], className)}
     >
       <span className={styles.icon} aria-hidden="true">
         {icon}
