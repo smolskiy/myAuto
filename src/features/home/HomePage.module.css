@@ -46,6 +46,11 @@
   gap: var(--space-3);
 }
 
+/* Кнопка не сжимается — сжимается текст рядом. */
+.emptyRow > button {
+  flex-shrink: 0;
+}
+
 .emptyText {
   display: flex;
   flex: 1 1 auto;

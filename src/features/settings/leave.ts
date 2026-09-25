@@ -2,3 +2,8 @@
 export function goToUrl(url: string): void {
   window.location.assign(url)
 }
+
+/** Перезагрузка после «Заменить всё»: экраны и живые запросы начинают с чистого листа. */
+export function reloadPage(): void {
+  window.location.reload()
+}
