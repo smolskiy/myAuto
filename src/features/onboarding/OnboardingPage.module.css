@@ -1,0 +1,92 @@
+.step {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.lead {
+  color: var(--color-text-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  max-width: 60ch;
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Узел: флажок, интервал и пробег прошлой замены — одной белой карточкой. */
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.interval {
+  margin-top: calc(-1 * var(--space-2));
+  padding-left: calc(24px + var(--space-3));
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.sync {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+}
+
+.syncIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+/* Кнопки шага липнут к низу экрана — как «Сохранить» у форм (FormPage). */
+.footer {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-tabbar);
+  padding: var(--space-3) max(var(--space-4), env(safe-area-inset-right, 0px))
+    calc(var(--space-3) + var(--safe-bottom)) max(var(--space-4), env(safe-area-inset-left, 0px));
+  border-top: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.footer > * {
+  max-width: 608px;
+  margin: 0 auto;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.introTitle {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}

@@ -1,0 +1,68 @@
+/* Поле и его быстрые кнопки — как единое поле ui (тот же зазор, что внутри Field). */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Два коротких поля в ряд: «Действует с / до», литры и цена. На узком экране — друг под другом. */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+
+@media (max-width: 340px) {
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+}
+
+/* Тело шторки строки: поля с тем же шагом, что на экране формы. */
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Пояснение под кнопкой («Строки из «ТО-6», 12.09.2026»). */
+.caption {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+  text-align: center;
+}
+
+/* Подсказка «В прошлый раз: …» в шторке запчасти — как у строки LineItemRow, длинный текст переносится. */
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  text-align: left;
+  cursor: pointer;
+}
+.suggestion svg {
+  flex-shrink: 0;
+}
+.suggestion:active {
+  background: var(--color-surface-pressed);
+}
