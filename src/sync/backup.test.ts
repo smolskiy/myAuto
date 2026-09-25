@@ -4,7 +4,9 @@ import { MyAutoDB } from '../db/schema'
 import { createRepos } from '../db/repos'
 import { subscribeLocalChanges } from '../db/changes'
 import { ensureSeed } from '../db/seed'
+import { EXPENSE_CATEGORY_LABELS } from '../domain/labels'
 import type { Snapshot } from '../domain/snapshot'
+import type { ExpenseCategory } from '../domain/types'
 import { createBackupService } from './backup'
 import { GARAGE_PATH, createSyncEngine } from './engine'
 import { FakeDisk } from './yandex/fakeDisk'
@@ -220,6 +222,42 @@ test('Excel: записи и напоминания удалённой маши�
   expect(rows('Журнал')).toEqual([])
   expect(rows('Расходы')).toEqual([])
   expect(rows('Напоминания')).toEqual([])
+})
+
+test('Excel: категории расходов подписаны как в приложении (domain/labels)', async () => {
+  const repos = createRepos(db)
+  const v = await repos.vehicles.create({
+    name: 'Октавия',
+    make: 'Skoda',
+    model: 'Octavia',
+    archived: false,
+    fluids: [],
+    order: 0,
+  })
+  const categories = Object.keys(EXPENSE_CATEGORY_LABELS) as ExpenseCategory[]
+  for (const category of categories) {
+    await repos.records.create({
+      vehicleId: v.id,
+      kind: 'expense',
+      date: '2026-09-01',
+      total: 10000,
+      category,
+    })
+  }
+  const wb = XLSX.read(await (await createBackupService({ db }).exportExcel()).arrayBuffer())
+  const rows = (sheet: string) => XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sheet]!)
+  const expected = categories.map((c) => EXPENSE_CATEGORY_LABELS[c]).sort()
+  expect(
+    rows('Расходы')
+      .map((r) => r['Категория'])
+      .sort(),
+  ).toEqual(expected)
+  // Расход без названия в журнале называется своей категорией.
+  expect(
+    rows('Журнал')
+      .map((r) => r['Название'])
+      .sort(),
+  ).toEqual(expected)
 })
 
 test('имя файла бэкапа', () => {

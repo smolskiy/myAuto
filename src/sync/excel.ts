@@ -1,7 +1,7 @@
+import { EXPENSE_CATEGORY_LABELS } from '../domain/labels'
 import type { Snapshot } from '../domain/snapshot'
 import type {
   CarRecord,
-  ExpenseCategory,
   ID,
   PartUnit,
   RecordKind,
@@ -28,21 +28,6 @@ const KIND: Record<RecordKind, string> = {
   odometer: 'Пробег',
   note: 'Заметка',
 }
-const CATEGORY: Record<ExpenseCategory, string> = {
-  osago: 'ОСАГО',
-  kasko: 'КАСКО',
-  tax: 'Налог',
-  fine: 'Штраф',
-  wash: 'Мойка',
-  parking: 'Парковка',
-  toll: 'Платная дорога',
-  tireService: 'Шиномонтаж',
-  tireStorage: 'Хранение шин',
-  inspection: 'Техосмотр',
-  accessories: 'Аксессуары',
-  registration: 'Регистрация',
-  other: 'Прочее',
-}
 const UNIT: Record<PartUnit, string> = { pcs: 'шт', l: 'л', set: 'компл', m: 'м', kg: 'кг' }
 const TRANSMISSION: Record<Transmission, string> = {
   mt: 'МКПП',
@@ -64,7 +49,7 @@ function recordTitle(r: CarRecord): string | null {
     case 'note':
       return r.title
     case 'expense':
-      return r.title ?? CATEGORY[r.category]
+      return r.title ?? EXPENSE_CATEGORY_LABELS[r.category]
     case 'fuel':
       return r.fuelGrade ?? null
     case 'odometer':
@@ -228,7 +213,7 @@ export function buildSheets(snapshot: Snapshot): Sheet[] {
               [
                 nameOf(vehicle, r.vehicleId),
                 r.date,
-                CATEGORY[r.category],
+                EXPENSE_CATEGORY_LABELS[r.category],
                 v(r.title),
                 rub(r.total),
                 v(r.validUntil),
