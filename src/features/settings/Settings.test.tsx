@@ -73,6 +73,8 @@ beforeEach(async () => {
   fake.yandexAuth.connectWithCode.mockClear()
   fake.yandexAuth.setClientId.mockClear()
   fake.yandexAuth.disconnect.mockClear()
+  fake.yandexAuth.loginUrl.mockClear()
+  fake.yandexAuth.verificationCodeUrl.mockClear()
   fake.syncEngine.syncNow.mockClear()
 })
 afterEach(async () => {
@@ -140,56 +142,70 @@ describe('настройки', () => {
 })
 
 describe('синхронизация', () => {
-  test('не подключено — состояние словами и кнопки входа', async () => {
+  // Приложение Яндекса владельца (папка приложения на Диске) разрешает только redirect_uri = verification_code:
+  // вход через oauth.html там не работает, поэтому единственный видимый вход — по коду подтверждения.
+  test('не подключено — вход по коду в два шага, без «Войти через Яндекс»', () => {
     fake.state.clientId = 'abc'
     vi.stubEnv('VITE_YANDEX_CLIENT_ID', 'abc')
     renderAt('/settings/sync', <SyncSettingsPage />)
     expect(screen.getByText('Не подключено')).toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'ClientID' })).not.toBeInTheDocument()
-    const login = screen.getByRole('button', { name: 'Войти через Яндекс' })
-    expect(login).toBeEnabled()
-    await userEvent.click(login)
-    expect(goToUrl).toHaveBeenCalledWith('https://oauth.yandex.ru/authorize?client_id=abc')
-    expect(screen.getByRole('button', { name: 'Войти по коду' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Войти через Яндекс' })).not.toBeInTheDocument()
+    const steps = within(screen.getByRole('list', { name: 'Вход по коду' })).getAllByRole('listitem')
+    expect(steps).toHaveLength(2)
+    expect(within(steps[0]!).getByRole('button', { name: 'Получить код в Яндексе' })).toBeEnabled()
+    const code = within(steps[1]!).getByLabelText('Вставьте код со страницы Яндекса')
+    expect(code).toHaveAccessibleDescription('Код начинается с y0_. Нужен один раз на каждое устройство')
+    expect(screen.getByRole('button', { name: 'Подключить' })).toBeInTheDocument()
+    expect(fake.yandexAuth.loginUrl).not.toHaveBeenCalled()
   })
 
-  test('без ClientID в сборке — поле ClientID, вход недоступен, пока поле пустое', async () => {
+  test('без ClientID в сборке — поле ClientID, код не получить, пока поле пустое', async () => {
     vi.stubEnv('VITE_YANDEX_CLIENT_ID', '')
+    vi.spyOn(window, 'open').mockReturnValue({ opener: window } as unknown as Window)
     renderAt('/settings/sync', <SyncSettingsPage />)
     const field = screen.getByRole('textbox', { name: 'ClientID' })
     expect(screen.getByText('oauth.yandex.ru → ваше приложение → ClientID')).toBeInTheDocument()
-    const login = screen.getByRole('button', { name: 'Войти через Яндекс' })
-    expect(login).toBeDisabled()
-    expect(login).toHaveAccessibleDescription('Сначала укажите ClientID')
+    const getCode = screen.getByRole('button', { name: 'Получить код в Яндексе' })
+    expect(getCode).toBeDisabled()
+    expect(getCode).toHaveAccessibleDescription('Сначала укажите ClientID')
     await userEvent.type(field, ' my-client ')
-    expect(login).toBeEnabled()
-    await userEvent.click(login)
+    expect(getCode).toBeEnabled()
+    await userEvent.click(getCode)
     expect(fake.yandexAuth.setClientId).toHaveBeenCalledWith('my-client')
-    expect(goToUrl).toHaveBeenCalledTimes(1)
+    expect(fake.yandexAuth.verificationCodeUrl).toHaveBeenCalledTimes(1)
   })
 
-  test('вход по коду: страница Яндекса в новой вкладке, код уходит в connectWithCode', async () => {
+  test('«Получить код» — страница Яндекса в новой вкладке без доступа к приложению; код уходит в connectWithCode', async () => {
     fake.state.clientId = 'abc'
-    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const tab = { opener: window as Window | null }
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
     renderAt('/settings/sync', <SyncSettingsPage />)
-    await userEvent.click(screen.getByRole('button', { name: 'Войти по коду' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Получить код в Яндексе' }))
     expect(open).toHaveBeenCalledWith(
       'https://oauth.yandex.ru/authorize?redirect_uri=verification_code',
       '_blank',
-      'noopener',
     )
-    await userEvent.type(screen.getByLabelText('Код со страницы Яндекса'), 'y0_abc')
+    expect(tab.opener).toBeNull()
+    expect(goToUrl).not.toHaveBeenCalled()
+    await userEvent.type(screen.getByLabelText('Вставьте код со страницы Яндекса'), 'y0_abc')
     await userEvent.click(screen.getByRole('button', { name: 'Подключить' }))
     expect(fake.yandexAuth.connectWithCode).toHaveBeenCalledWith('y0_abc')
   })
 
-  test('код — это токен: поле скрыто, без автоисправлений, после неудачи очищается', async () => {
+  test('новую вкладку не открыть (установленное приложение) — страница Яндекса в этой же вкладке', async () => {
     fake.state.clientId = 'abc'
     vi.spyOn(window, 'open').mockReturnValue(null)
+    renderAt('/settings/sync', <SyncSettingsPage />)
+    await userEvent.click(screen.getByRole('button', { name: 'Получить код в Яндексе' }))
+    expect(goToUrl).toHaveBeenCalledWith('https://oauth.yandex.ru/authorize?redirect_uri=verification_code')
+  })
+
+  test('код — это токен: поле скрыто, без автоисправлений, после неудачи очищается', async () => {
+    fake.state.clientId = 'abc'
     fake.yandexAuth.connectWithCode.mockRejectedValueOnce(new Error('Код не подошёл — получите новый'))
     renderAt('/settings/sync', <SyncSettingsPage />)
-    await userEvent.click(screen.getByRole('button', { name: 'Войти по коду' }))
-    const field = screen.getByLabelText('Код со страницы Яндекса')
+    const field = screen.getByLabelText('Вставьте код со страницы Яндекса')
     expect(field).toHaveAttribute('type', 'password')
     expect(field).toHaveAttribute('autocapitalize', 'off')
     expect(field).toHaveAttribute('autocorrect', 'off')

@@ -6,10 +6,8 @@ import { repos } from '../../db/repos'
 import { BUILTIN_CATALOG, STARTER_REMINDER_ITEM_IDS } from '../../domain/catalog'
 import { formatKm } from '../../domain/format'
 import type { CatalogItem, ID, Vehicle } from '../../domain/types'
-import { yandexAuth } from '../../sync/index'
 import { Button, Checkbox, NumberField, useToast } from '../../ui'
 import { Page, UserError } from '../common'
-import { goToUrl } from '../settings/leave'
 import { VehicleForm } from '../vehicle/form/VehicleForm'
 import styles from './OnboardingPage.module.css'
 
@@ -147,15 +145,9 @@ function RemindersStep({ vehicle, choice, created, onBack, onDone }: RemindersSt
 /** Шаг 3: Яндекс.Диск сейчас или позже. */
 function SyncStep({ onBack }: { onBack(): void }) {
   const navigate = useNavigate()
-  const connect = () => {
-    // Без ClientID вход не собрать — его вводят в настройках синхронизации.
-    if (!yandexAuth.getClientId()) {
-      void navigate('/settings/sync', { replace: true })
-      return
-    }
-    // loginUrl() пишет новый state — только здесь, в обработчике нажатия, прямо перед уходом.
-    goToUrl(yandexAuth.loginUrl())
-  }
+  // Вход — по коду подтверждения на экране синхронизации: приложение Яндекса с папкой на Диске не разрешает
+  // возврат на свою страницу (oauth.html), только на страницу кода. Заменой — онбординг на этом закончен.
+  const connect = () => void navigate('/settings/sync', { replace: true })
   return (
     <>
       <Page title="Синхронизация" back={onBack}>

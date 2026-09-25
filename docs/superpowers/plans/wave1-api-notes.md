@@ -37,8 +37,14 @@
 ## sync
 
 - `initSync()` уже вызывается приложением; экраны используют `syncEngine.syncNow()`, `useSyncStatus()`,
-  `useYandexConnected()`, `useLoginError()`, `yandexAuth.loginUrl()` (вызывать только в обработчике нажатия — пишет новый
-  `state`), `yandexAuth.connectWithCode(text)`, `yandexAuth.disconnect()`.
+  `useYandexConnected()`, `useLoginError()`, `yandexAuth.verificationCodeUrl()`, `yandexAuth.connectWithCode(text)`,
+  `yandexAuth.disconnect()`.
+- Вход в Яндекс — **только по коду подтверждения** (экран «Синхронизация»): «Получить код в Яндексе» открывает
+  `verificationCodeUrl()` в новой вкладке (`window.open` вернул `null` — установленное приложение — та же вкладка через
+  `goToUrl`), код вставляют в поле, «Подключить» → `connectWithCode`. Приложение Яндекса с доступом к папке приложения
+  на Диске разрешает redirect только на `https://oauth.yandex.ru/verification_code`, поэтому вход через `oauth.html`
+  (`loginUrl()` + `consumeRedirect()`) в интерфейсе не предлагается; код в `src/sync` оставлен и протестирован.
+  Онбординг («Подключить Яндекс.Диск», «Уже есть данные на Яндекс.Диске») ведёт на `/settings/sync`.
 - `attachmentStore.addFile(owner, file)` бросает русскую ошибку для неподдерживаемого файла или PDF > 20 МБ — покажи тостом.
 - `useAttachmentUrl(att, 'thumb' | 'orig')` → `undefined` (грузится) | `null` (нет) | object URL (сам отзывается).
 - Удалённые вложения стираются с Диска через 24 ч — «Отменить» и восстановление успевают вернуть файл.

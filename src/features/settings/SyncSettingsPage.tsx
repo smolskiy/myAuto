@@ -2,6 +2,7 @@ import {
   IconAlertTriangle,
   IconCloudCheck,
   IconCloudOff,
+  IconExternalLink,
   IconFileText,
   IconFolder,
   IconLogout,
@@ -33,38 +34,38 @@ const STATE_ICON: Record<SyncState, { icon: TablerIcon; tone: Tone }> = {
 const CLIENT_ID_HINT = 'oauth.yandex.ru → ваше приложение → ClientID'
 const NEED_CLIENT_ID = 'Сначала укажите ClientID'
 
-/** Вход в Яндекс: основной — переходом на страницу Яндекса, запасной — по коду подтверждения. */
+const CODE_HINT = 'Код начинается с y0_. Нужен один раз на каждое устройство'
+
+/**
+ * Вход в Яндекс — по коду подтверждения: 1) страница Яндекса показывает код, 2) код вставляют сюда. Приложение
+ * Яндекса с папкой на Диске разрешает возврат только на свою страницу кода, поэтому вход через oauth.html
+ * (`loginUrl`) здесь не предлагается — сам он в sync остаётся.
+ */
 function LoginBlock() {
   const toast = useToast()
   const reasonId = useId()
   // ClientID из сборки — поле не нужно; пусто — владелец вводит свой (хранится на устройстве).
   const buildClientId = (import.meta.env.VITE_YANDEX_CLIENT_ID ?? '').trim()
   const [clientId, setClientId] = useState(() => yandexAuth.getClientId() ?? '')
-  const [codeOpen, setCodeOpen] = useState(false)
   const [code, setCode] = useState('')
   const [connecting, setConnecting] = useState(false)
   const canLogin = !!buildClientId || !!clientId.trim()
 
-  /** Ручной ClientID — сохраняем перед входом (loginUrl и verificationCodeUrl читают его). */
+  /** Ручной ClientID — сохраняем перед входом (verificationCodeUrl читает его). */
   const applyClientId = () => {
     if (!buildClientId) yandexAuth.setClientId(clientId.trim())
-  }
-
-  const loginWithYandex = () => {
-    applyClientId()
-    try {
-      // loginUrl() пишет новый state — только здесь, в обработчике нажатия, прямо перед уходом.
-      goToUrl(yandexAuth.loginUrl())
-    } catch (e) {
-      toast.show({ text: (e instanceof Error && e.message) || 'Не удалось начать вход' })
-    }
   }
 
   const openCodePage = () => {
     applyClientId()
     try {
-      window.open(yandexAuth.verificationCodeUrl(), '_blank', 'noopener')
-      setCodeOpen(true)
+      const url = yandexAuth.verificationCodeUrl()
+      // Без 'noopener' в параметрах: с ним window.open всегда отдаёт null, и «вкладка не открылась» не отличить.
+      // Доступ новой вкладки к приложению отнимаем сами.
+      const tab = window.open(url, '_blank')
+      if (tab) tab.opener = null
+      // Установленное приложение (iOS) новую вкладку не даёт — идём в этой же; поле кода ждёт здесь.
+      else goToUrl(url)
     } catch (e) {
       toast.show({ text: (e instanceof Error && e.message) || 'Не удалось открыть страницу Яндекса' })
     }
@@ -97,47 +98,52 @@ function LoginBlock() {
             onChange={(e) => setClientId(e.target.value)}
           />
         )}
-        <Button
-          block
-          disabled={!canLogin}
-          aria-describedby={canLogin ? undefined : reasonId}
-          onClick={loginWithYandex}
-        >
-          Войти через Яндекс
+        <ol className={styles.steps} aria-label="Вход по коду">
+          <li className={styles.loginStep}>
+            <span className={styles.stepNo} aria-hidden="true">
+              1
+            </span>
+            <div className={styles.stepBody}>
+              <Button
+                block
+                variant="secondary"
+                icon={<IconExternalLink />}
+                disabled={!canLogin}
+                aria-describedby={canLogin ? undefined : reasonId}
+                onClick={openCodePage}
+              >
+                Получить код в Яндексе
+              </Button>
+              {!canLogin && (
+                <p id={reasonId} className={styles.reason}>
+                  {NEED_CLIENT_ID}
+                </p>
+              )}
+            </div>
+          </li>
+          <li className={styles.loginStep}>
+            <span className={`${styles.stepNo} ${styles.stepNoLabel}`} aria-hidden="true">
+              2
+            </span>
+            <div className={styles.stepBody}>
+              {/* «Код» — это токен доступа к Диску: скрыт, без подсказок клавиатуры и автоисправлений. */}
+              <TextField
+                label="Вставьте код со страницы Яндекса"
+                hint={CODE_HINT}
+                type="password"
+                value={code}
+                autoComplete="off"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                onChange={(e) => setCode(e.target.value)}
+              />
+            </div>
+          </li>
+        </ol>
+        <Button block loading={connecting} onClick={() => void connect()}>
+          Подключить
         </Button>
-        <Button
-          block
-          variant="secondary"
-          disabled={!canLogin}
-          aria-describedby={canLogin ? undefined : reasonId}
-          onClick={openCodePage}
-        >
-          Войти по коду
-        </Button>
-        {!canLogin && (
-          <p id={reasonId} className={styles.reason}>
-            {NEED_CLIENT_ID}
-          </p>
-        )}
-        {codeOpen && (
-          <>
-            {/* «Код» — это токен доступа к Диску: скрыт, без подсказок клавиатуры и автоисправлений. */}
-            <TextField
-              label="Код со страницы Яндекса"
-              hint="Скопируйте код на открывшейся странице и вставьте сюда"
-              type="password"
-              value={code}
-              autoComplete="off"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              onChange={(e) => setCode(e.target.value)}
-            />
-            <Button block loading={connecting} onClick={() => void connect()}>
-              Подключить
-            </Button>
-          </>
-        )}
       </div>
     </section>
   )

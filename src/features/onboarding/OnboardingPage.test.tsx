@@ -109,10 +109,13 @@ test('интервалы узлов подписаны из каталога', a
   expect(within(brake).getByText('каждые 24 мес.')).toBeInTheDocument()
 })
 
-// ClientID сборки приходит из .env.local и попадает в yandexAuth при импорте — тесты «Подключить» задают его сами.
-test('«Подключить Яндекс.Диск» без ClientID ведёт в настройки синхронизации', async () => {
-  vi.stubEnv('VITE_YANDEX_CLIENT_ID', '')
-  vi.spyOn(yandexAuth, 'getClientId').mockReturnValue(null)
+// Вход в Яндекс — только по коду подтверждения на экране синхронизации (приложение Яндекса владельца не разрешает
+// redirect на oauth.html). С ClientID и без — «Подключить» ведёт туда, со страницы приложения не уходит.
+test.each([
+  ['без ClientID', null],
+  ['с ClientID', 'client-id'],
+])('«Подключить Яндекс.Диск» %s ведёт в настройки синхронизации', async (_case, clientId) => {
+  vi.spyOn(yandexAuth, 'getClientId').mockReturnValue(clientId)
   const loginUrl = vi.spyOn(yandexAuth, 'loginUrl')
   const router = renderAt('/onboarding')
   await addVehicleStep()
@@ -120,18 +123,7 @@ test('«Подключить Яндекс.Диск» без ClientID ведёт 
   await userEvent.click(await screen.findByRole('button', { name: 'Подключить Яндекс.Диск' }))
   await waitFor(() => expect(router.state.location.pathname).toBe('/settings/sync'))
   expect(loginUrl).not.toHaveBeenCalled()
-})
-
-test('«Подключить Яндекс.Диск» с ClientID уходит на вход в Яндекс через goToUrl', async () => {
-  vi.spyOn(yandexAuth, 'getClientId').mockReturnValue('client-id')
-  const loginUrl = vi.spyOn(yandexAuth, 'loginUrl').mockReturnValue('https://oauth.yandex.ru/authorize?x=1')
-  const router = renderAt('/onboarding')
-  await addVehicleStep()
-  await userEvent.click(screen.getByRole('button', { name: 'Дальше' }))
-  await userEvent.click(await screen.findByRole('button', { name: 'Подключить Яндекс.Диск' }))
-  await waitFor(() => expect(goToUrl).toHaveBeenCalledWith('https://oauth.yandex.ru/authorize?x=1'))
-  expect(loginUrl).toHaveBeenCalledOnce()
-  expect(router.state.location.pathname).toBe('/onboarding')
+  expect(goToUrl).not.toHaveBeenCalled()
 })
 
 // DEF-04: «Назад» на первом шаге стирал форму машины и её фото; «Дальше» был с дискетой.
