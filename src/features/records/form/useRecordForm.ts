@@ -289,6 +289,8 @@ export function validate(v: RecordFormValues): FormErrors {
       if (!v.title.trim()) e.title = 'Добавьте название'
       if (hasTireSwap(v) && v.odometer === undefined)
         e.odometer = 'Укажите пробег — без него не посчитать пробег шин'
+      if (hasTireSwap(v) && v.mountedSetId && v.mountedSetId === v.removedSetId)
+        e.removedSetId = 'Нельзя снять и установить один и тот же комплект'
       break
   }
   return e

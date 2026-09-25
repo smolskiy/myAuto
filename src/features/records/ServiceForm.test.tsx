@@ -420,20 +420,86 @@ describe('смена шин обновляет состояние комплек
     expect(set?.updatedAt).toBe(summer.updatedAt)
   })
 
-  test('правка записи со сменой шин тоже обновляет комплекты', async () => {
+  /** Последняя переобувка: летние установлены 20.09.2026. */
+  async function latestSwap(summerId: string) {
+    return pastService({
+      title: 'Переобувка',
+      serviceType: 'tires',
+      date: '2026-09-20',
+      odometer: 140000,
+      tireSwap: { mountedSetId: summerId },
+    })
+  }
+
+  async function selectSet(label: string, id: string) {
+    const select = await screen.findByLabelText(label)
+    await within(select).findByRole('option', { name: /Nokian/ })
+    await userEvent.selectOptions(select, id)
+  }
+
+  test('смена установленного комплекта в последней переобувке применяется', async () => {
     const winter = await tireSet('stored', 'Nokian')
     const summer = await tireSet('installed', 'Michelin')
-    const rec = await pastService({ title: 'Переобувка', serviceType: 'tires', date: '2026-09-20' })
+    const rec = await latestSwap(summer.id)
     renderAt(`/record/${rec.id}/edit`)
-    const mounted = await screen.findByLabelText('Установлен комплект')
-    await within(mounted).findByRole('option', { name: /Nokian/ })
-    await userEvent.selectOptions(mounted, winter.id)
+    await selectSet('Установлен комплект', winter.id)
     await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
     await waitFor(async () => expect((await repos.tireSets.get(winter.id))?.status).toBe('installed'))
     expect((await repos.tireSets.get(summer.id))?.status).toBe('stored')
     expect((await repos.records.get(rec.id)) as ServiceRecord).toMatchObject({
       tireSwap: { mountedSetId: winter.id },
     })
+  })
+
+  test('переобувка задним числом не трогает текущие состояния', async () => {
+    const winter = await tireSet('stored', 'Nokian')
+    const summer = await tireSet('installed', 'Michelin')
+    await latestSwap(summer.id)
+    const router = renderAt('/record/new/service')
+    await typeTitle('Переобувка прошлой зимой')
+    await userEvent.selectOptions(screen.getByLabelText('Тип работ'), 'tires')
+    const date = screen.getByLabelText('Дата')
+    await userEvent.clear(date)
+    await userEvent.type(date, '2025-11-01')
+    await userEvent.clear(screen.getByLabelText('Пробег'))
+    await userEvent.type(screen.getByLabelText('Пробег'), '120000')
+    await selectSet('Установлен комплект', winter.id)
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\/[0-9a-f-]{36}$/))
+    expect((await repos.tireSets.get(winter.id))?.status).toBe('stored')
+    expect((await repos.tireSets.get(summer.id))?.status).toBe('installed')
+  })
+
+  test('правка только заметки последней переобувки состояния не трогает', async () => {
+    // После переобувки состояния поправили вручную (экран «Шины»): зимние — установлены.
+    const winter = await tireSet('installed', 'Nokian')
+    const summer = await tireSet('stored', 'Michelin')
+    const rec = await latestSwap(summer.id)
+    renderAt(`/record/${rec.id}/edit`)
+    await userEvent.type(await screen.findByLabelText('Заметка'), 'Балансировка')
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(async () => expect((await repos.records.get(rec.id))?.note).toBe('Балансировка'))
+    expect(await repos.tireSets.get(winter.id)).toMatchObject({
+      status: 'installed',
+      updatedAt: winter.updatedAt,
+    })
+    expect(await repos.tireSets.get(summer.id)).toMatchObject({
+      status: 'stored',
+      updatedAt: summer.updatedAt,
+    })
+  })
+
+  test('один комплект и снят, и установлен — ошибка у поля', async () => {
+    const winter = await tireSet('stored', 'Nokian')
+    renderAt('/record/new/service')
+    await typeTitle('Переобувка')
+    await userEvent.selectOptions(screen.getByLabelText('Тип работ'), 'tires')
+    await selectSet('Установлен комплект', winter.id)
+    await selectSet('Снят комплект', winter.id)
+    await userEvent.type(screen.getByLabelText('Пробег'), '150000')
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(await screen.findByText('Нельзя снять и установить один и тот же комплект')).toBeInTheDocument()
+    expect(await db.records.count()).toBe(0)
   })
 })
 

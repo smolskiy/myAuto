@@ -273,6 +273,7 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
             value={values.removedSetId ?? NO_SET}
             options={tireOptions(tireSets, values.removedSetId)}
             onChange={(id) => set({ removedSetId: id === NO_SET ? undefined : id })}
+            error={errors.removedSetId}
           />
         </>
       )}
