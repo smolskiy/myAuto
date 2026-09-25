@@ -130,6 +130,29 @@ describe('цикл синхронизации', () => {
     expect(await getMeta(db, META_KEYS.lastBackupDate, null)).toBe('2026-09-25')
   })
 
+  test('нет места при ежедневной копии — ошибка в статусе, а не тишина', async () => {
+    disk.failNext(new NoSpace('На Яндекс.Диске нет места', 507), { method: 'copy' })
+    const db = newDb()
+    const engine = engineFor(db, disk)
+    await engine.syncNow()
+    expect(engine.getStatus()).toMatchObject({ state: 'error', error: 'На Яндекс.Диске нет места' })
+    expect(await getMeta(db, META_KEYS.lastBackupDate, null)).toBeNull()
+  })
+
+  test('цикл идёт под общей блокировкой myauto-sync (вкладки и окна PWA не пересекаются)', async () => {
+    const inside: boolean[] = []
+    const locks = {
+      request: vi.fn(async (_name: string, cb: () => Promise<void>) => {
+        const before = disk.calls.length
+        await cb()
+        inside.push(disk.calls.length > before)
+      }),
+    }
+    await engineFor(newDb(), disk, { locks }).syncNow()
+    expect(locks.request).toHaveBeenCalledWith('myauto-sync', expect.any(Function))
+    expect(inside).toEqual([true])
+  })
+
   test('локальная правка запускает синхронизацию через 2,5 с', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
     const db = newDb()

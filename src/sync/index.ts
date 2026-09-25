@@ -40,7 +40,6 @@ export const yandexAuth = createYandexAuth({
   location: window.location,
   storage: browserStorage(),
   envClientId: import.meta.env.VITE_YANDEX_CLIENT_ID,
-  onConnected: () => void syncEngine.syncNow(),
 })
 
 export const attachmentStore = createAttachmentStore({ db, getDisk })
@@ -54,9 +53,23 @@ export const syncEngine = createSyncEngine({
 
 export const backupService = createBackupService({ db })
 
+/**
+ * Вход — сразу синхронизация; выход — сразу статус `off`. Если выход случился посреди цикла,
+ * после него прогоняем ещё один, чтобы статус не остался от прежнего подключения.
+ * (Подписка срабатывает и на смену текста ошибки входа — реагируем только на смену подключения.)
+ */
+let wasConnected = yandexAuth.isConnected()
+yandexAuth.subscribe(() => {
+  const connected = yandexAuth.isConnected()
+  if (connected === wasConnected) return
+  wasConnected = connected
+  if (connected) void syncEngine.syncNow()
+  else void syncEngine.syncNow().then(() => syncEngine.syncNow())
+})
+
 let initialized: Promise<void> | null = null
 
-/** Запуск при старте приложения; повторный вызов ничего не делает. */
+/** Запуск при старте приложения; повторный вызов ничего не делает, а после неудачи — пробует снова. */
 export function initSync(): Promise<void> {
   initialized ??= (async () => {
     try {
@@ -65,12 +78,11 @@ export function initSync(): Promise<void> {
       console.warn('Постоянное хранилище не выдано', e)
     }
     await yandexAuth.init()
-    try {
-      await yandexAuth.consumeRedirect()
-    } catch (e) {
-      console.warn('Вход в Яндекс не завершился', e instanceof Error ? e.message : e)
-    }
+    await yandexAuth.consumeRedirect() // не бросает: неудача входа — в getLoginError
     syncEngine.start()
-  })()
+  })().catch((e: unknown) => {
+    initialized = null
+    throw e
+  })
   return initialized
 }

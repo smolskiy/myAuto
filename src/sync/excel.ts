@@ -54,7 +54,11 @@ export function buildSheets(snapshot: Snapshot): Sheet[] {
   const nameOf = (map: Map<ID, string>, id: ID | undefined) => (id ? (map.get(id) ?? null) : null)
 
   const vehicles = [...live(t.vehicles)].sort((a, b) => a.order - b.order)
-  const records = [...live(t.records)].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  // Строки удалённой машины не выгружаем, даже если сами они не помечены удалёнными.
+  const liveVehicle = new Set(vehicles.map((x) => x.id))
+  const records = live(t.records)
+    .filter((r) => liveVehicle.has(r.vehicleId))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
   const services = records.filter((r): r is ServiceRecord => r.kind === 'service')
 
   return [
@@ -120,7 +124,7 @@ export function buildSheets(snapshot: Snapshot): Sheet[] {
     {
       name: 'Напоминания',
       header: ['Машина', 'Название', 'Интервал км', 'Интервал мес.'],
-      rows: live(t.reminderRules).map((r) => [
+      rows: live(t.reminderRules).filter((r) => liveVehicle.has(r.vehicleId)).map((r) => [
         nameOf(vehicle, r.vehicleId), r.title ?? nameOf(item, r.itemId), v(r.intervalKm), v(r.intervalMonths),
       ]),
     },

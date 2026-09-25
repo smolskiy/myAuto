@@ -100,6 +100,20 @@ test('Excel: только живые строки, заправка и журн�
   expect(rows('Заправки')[0]).toMatchObject({ Литры: 45, 'Цена за литр, ₽': 62.23, 'Сумма, ₽': 2800.5, 'Полный бак': 'Да', Марка: 'АИ-95', АЗС: 'Лукойл' })
 })
 
+test('Excel: записи и напоминания удалённой машины не выгружаются', async () => {
+  const repos = createRepos(db)
+  const sold = await repos.vehicles.create({ name: 'Старая', make: 'Lada', model: '2107', archived: false, fluids: [], order: 0 })
+  await repos.records.create({ vehicleId: sold.id, kind: 'expense', date: '2026-09-01', total: 10000, category: 'wash' })
+  await repos.reminders.create({ vehicleId: sold.id, title: 'Масло', intervalKm: 10000, enabled: true })
+  await repos.vehicles.remove(sold.id)
+  const wb = XLSX.read(await (await createBackupService({ db }).exportExcel()).arrayBuffer())
+  const rows = (sheet: string) => XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sheet]!)
+  expect(rows('Машины')).toEqual([])
+  expect(rows('Журнал')).toEqual([])
+  expect(rows('Расходы')).toEqual([])
+  expect(rows('Напоминания')).toEqual([])
+})
+
 test('имя файла бэкапа', () => {
   expect(backupFileName('json', '2026-09-25')).toBe('moy-avto-2026-09-25.json')
 })

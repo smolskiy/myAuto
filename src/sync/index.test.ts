@@ -28,6 +28,34 @@ test('useLoginError показывает ошибку входа, новый в�
   expect(result.current).toBeNull()
 })
 
+test('вход сразу запускает синхронизацию, выход сразу переводит статус в off', async () => {
+  const API = 'https://cloud-api.yandex.net/v1/disk'
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.includes('/resources/upload')) return new Response(JSON.stringify({ href: 'https://uploader/x', method: 'PUT' }))
+    if (url === 'https://uploader/x') return new Response(null, { status: 201 })
+    if (url.startsWith(API) && (init?.method === 'PUT' || url.includes('/resources/copy'))) return new Response(null, { status: 201 })
+    return new Response('{}', { status: 404 })
+  }))
+  try {
+    await yandexAuth.connectWithToken('y0_T')
+    await waitFor(() => expect(syncEngine.getStatus().state).toBe('idle'))
+    await yandexAuth.disconnect()
+    await waitFor(() => expect(syncEngine.getStatus().state).toBe('off'))
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+test('неудачный initSync не запоминается — следующий вызов пробует снова', async () => {
+  vi.resetModules()
+  const fresh = await import('./index')
+  const init = vi.spyOn(fresh.yandexAuth, 'init').mockRejectedValueOnce(new Error('IndexedDB недоступна'))
+  await expect(fresh.initSync()).rejects.toThrow('IndexedDB недоступна')
+  await fresh.initSync()
+  expect(init).toHaveBeenCalledTimes(2)
+  fresh.syncEngine.stop()
+})
+
 describe('адреса вложений', () => {
   const original = { create: URL.createObjectURL, revoke: URL.revokeObjectURL }
   afterEach(() => {

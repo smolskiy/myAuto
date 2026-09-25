@@ -7,7 +7,7 @@ import { diffTables, mergeSnapshots, sameSnapshot } from '../domain/merge'
 import { SCHEMA_VERSION, SnapshotError, emptySnapshot, parseSnapshot, type Snapshot } from '../domain/snapshot'
 import { todayISO } from '../domain/dates'
 import type { SyncEngine, SyncStatus } from './contracts'
-import { Offline, Unauthorized, YandexError, type DiskClient, type ResourceStat } from './yandex/api'
+import { NoSpace, Offline, Unauthorized, YandexError, type DiskClient, type ResourceStat } from './yandex/api'
 
 /**
  * Синхронизация через Яндекс.Диск (спецификация, раздел 6.1).
@@ -50,7 +50,18 @@ export interface EngineDeps {
   debounceMs?: number
   /** Период фоновой синхронизации, мс (5 минут). */
   intervalMs?: number
+  /** Web Locks: цикл идёт под блокировкой, чтобы вкладки и окна PWA не синхронизировались одновременно. */
+  locks?: SyncLocks | null
 }
+
+export interface SyncLocks {
+  request(name: string, callback: () => Promise<void>): Promise<unknown>
+}
+
+export const SYNC_LOCK = 'myauto-sync'
+
+const browserLocks = (): SyncLocks | null =>
+  typeof navigator !== 'undefined' && navigator.locks ? navigator.locks : null
 
 /** Ошибка с готовым текстом для человека. */
 class SyncFailure extends Error {}
@@ -84,6 +95,7 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
   const isOnline = deps.isOnline ?? (() => typeof navigator === 'undefined' || navigator.onLine !== false)
   const debounceMs = deps.debounceMs ?? 2500
   const intervalMs = deps.intervalMs ?? 5 * 60 * 1000
+  const locks = deps.locks === undefined ? browserLocks() : deps.locks
 
   let status: SyncStatus = { state: 'off', pendingUploads: 0 }
   const subscribers = new Set<(s: SyncStatus) => void>()
@@ -138,6 +150,7 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
       }
       await setMeta(db, META_KEYS.lastBackupDate, day)
     } catch (e) {
+      if (e instanceof NoSpace) throw e // нехватку места человек должен увидеть
       console.warn('Резервная копия на Диске не сохранилась', e)
     }
   }
@@ -198,9 +211,21 @@ export function createSyncEngine(deps: EngineDeps): SyncEngine {
     }
   }
 
+  /** Цикл под блокировкой Web Locks, если она есть: две вкладки или окна PWA не синхронизируются разом. */
+  function lockedCycle(): Promise<void> {
+    if (!locks) return cycle()
+    return locks.request(SYNC_LOCK, cycle).then(
+      () => undefined,
+      (e: unknown) => {
+        console.warn('Блокировка синхронизации не получена', e)
+        return cycle()
+      },
+    )
+  }
+
   function syncNow(): Promise<void> {
     if (running) return running
-    running = cycle().finally(() => {
+    running = lockedCycle().finally(() => {
       running = null
     })
     return running
