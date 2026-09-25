@@ -6,12 +6,21 @@ import { ensureSeed } from './seed'
 import type { CatalogItem, Place } from '../domain/types'
 
 const CATALOG: CatalogItem[] = ['a', 'b', 'c'].map((k) => ({
-  id: `item.${k}`, createdAt: 0, updatedAt: 0, name: k, group: 'other', builtin: true,
+  id: `item.${k}`,
+  createdAt: 0,
+  updatedAt: 0,
+  name: k,
+  group: 'other',
+  builtin: true,
 }))
 
 let db: MyAutoDB
-beforeEach(() => { db = new MyAutoDB(`t-${crypto.randomUUID()}`) })
-afterEach(async () => { await db.delete() })
+beforeEach(() => {
+  db = new MyAutoDB(`t-${crypto.randomUUID()}`)
+})
+afterEach(async () => {
+  await db.delete()
+})
 
 test('создание, правка, мягкое удаление и восстановление', async () => {
   const { places } = createRepos(db)
@@ -39,7 +48,9 @@ test('updatedAt строго растёт даже при одинаковом D
 })
 
 test('правка отсутствующей записи — ошибка', async () => {
-  await expect(createRepos(db).places.update('nope', { name: 'x' } as Partial<Place>)).rejects.toThrow('Запись не найдена')
+  await expect(createRepos(db).places.update('nope', { name: 'x' } as Partial<Place>)).rejects.toThrow(
+    'Запись не найдена',
+  )
 })
 
 test('каждая правка сообщает о локальном изменении', async () => {
@@ -54,8 +65,18 @@ test('каждая правка сообщает о локальном изме�
 
 test('повтор записи — копия с новыми id строк и без пробега', async () => {
   const { records } = createRepos(db)
-  const src = await records.create({ vehicleId: 'v1', kind: 'service', date: '2026-01-01', odometer: 1000, total: 500,
-    title: 'ТО', serviceType: 'maintenance', diy: false, works: [{ id: 'w1', name: 'Работа' }], parts: [] })
+  const src = await records.create({
+    vehicleId: 'v1',
+    kind: 'service',
+    date: '2026-01-01',
+    odometer: 1000,
+    total: 500,
+    title: 'ТО',
+    serviceType: 'maintenance',
+    diy: false,
+    works: [{ id: 'w1', name: 'Работа' }],
+    parts: [],
+  })
   const copy = await records.duplicate(src.id, '2026-09-25')
   expect(copy.id).not.toBe(src.id)
   expect(copy).toMatchObject({ date: '2026-09-25', total: 500, title: 'ТО' })

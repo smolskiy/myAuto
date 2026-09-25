@@ -3,9 +3,18 @@ import { emptySnapshot, type Snapshot } from './snapshot'
 import { changedRows, diffTables, mergeRows, mergeSnapshots, sameSnapshot } from './merge'
 import type { Place } from './types'
 
-const p = (id: string, updatedAt: number, extra: Partial<Place> = {}): Place =>
-  ({ id, createdAt: 1, updatedAt, kind: 'service', name: id, ...extra })
-const snap = (places: Place[], exportedAt = 1): Snapshot => ({ ...emptySnapshot(exportedAt), tables: { ...emptySnapshot().tables, places } })
+const p = (id: string, updatedAt: number, extra: Partial<Place> = {}): Place => ({
+  id,
+  createdAt: 1,
+  updatedAt,
+  kind: 'service',
+  name: id,
+  ...extra,
+})
+const snap = (places: Place[], exportedAt = 1): Snapshot => ({
+  ...emptySnapshot(exportedAt),
+  tables: { ...emptySnapshot().tables, places },
+})
 
 describe('слияние', () => {
   test('побеждает поздняя правка', () => {

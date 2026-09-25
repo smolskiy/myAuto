@@ -5,8 +5,12 @@ import { subscribeLocalChanges } from './changes'
 import { emptySnapshot } from '../domain/snapshot'
 
 let db: MyAutoDB
-beforeEach(() => { db = new MyAutoDB(`t-${crypto.randomUUID()}`) })
-afterEach(async () => { await db.delete() })
+beforeEach(() => {
+  db = new MyAutoDB(`t-${crypto.randomUUID()}`)
+})
+afterEach(async () => {
+  await db.delete()
+})
 
 const place = { id: 'p1', createdAt: 1, updatedAt: 1, kind: 'service' as const, name: 'СТО', deleted: true }
 

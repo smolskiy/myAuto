@@ -3,7 +3,17 @@ import { db } from './instance'
 import { createRepo, type Draft, type Repo } from './repo'
 import { newId } from '../domain/ids'
 import type {
-  Attachment, CarRecord, CatalogItem, ID, ISODate, Master, Place, ReminderRule, TireSet, Vehicle, VehicleDocument,
+  Attachment,
+  CarRecord,
+  CatalogItem,
+  ID,
+  ISODate,
+  Master,
+  Place,
+  ReminderRule,
+  TireSet,
+  Vehicle,
+  VehicleDocument,
 } from '../domain/types'
 
 export function createRepos(database: MyAutoDB) {
@@ -22,7 +32,14 @@ export function createRepos(database: MyAutoDB) {
     async duplicate(id, date) {
       const src = await recordsRepo.get(id)
       if (!src) throw new Error('Запись не найдена')
-      const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, deleted: _deleted, odometer: _odometer, ...draft } = src
+      const {
+        id: _id,
+        createdAt: _createdAt,
+        updatedAt: _updatedAt,
+        deleted: _deleted,
+        odometer: _odometer,
+        ...draft
+      } = src
       if (draft.kind === 'service') {
         return recordsRepo.create({
           ...draft,

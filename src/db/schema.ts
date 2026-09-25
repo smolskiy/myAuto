@@ -1,7 +1,16 @@
 import Dexie, { type Table } from 'dexie'
 import type { TableName } from '../domain/snapshot'
 import type {
-  Attachment, CarRecord, CatalogItem, ID, Master, Place, ReminderRule, TireSet, Vehicle, VehicleDocument,
+  Attachment,
+  CarRecord,
+  CatalogItem,
+  ID,
+  Master,
+  Place,
+  ReminderRule,
+  TireSet,
+  Vehicle,
+  VehicleDocument,
 } from '../domain/types'
 
 /** Файл вложения на устройстве. Не синхронизируется как строка — только как файл на Диске. */
@@ -24,7 +33,15 @@ export interface MetaRow {
 }
 
 export const SYNC_TABLES: readonly TableName[] = [
-  'vehicles', 'records', 'places', 'masters', 'catalogItems', 'reminderRules', 'documents', 'tireSets', 'attachments',
+  'vehicles',
+  'records',
+  'places',
+  'masters',
+  'catalogItems',
+  'reminderRules',
+  'documents',
+  'tireSets',
+  'attachments',
 ]
 
 export class MyAutoDB extends Dexie {

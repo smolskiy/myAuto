@@ -14,13 +14,21 @@ describe('snapshot', () => {
   })
 
   test('разбирает корректный снимок и сохраняет неизвестные поля строк', () => {
-    const input = { ...emptySnapshot(5), tables: { ...emptySnapshot().tables, places: [{ ...row('p1'), future: 'x' }] } }
+    const input = {
+      ...emptySnapshot(5),
+      tables: { ...emptySnapshot().tables, places: [{ ...row('p1'), future: 'x' }] },
+    }
     const parsed = parseSnapshot(JSON.parse(JSON.stringify(input)))
     expect(parsed.tables.places).toEqual([{ ...row('p1'), future: 'x' }])
   })
 
   test('недостающие таблицы становятся пустыми (старый бэкап)', () => {
-    const parsed = parseSnapshot({ format: 'myauto-garage', schemaVersion: 1, exportedAt: 1, tables: { vehicles: [] } })
+    const parsed = parseSnapshot({
+      format: 'myauto-garage',
+      schemaVersion: 1,
+      exportedAt: 1,
+      tables: { vehicles: [] },
+    })
     expect(parsed.tables.records).toEqual([])
     expect(parsed.tables.tireSets).toEqual([])
   })
@@ -33,13 +41,21 @@ describe('snapshot', () => {
 
   test('снимок из будущей версии — отказ', () => {
     const future = { ...emptySnapshot(), schemaVersion: SCHEMA_VERSION + 1 }
-    expect(() => parseSnapshot(future)).toThrow('Файл создан более новой версией приложения — обновите приложение')
+    expect(() => parseSnapshot(future)).toThrow(
+      'Файл создан более новой версией приложения — обновите приложение',
+    )
   })
 
   test('строка без id или updatedAt — отказ с названием таблицы', () => {
-    const bad = { ...emptySnapshot(), tables: { ...emptySnapshot().tables, records: [{ createdAt: 1, updatedAt: 1 }] } }
+    const bad = {
+      ...emptySnapshot(),
+      tables: { ...emptySnapshot().tables, records: [{ createdAt: 1, updatedAt: 1 }] },
+    }
     expect(() => parseSnapshot(bad)).toThrow('Повреждённая строка в таблице records')
-    const bad2 = { ...emptySnapshot(), tables: { ...emptySnapshot().tables, masters: [{ id: 'm', createdAt: 1 }] } }
+    const bad2 = {
+      ...emptySnapshot(),
+      tables: { ...emptySnapshot().tables, masters: [{ id: 'm', createdAt: 1 }] },
+    }
     expect(() => parseSnapshot(bad2)).toThrow('Повреждённая строка в таблице masters')
   })
 })

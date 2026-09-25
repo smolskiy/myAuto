@@ -54,7 +54,9 @@ function fingerprint(rows: Row[]): string {
 }
 
 export function sameSnapshot(a: Snapshot, b: Snapshot): boolean {
-  return TABLE_NAMES.every((name) => fingerprint(a.tables[name] as Row[]) === fingerprint(b.tables[name] as Row[]))
+  return TABLE_NAMES.every(
+    (name) => fingerprint(a.tables[name] as Row[]) === fingerprint(b.tables[name] as Row[]),
+  )
 }
 
 /** Строки, которые нужно записать локально: новые или изменившиеся после слияния. */
@@ -62,7 +64,12 @@ export function changedRows<T extends Row>(local: T[], merged: T[]): T[] {
   const cur = new Map(local.map((r) => [r.id, r]))
   return merged.filter((r) => {
     const l = cur.get(r.id)
-    return !l || l.updatedAt !== r.updatedAt || !!l.deleted !== !!r.deleted || JSON.stringify(l) !== JSON.stringify(r)
+    return (
+      !l ||
+      l.updatedAt !== r.updatedAt ||
+      !!l.deleted !== !!r.deleted ||
+      JSON.stringify(l) !== JSON.stringify(r)
+    )
   })
 }
 
