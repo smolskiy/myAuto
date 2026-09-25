@@ -9,10 +9,13 @@ import { useGoBack } from './useGoBack'
 export interface FormPageProps {
   title: string
   /**
-   * Проверяет и сохраняет. Бросает ошибку с русским текстом — он показывается уведомлением, форма остаётся.
-   * Успех — форма закрывается «назад»; вернул путь — форма заменяется этим экраном (новая запись → её карточка).
+   * Проверяет и сохраняет. Итог:
+   * - ничего (void) — сохранено, форма закрывается «назад»;
+   * - путь — сохранено, форма заменяется этим экраном (новая запись → её карточка);
+   * - `false` — не сохранено (ошибки уже показаны у полей): форма остаётся, без уведомления и перехода;
+   * - исключение — не сохранено, текст уходит в уведомление, форма остаётся.
    */
-  onSave(): Promise<void | string>
+  onSave(): Promise<void | string | false>
   /** По умолчанию «Сохранить». */
   saveLabel?: string
   /** «Назад» без сохранения: сначала onCancel (выбросить вложения черновика), потом закрыть форму. */
@@ -65,7 +68,7 @@ export function FormPage({
     setBusy(true)
     try {
       const to = await onSave()
-      if (!mounted.current) return
+      if (!mounted.current || to === false) return
       if (typeof to === 'string') void navigate(to, { replace: true })
       else goBack()
     } catch (e) {

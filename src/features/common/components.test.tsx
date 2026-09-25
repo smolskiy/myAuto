@@ -362,4 +362,21 @@ describe('каркасы страниц', () => {
     await act(() => router.navigate(-1))
     expect(router.state.location.pathname).toBe('/journal')
   })
+
+  test('FormPage: onSave вернул false — форма остаётся, без уведомления и перехода', async () => {
+    const onSave = vi.fn(async () => false as const)
+    const router = withHistory(
+      <FormPage title="Новая заправка" onSave={onSave}>
+        <p>Поля</p>
+      </FormPage>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(onSave).toHaveBeenCalledOnce()
+    await new Promise((r) => setTimeout(r, 30))
+    expect(router.state.location.pathname).toBe('/form')
+    expect(screen.queryByRole('status')).toBeEmptyDOMElement()
+    // Кнопка снова доступна — можно исправить поле и сохранить ещё раз.
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(onSave).toHaveBeenCalledTimes(2)
+  })
 })

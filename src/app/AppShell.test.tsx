@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider } from 'react-router'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../db/instance'
 import { repos } from '../db/repos'
 import { AppProviders } from './providers'
@@ -20,6 +20,9 @@ const renderAt = (path: string) => {
 }
 const addVehicle = (archived = false) =>
   repos.vehicles.create({ name: 'Октавия', make: 'Skoda', model: 'Octavia', archived, fluids: [], order: 0 })
+
+// Холодный импорт тяжёлой витрины под нагрузкой полного прогона бывает дольше 5 с — прогреваем заранее.
+beforeAll(() => import('../ui/showcase/ShowcasePage'), 60_000)
 
 beforeEach(async () => {
   await db.open()
