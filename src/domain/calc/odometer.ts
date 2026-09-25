@@ -51,32 +51,46 @@ export function averageDailyKm(records: CarRecord[], today: ISODate): number | n
 
 export type OdometerCheck =
   | { ok: true }
-  | { ok: false; reason: 'lessThanEarlier' | 'greaterThanLater'; conflict: { date: ISODate; odometer: number } }
+  | {
+      ok: false
+      reason: 'lessThanEarlier' | 'greaterThanLater' | 'sameDayGap'
+      conflict: { date: ISODate; odometer: number }
+    }
+
+/** Больше такой разницы с записью того же дня за день не проехать — вероятно, опечатка. */
+export const SAME_DAY_GAP_KM = 2000
 
 /**
- * Хронология пробега: кандидат сверяется с ближайшей по дате более ранней и более поздней записью
- * (не с «текущим пробегом»), поэтому запись задним числом проверяется честно. Сама правимая запись исключается.
- * Записи той же даты не конфликтуют: порядок внутри дня неизвестен.
+ * Хронология пробега (не «текущий пробег»), поэтому запись задним числом проверяется честно:
+ * кандидат не меньше максимума всех более ранних по дате записей и не больше минимума всех более поздних.
+ * Записи того же дня — порядок внутри дня неизвестен, поэтому конфликт только при расхождении > 2000 км.
+ * Сама правимая запись исключается.
  */
 export function checkOdometer(
   records: CarRecord[],
   candidate: { id?: ID; date: ISODate; odometer: number },
 ): OdometerCheck {
-  let earlier: Point | null = null
-  let later: Point | null = null
+  let earlierMax: Point | null = null
+  let laterMin: Point | null = null
+  let sameDayFar: Point | null = null
+  const gap = (p: Point) => Math.abs(p.odometer - candidate.odometer)
   for (const p of points(records)) {
     if (p.id === candidate.id) continue
     if (p.date < candidate.date) {
-      if (!earlier || p.date > earlier.date || (p.date === earlier.date && p.odometer > earlier.odometer)) earlier = p
+      if (!earlierMax || p.odometer > earlierMax.odometer) earlierMax = p
     } else if (p.date > candidate.date) {
-      if (!later || p.date < later.date || (p.date === later.date && p.odometer < later.odometer)) later = p
+      if (!laterMin || p.odometer < laterMin.odometer) laterMin = p
+    } else if (gap(p) > SAME_DAY_GAP_KM && (!sameDayFar || gap(p) > gap(sameDayFar))) {
+      sameDayFar = p
     }
   }
-  if (earlier && earlier.odometer > candidate.odometer) {
-    return { ok: false, reason: 'lessThanEarlier', conflict: { date: earlier.date, odometer: earlier.odometer } }
+  const conflict = (p: Point) => ({ date: p.date, odometer: p.odometer })
+  if (earlierMax && earlierMax.odometer > candidate.odometer) {
+    return { ok: false, reason: 'lessThanEarlier', conflict: conflict(earlierMax) }
   }
-  if (later && later.odometer < candidate.odometer) {
-    return { ok: false, reason: 'greaterThanLater', conflict: { date: later.date, odometer: later.odometer } }
+  if (laterMin && laterMin.odometer < candidate.odometer) {
+    return { ok: false, reason: 'greaterThanLater', conflict: conflict(laterMin) }
   }
+  if (sameDayFar) return { ok: false, reason: 'sameDayGap', conflict: conflict(sameDayFar) }
   return { ok: true }
 }

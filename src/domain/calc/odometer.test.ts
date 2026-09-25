@@ -25,6 +25,26 @@ test('хронология: запись задним числом сверяе�
   })
 })
 
+test('сверка с максимумом всех более ранних и минимумом всех более поздних записей', () => {
+  const messy = [odo({ date: '2026-01-01', odometer: 1000 }), odo({ date: '2026-02-01', odometer: 500 })]
+  expect(checkOdometer(messy, { date: '2026-02-15', odometer: 700 })).toEqual({
+    ok: false, reason: 'lessThanEarlier', conflict: { date: '2026-01-01', odometer: 1000 },
+  })
+  const later = [odo({ date: '2026-03-01', odometer: 3000 }), odo({ date: '2026-04-01', odometer: 2500 })]
+  expect(checkOdometer(later, { date: '2026-02-15', odometer: 2800 })).toEqual({
+    ok: false, reason: 'greaterThanLater', conflict: { date: '2026-04-01', odometer: 2500 },
+  })
+})
+
+test('запись того же дня: расхождение больше 2000 км — sameDayGap', () => {
+  const sameDay = [odo({ id: 's', date: '2026-05-01', odometer: 150000 })]
+  expect(checkOdometer(sameDay, { date: '2026-05-01', odometer: 15000 })).toEqual({
+    ok: false, reason: 'sameDayGap', conflict: { date: '2026-05-01', odometer: 150000 },
+  })
+  expect(checkOdometer(sameDay, { date: '2026-05-01', odometer: 150400 })).toEqual({ ok: true })
+  expect(checkOdometer(sameDay, { id: 's', date: '2026-05-01', odometer: 15000 })).toEqual({ ok: true })
+})
+
 test('правка записи не конфликтует сама с собой', () => {
   expect(checkOdometer(history, { id: 'b', date: '2026-02-01', odometer: 1200 })).toEqual({ ok: true })
 })
