@@ -180,6 +180,48 @@ describe('главная', () => {
     await userEvent.click(within(sheet).getByRole('button', { name: /Рапид/ }))
     expect(await screen.findByRole('button', { name: 'Рапид, сменить машину' })).toBeInTheDocument()
   })
+
+  test('Октавия A5: чертёж с выноской о масле ведёт к напоминаниям', async () => {
+    const today = todayISO()
+    const car = await repos.vehicles.create({
+      name: 'Октавия',
+      make: 'Skoda',
+      model: 'Octavia',
+      year: 2011,
+      archived: false,
+      fluids: [],
+      order: 0,
+    })
+    await addOilChange(car.id, addDays(today, -100), 140000)
+    await repos.records.create({
+      vehicleId: car.id,
+      kind: 'odometer',
+      date: today,
+      odometer: 149200,
+      total: 0,
+    })
+    await repos.reminders.create({
+      vehicleId: car.id,
+      itemId: CATALOG_ID.engineOil,
+      intervalKm: 10000,
+      intervalMonths: 12,
+      enabled: true,
+    })
+    const router = renderAt(<HomePage />)
+    const schematic = await screen.findByRole('button', { name: 'Схема машины: скоро — Моторное масло' })
+    expect(within(schematic).getByText('Масло')).toBeInTheDocument()
+    expect(within(schematic).getByText('через 800 км')).toBeInTheDocument()
+    expect(within(schematic).getByText('Скоро 1')).toBeInTheDocument()
+    await userEvent.click(schematic)
+    expect(router.state.location.pathname).toBe('/reminders')
+  })
+
+  test('машина без чертежа — карточка без схемы', async () => {
+    await addVehicle('Октавия', 'Octavia')
+    renderAt(<HomePage />)
+    await screen.findByRole('button', { name: 'Октавия, сменить машину' })
+    expect(screen.queryByRole('button', { name: /Схема машины/ })).not.toBeInTheDocument()
+  })
 })
 
 describe('reminderCardProps', () => {

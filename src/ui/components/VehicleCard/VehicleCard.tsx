@@ -1,4 +1,5 @@
 import { IconCar, IconChevronDown } from '@tabler/icons-react'
+import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import shared from '../../shared.module.css'
 import styles from './VehicleCard.module.css'
@@ -14,18 +15,30 @@ export interface VehicleCardProps {
   photoUrl?: string | null
   /** Показывает «▾» и делает имя кнопкой «<имя>, сменить машину». */
   onSwitch?(): void
+  /** Чертёж машины (VehicleSchematic) между именем и фактами; со схемой заглушка без фото не рисуется. */
+  schematic?: ReactNode
 }
 
-export function VehicleCard({ name, subtitle, plate, odometer, photoUrl, onSwitch }: VehicleCardProps) {
+export function VehicleCard({
+  name,
+  subtitle,
+  plate,
+  odometer,
+  photoUrl,
+  onSwitch,
+  schematic,
+}: VehicleCardProps) {
   return (
     <div className={styles.card}>
       <div className={styles.top}>
         {photoUrl ? (
           <img className={styles.photo} src={photoUrl} alt="" />
         ) : (
-          <span className={styles.placeholder} aria-hidden="true">
-            <IconCar size={32} stroke={1.5} />
-          </span>
+          !schematic && (
+            <span className={styles.placeholder} aria-hidden="true">
+              <IconCar size={32} stroke={1.5} />
+            </span>
+          )
         )}
         <div className={styles.identity}>
           {onSwitch ? (
@@ -44,6 +57,7 @@ export function VehicleCard({ name, subtitle, plate, odometer, photoUrl, onSwitc
           {subtitle && <span className={cx(styles.subtitle, shared.truncate)}>{subtitle}</span>}
         </div>
       </div>
+      {schematic}
       {(plate || odometer) && (
         <dl className={styles.facts}>
           {plate && (

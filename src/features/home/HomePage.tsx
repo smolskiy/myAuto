@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router'
 import {
   useActiveVehicle,
   useAttachments,
+  useCatalog,
   useCostBreakdown,
   useCurrentOdometer,
   useFuelStats,
   useRecords,
+  useReminderStatuses,
   useUpcoming,
   useVehicles,
 } from '../../db/hooks'
@@ -29,6 +31,7 @@ import {
   StatTile,
   SyncStatusBadge,
   VehicleCard,
+  VehicleSchematic,
   VehicleSwitcher,
 } from '../../ui'
 import { Page, VehicleGate, recordRowProps, useLookup, useToday } from '../common'
@@ -37,6 +40,7 @@ import { useNow } from '../settings/useNow'
 import { periodRange } from '../stats/periods'
 import styles from './HomePage.module.css'
 import { reminderCardProps } from './reminderText'
+import { schematicData, schematicModelFor } from './schematic'
 
 /** «Потрачено в сентябре» — месяц в предложном падеже. */
 const MONTHS_PREPOSITIONAL = [
@@ -88,6 +92,9 @@ function HomeContent({ vehicle }: { vehicle: Vehicle }) {
   const costs = useCostBreakdown(vehicle.id, periodRange('month', today))
   const fuel = useFuelStats(vehicle.id, { from: addDays(today, -FUEL_WINDOW_DAYS), to: today })
   const [switching, setSwitching] = useState(false)
+  const schematicModel = schematicModelFor(vehicle)
+  const statuses = useReminderStatuses(schematicModel ? vehicle.id : undefined, today)
+  const catalog = useCatalog({ includeHidden: true })
 
   const go = (path: string) => void navigate(path)
   const monthName = MONTHS_PREPOSITIONAL[Number(today.slice(5, 7)) - 1]
@@ -101,6 +108,16 @@ function HomeContent({ vehicle }: { vehicle: Vehicle }) {
         odometer={odometer != null ? formatKm(odometer) : undefined}
         photoUrl={photoUrl}
         onSwitch={() => setSwitching(true)}
+        schematic={
+          schematicModel && (
+            <VehicleSchematic
+              model={schematicModel}
+              // Пока статусы и каталог грузятся — чертёж без точек, а не пустое место.
+              {...schematicData(statuses && catalog ? statuses : [], catalog ?? [])}
+              onClick={() => go('/reminders')}
+            />
+          )
+        }
       />
       <VehicleSwitcher
         open={switching}

@@ -4,14 +4,14 @@ import type { ISODate } from '../../domain/types'
 import type { ReminderCardProps } from '../../ui'
 
 /** «через 1 200 км» / «просрочено на 300 км»; ровно на сроке — «сейчас». */
-function kmText(km: number): string {
+export function kmText(km: number): string {
   if (km > 0) return `через ${formatKm(km)}`
   if (km < 0) return `просрочено на ${formatKm(-km)}`
   return 'сейчас'
 }
 
 /** «через 112 дней» / «просрочено на 3 дня» / «сегодня». */
-function timeText(days: number): string {
+export function timeText(days: number): string {
   return days > 0 ? `через ${formatDaysLeft(days)}` : formatDaysLeft(days)
 }
 

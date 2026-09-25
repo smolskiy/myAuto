@@ -27,6 +27,13 @@ export { RecordRow, type RecordRowProps } from './components/RecordRow/RecordRow
 export { MonthHeader, type MonthHeaderProps } from './components/MonthHeader/MonthHeader'
 export { ReminderCard, type ReminderCardProps } from './components/ReminderCard/ReminderCard'
 export { VehicleCard, type VehicleCardProps } from './components/VehicleCard/VehicleCard'
+export {
+  VehicleSchematic,
+  type VehicleSchematicProps,
+  type SchematicMark,
+  type SchematicModel,
+  type SchematicZone,
+} from './components/VehicleSchematic/VehicleSchematic'
 
 // Поля ввода
 export { Field, type FieldProps } from './components/Field/Field'

@@ -22,9 +22,26 @@ import {
   StatTile,
   Switch,
   VehicleCard,
+  VehicleSchematic,
+  type SchematicMark,
+  type SchematicZone,
 } from '../../index'
-import { Demo, fmt, SAMPLE_CAR, Section, Stack } from '../kit'
+import { Caption, Demo, fmt, SAMPLE_CAR, Section, Stack } from '../kit'
 import styles from '../Showcase.module.css'
+
+const ALL_ZONES: SchematicZone[] = [
+  'engine',
+  'timing',
+  'cooling',
+  'battery',
+  'brakes',
+  'lights',
+  'transmission',
+  'cabin',
+  'wheelFront',
+  'wheelRear',
+]
+const allZones = ALL_ZONES.map((zone, i): SchematicMark => ({ zone, state: i % 2 ? 'soon' : 'overdue' }))
 
 export function ListsSection() {
   const [autoSync, setAutoSync] = useState(true)
@@ -226,6 +243,68 @@ export function ListsSection() {
             subtitle="Lada Niva Travel, 2021"
             odometer={fmt.km(32100)}
           />
+        </Stack>
+      </Demo>
+
+      <Demo
+        name="VehicleSchematic"
+        note="Чертёж на карточке машины: точки зон, «рентген» узла, до двух выносок, легенда."
+        plain
+      >
+        <Stack gap={2}>
+          <VehicleCard
+            name="Октавия"
+            subtitle="Skoda Octavia 2011"
+            odometer={fmt.km(148320)}
+            schematic={
+              <VehicleSchematic
+                model="octavia-a5"
+                marks={[
+                  {
+                    zone: 'brakes',
+                    state: 'overdue',
+                    title: 'Тормозная жидкость',
+                    detail: 'просрочено на 40 дней',
+                  },
+                  {
+                    zone: 'timing',
+                    state: 'soon',
+                    title: 'Ремень ГРМ',
+                    detail: fmt.nb('через 2 000 км · ещё 1'),
+                  },
+                  { zone: 'wheelFront', state: 'soon' },
+                ]}
+                counts={{ overdue: 1, soon: 3, ok: 7 }}
+                label="Схема машины"
+                onClick={() => {}}
+              />
+            }
+          />
+          <VehicleCard
+            name="Сид"
+            subtitle="Kia cee'd SW 2008"
+            odometer={fmt.km(201500)}
+            schematic={
+              <VehicleSchematic
+                model="ceed-sw-1"
+                marks={[
+                  { zone: 'engine', state: 'soon', title: 'Масло', detail: fmt.nb('через 1 200 км') },
+                  {
+                    zone: 'wheelRear',
+                    state: 'overdue',
+                    title: 'Задние колодки',
+                    detail: fmt.nb('просрочено на 300 км'),
+                  },
+                ]}
+                counts={{ overdue: 1, soon: 1, ok: 9 }}
+                label="Схема машины"
+                onClick={() => {}}
+              />
+            }
+          />
+          <Caption>Все зоны сразу — для сверки точек с картинкой</Caption>
+          <VehicleSchematic model="octavia-a5" marks={allZones} label="Все зоны Октавии" />
+          <VehicleSchematic model="ceed-sw-1" marks={allZones} label="Все зоны Сида" />
         </Stack>
       </Demo>
 
