@@ -124,27 +124,30 @@ function VehicleDetails({ vehicle }: { vehicle: Vehicle }) {
           photoUrl={photo}
         />
         {status && <div className={styles.status}>{status}</div>}
-        <div className={styles.actions}>
-          {!vehicle.archived && !isActive && (
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<IconCircleCheck />}
-              onClick={() => run(() => setActive(vehicle.id))}
-            >
-              Сделать активной
-            </Button>
-          )}
-          {vehicle.archived ? (
-            <Button variant="secondary" size="sm" icon={<IconArchiveOff />} onClick={unarchive}>
-              Вернуть из архива
-            </Button>
-          ) : (
-            <Button variant="secondary" size="sm" icon={<IconArchive />} onClick={archive}>
-              В архив
-            </Button>
-          )}
-        </div>
+        {/* Пока неизвестно, какая машина активна, действий нет: «В архив» должно знать, передавать ли активность. */}
+        {active !== undefined && (
+          <div className={styles.actions}>
+            {!vehicle.archived && !isActive && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<IconCircleCheck />}
+                onClick={() => run(() => setActive(vehicle.id))}
+              >
+                Сделать активной
+              </Button>
+            )}
+            {vehicle.archived ? (
+              <Button variant="secondary" size="sm" icon={<IconArchiveOff />} onClick={unarchive}>
+                Вернуть из архива
+              </Button>
+            ) : (
+              <Button variant="secondary" size="sm" icon={<IconArchive />} onClick={archive}>
+                В архив
+              </Button>
+            )}
+          </div>
+        )}
       </section>
 
       <ListGroup title="Разделы">

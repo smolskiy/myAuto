@@ -44,10 +44,10 @@ function MasterForm({ master, placeId }: { master?: Master; placeId?: ID }) {
   const [note, setNote] = useState(master?.note ?? '')
   const [nameError, setNameError] = useState<string>()
 
-  const save = async () => {
+  const save = async (): Promise<false | void> => {
     if (!name.trim()) {
       setNameError('Добавьте имя')
-      throw new Error('Добавьте имя')
+      return false
     }
     const data = {
       name: name.trim(),

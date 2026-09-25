@@ -46,10 +46,10 @@ function PlaceForm({ place }: { place?: Place }) {
   const [note, setNote] = useState(place?.note ?? '')
   const [nameError, setNameError] = useState<string>()
 
-  const save = async () => {
+  const save = async (): Promise<false | void> => {
     if (!name.trim()) {
       setNameError('Добавьте название')
-      throw new Error('Добавьте название')
+      return false
     }
     const data = {
       kind,

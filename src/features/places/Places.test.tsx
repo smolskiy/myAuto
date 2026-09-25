@@ -176,6 +176,8 @@ describe('карточка места', () => {
     const name = screen.getByRole('textbox', { name: 'Название' })
     await waitFor(() => expect(name).toHaveAttribute('aria-invalid', 'true'))
     expect(name).toHaveAccessibleDescription('Добавьте название')
+    // Ошибка — только у поля: без уведомления, форма остаётся.
+    expect(screen.getAllByText('Добавьте название')).toHaveLength(1)
     expect(await repos.places.list()).toHaveLength(0)
   })
 

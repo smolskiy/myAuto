@@ -173,6 +173,7 @@ describe('карточка документа', () => {
     await userEvent.type(number, '0002')
     await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
     await waitFor(async () => expect((await repos.documents.get(doc.id))?.number).toBe('0002'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/documents'))
 
     await router.navigate(`/documents/${doc.id}`)
     await userEvent.click(await screen.findByRole('button', { name: 'Удалить документ' }))

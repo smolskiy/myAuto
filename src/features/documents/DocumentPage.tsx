@@ -56,6 +56,7 @@ function NewDocument() {
 
 function DocumentForm({ doc, vehicleId }: { doc?: VehicleDocument; vehicleId: ID }) {
   const today = useToday()
+  // Фото нового документа цепляются к ownerId черновика; не сохранили — черновик уберёт их сам при уходе с формы.
   const draft = useDraftAttachments('document')
   const [kind, setKind] = useState<DocumentKind>(doc?.kind ?? 'osago')
   const [title, setTitle] = useState(doc?.title ?? '')
@@ -78,11 +79,7 @@ function DocumentForm({ doc, vehicleId }: { doc?: VehicleDocument; vehicleId: ID
   }
 
   return (
-    <FormPage
-      title={doc ? documentTitle(doc) : 'Новый документ'}
-      onSave={save}
-      onCancel={doc ? undefined : () => void draft.discard()}
-    >
+    <FormPage title={doc ? documentTitle(doc) : 'Новый документ'} onSave={save}>
       {doc && <Validity doc={doc} today={today} />}
       <Select label="Вид" value={kind} options={DOCUMENT_KIND_OPTIONS} onChange={setKind} />
       {kind === 'other' && (
