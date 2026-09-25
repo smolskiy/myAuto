@@ -13,12 +13,14 @@ export interface FuelInterval {
 /**
  * Интервалы «полный бак → полный бак» по возрастанию даты. Литры интервала — все заправки (Fⱼ, Fᵢ],
  * включая неполные и без пробега. «Пропустил заправку» рвёт цепочку: интервал до такой заправки не считается.
+ * Заправки одного дня идут в порядке ввода (`createdAt`); пробег в сравнение не входит — у части заправок
+ * его нет, и сравнение перестало бы быть транзитивным.
  */
 export function fuelIntervals(records: CarRecord[]): FuelInterval[] {
   const hasOdo = (f: FuelRecord) => typeof f.odometer === 'number'
   const fills = records
     .filter((r): r is FuelRecord => r.kind === 'fuel' && !r.deleted)
-    .sort((a, b) => a.date.localeCompare(b.date) || (a.odometer ?? 0) - (b.odometer ?? 0))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt || a.id.localeCompare(b.id))
   const out: FuelInterval[] = []
   let start: FuelRecord | null = null
   let liters = 0

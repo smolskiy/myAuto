@@ -38,6 +38,21 @@ test('заправка без пробега (не полный бак) идёт
   expect(iv.map((i) => [i.fromId, i.toId, i.liters])).toEqual([['a', 'c', 40]])
 })
 
+test('заправки одного дня — в порядке ввода, пробег в сравнение не входит', () => {
+  const iv = fuelIntervals([
+    fuel({ id: 'a', date: '2026-03-01', odometer: 1000, liters: 40, createdAt: 1 }),
+    fuel({ id: 'b', date: '2026-03-05', odometer: 1500, liters: 30, createdAt: 2 }),
+    fuel({ id: 'p', date: '2026-03-05', odometer: undefined, liters: 5, fullTank: false, createdAt: 3 }),
+    fuel({ id: 'c', date: '2026-03-10', odometer: 2000, liters: 30, createdAt: 4 }),
+  ])
+  expect(iv.map((i) => [i.fromId, i.toId, i.liters, i.km])).toEqual([
+    ['a', 'b', 30, 500],
+    ['b', 'c', 35, 500],
+  ])
+  expect(iv[0]!.lPer100km).toBeCloseTo(6, 5)
+  expect(iv[1]!.lPer100km).toBeCloseTo(7, 5)
+})
+
 test('два из трёх', () => {
   expect(solveFuelTriple({ liters: 40, pricePerLiter: 5690 })).toEqual({ liters: 40, pricePerLiter: 5690, total: 227600 })
   expect(solveFuelTriple({ total: 227600, pricePerLiter: 5690 })).toEqual({ liters: 40, pricePerLiter: 5690, total: 227600 })
