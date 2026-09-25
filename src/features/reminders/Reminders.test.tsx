@@ -136,6 +136,7 @@ describe('список ТО и напоминаний', () => {
     await waitFor(() => expect(files.saveFile).toHaveBeenCalledTimes(1))
     const [blob, name] = files.saveFile.mock.calls[0]!
     expect(name).toBe('moy-avto-napominaniya.ics')
+    expect(blob.type).toBe('text/calendar;charset=utf-8')
     const text = await blob.text()
     expect(text.match(/BEGIN:VEVENT/g)).toHaveLength(3)
     expect(text).toContain('SUMMARY:Октавия: ОСАГО')
@@ -226,6 +227,35 @@ describe('remindersToIcs', () => {
     expect(remindersToIcs([item({ state: 'unknown' })], 'Октавия', NOW)).toBeNull()
     expect(remindersToIcs([], 'Октавия', NOW)).toBeNull()
   })
+
+  test('просроченное — событие на сегодня, а не в прошлом', () => {
+    const ics = remindersToIcs(
+      [
+        item({ state: 'overdue', predictedDate: '2026-08-26', remainingDays: -30 }),
+        item({
+          key: 'deadline:osago:v1',
+          type: 'deadline',
+          title: 'ОСАГО',
+          state: 'overdue',
+          deadline: {
+            key: 'deadline:osago:v1',
+            vehicleId: 'v1',
+            kind: 'osago',
+            title: 'ОСАГО',
+            validUntil: '2026-09-01',
+            remainingDays: -24,
+            state: 'overdue',
+            source: { type: 'document', id: 'd1' },
+          },
+        }),
+      ],
+      'Октавия',
+      NOW,
+    )!
+    expect(ics.match(/DTSTART;VALUE=DATE:20260925/g)).toHaveLength(2)
+    expect(ics).not.toContain('DTSTART;VALUE=DATE:20260826')
+    expect(ics).not.toContain('DTSTART;VALUE=DATE:20260901')
+  })
 })
 
 describe('форма напоминания', () => {
@@ -260,6 +290,35 @@ describe('форма напоминания', () => {
     expect(screen.getAllByText('Укажите интервал')).toHaveLength(1)
     expect(screen.queryByRole('status')).not.toHaveTextContent(/сохранить/i)
     expect(await repos.reminders.list()).toHaveLength(0)
+  })
+
+  test('узел без интервалов в каталоге не стирает введённые интервалы', async () => {
+    await addVehicle()
+    renderAt('/reminders/new')
+    const km = await screen.findByRole('textbox', { name: 'Каждые … км' })
+    const months = screen.getByRole('textbox', { name: 'Каждые … мес.' })
+    await userEvent.type(km, '15000')
+    await userEvent.type(months, '6')
+    // «Сцепление» — без интервалов по умолчанию.
+    await userEvent.type(screen.getByRole('combobox', { name: 'Узел' }), 'сцепл')
+    await userEvent.click(await screen.findByRole('option', { name: /Сцепление/ }))
+    expect(km).toHaveValue(`15${NBSP}000`)
+    expect(months).toHaveValue('6')
+  })
+
+  test('смена узла заменяет интервалы, подставленные прошлым узлом', async () => {
+    await addVehicle()
+    renderAt('/reminders/new')
+    const picker = await screen.findByRole('combobox', { name: 'Узел' })
+    await userEvent.type(picker, 'моторное')
+    await userEvent.click(await screen.findByRole('option', { name: /Моторное масло/ }))
+    const km = screen.getByRole('textbox', { name: 'Каждые … км' })
+    expect(km).toHaveValue(`10${NBSP}000`)
+    await userEvent.click(screen.getByRole('button', { name: 'Очистить' }))
+    await userEvent.type(picker, 'сцепл')
+    await userEvent.click(await screen.findByRole('option', { name: /Сцепление/ }))
+    expect(km).toHaveValue('')
+    expect(screen.getByRole('textbox', { name: 'Каждые … мес.' })).toHaveValue('')
   })
 
   test('«К дате» сохраняет правило без узла', async () => {

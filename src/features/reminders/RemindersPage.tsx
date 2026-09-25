@@ -8,7 +8,7 @@ import { saveFile } from '../../sync/saveFile'
 import { Button, EmptyState, ListGroup, ListItem, ReminderCard, useToast } from '../../ui'
 import { Page, VehicleGate, useLookup, useToday } from '../common'
 import { reminderCardProps } from '../home/reminderText'
-import { CALENDAR_FILE_NAME, remindersToIcs } from './calendar'
+import { CALENDAR_FILE_NAME, CALENDAR_MIME, remindersToIcs } from './calendar'
 import styles from './RemindersPage.module.css'
 import { ruleSummary, ruleTitle } from './ruleText'
 
@@ -50,7 +50,7 @@ function RemindersContent({ vehicle }: { vehicle: Vehicle }) {
       return
     }
     try {
-      await saveFile(new Blob([ics], { type: 'text/calendar' }), CALENDAR_FILE_NAME)
+      await saveFile(new Blob([ics], { type: CALENDAR_MIME }), CALENDAR_FILE_NAME)
     } catch (e) {
       console.warn('Календарь не сохранился', e)
       toast.show({ text: 'Не удалось сохранить файл календаря' })

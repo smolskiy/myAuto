@@ -38,6 +38,8 @@ interface FormState {
   title: string
   intervalKm?: number
   intervalMonths?: number
+  /** Интервалы, подставленные из каталога последним выбранным узлом (в базу не пишутся). */
+  prefilled: { km?: number; months?: number }
   baselineDate: string
   baselineOdometer?: number
   dueDate: string
@@ -60,6 +62,7 @@ function fromRule(rule: ReminderRule): FormState {
     title: rule.title ?? '',
     intervalKm: rule.intervalKm,
     intervalMonths: rule.intervalMonths,
+    prefilled: {},
     baselineDate: rule.baseline?.date ?? '',
     baselineOdometer: rule.baseline?.odometer,
     dueDate: rule.dueDate ?? '',
@@ -75,10 +78,29 @@ function fromItem(item: CatalogItem | undefined): FormState {
     title: '',
     intervalKm: item?.defaultIntervalKm,
     intervalMonths: item?.defaultIntervalMonths,
+    prefilled: { km: item?.defaultIntervalKm, months: item?.defaultIntervalMonths },
     baselineDate: '',
     dueDate: '',
     enabled: true,
     note: '',
+  }
+}
+
+/**
+ * Интервалы при выборе узла: интервал каталога подставляется; если у узла его нет — остаётся введённое
+ * владельцем, а подставленное прошлым узлом (и не тронутое) стирается.
+ */
+function withItemIntervals(s: FormState, item: CatalogItem): Partial<FormState> {
+  const next = (
+    current: number | undefined,
+    prefilled: number | undefined,
+    fromCatalog: number | undefined,
+  ) => fromCatalog ?? (current === prefilled ? undefined : current)
+  return {
+    itemId: item.id,
+    intervalKm: next(s.intervalKm, s.prefilled.km, item.defaultIntervalKm),
+    intervalMonths: next(s.intervalMonths, s.prefilled.months, item.defaultIntervalMonths),
+    prefilled: { km: item.defaultIntervalKm, months: item.defaultIntervalMonths },
   }
 }
 
@@ -186,12 +208,7 @@ function RuleForm({ rule, vehicleId, initial }: { rule?: ReminderRule; vehicleId
           <CatalogItemPicker
             value={s.itemId}
             onChange={(itemId, item) =>
-              patch(
-                item
-                  ? { itemId, intervalKm: item.defaultIntervalKm, intervalMonths: item.defaultIntervalMonths }
-                  : { itemId },
-                item ? ['name', 'interval'] : [],
-              )
+              item ? patch(withItemIntervals(s, item), ['name', 'interval']) : patch({ itemId })
             }
           />
           <TextField
