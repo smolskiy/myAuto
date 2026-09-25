@@ -19,7 +19,7 @@ vi.mock('../../sync/index', () => ({
   yandexAuth: { subscribe: () => () => {}, isConnected: () => false, getLoginError: () => null },
 }))
 
-const NBSP = ' '
+const NBSP = '\u00a0'
 const revoke = URL.revokeObjectURL
 
 beforeEach(async () => {

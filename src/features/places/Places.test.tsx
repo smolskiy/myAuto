@@ -9,7 +9,7 @@ import MasterPage from './MasterPage'
 import PlacePage from './PlacePage'
 import PlacesPage from './PlacesPage'
 
-const NBSP = ' '
+const NBSP = '\u00a0'
 
 beforeEach(async () => {
   await db.open()

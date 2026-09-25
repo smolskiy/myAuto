@@ -1,0 +1,24 @@
+/* Две даты рядом: «Выдан» и «Действует до» читаются как один срок. */
+.dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+/* Срок сохранённого документа — первым: ради него карточку и открывают. */
+.validity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.validityText {
+  color: var(--color-text);
+  font-size: var(--text-md);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+}
