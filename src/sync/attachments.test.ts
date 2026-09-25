@@ -12,18 +12,41 @@ const HOUR = 60 * 60 * 1000
 let db: MyAutoDB, disk: FakeDisk
 /** Сдвиг часов хранилища вперёд — «прошло столько-то времени после удаления». */
 let later = 0
-const compress = vi.fn(async (_f: Blob, maxSide: number) => ({ blob: new Blob([`jpeg${maxSide}`], { type: 'image/jpeg' }), width: maxSide, height: maxSide / 2 }))
+const compress = vi.fn(async (_f: Blob, maxSide: number) => ({
+  blob: new Blob([`jpeg${maxSide}`], { type: 'image/jpeg' }),
+  width: maxSide,
+  height: maxSide / 2,
+}))
 const urls = vi.fn((b: Blob) => `blob:${b.size}`)
 const store = (online = true) =>
-  createAttachmentStore({ db, getDisk: () => (online ? disk : null), compress, createObjectURL: urls, now: () => Date.now() + later })
+  createAttachmentStore({
+    db,
+    getDisk: () => (online ? disk : null),
+    compress,
+    createObjectURL: urls,
+    now: () => Date.now() + later,
+  })
 const owner = { ownerType: 'record' as const, ownerId: 'r1' }
-beforeEach(() => { db = new MyAutoDB(`t-${crypto.randomUUID()}`); disk = new FakeDisk(); later = 0 })
-afterEach(async () => { await db.delete() })
+beforeEach(() => {
+  db = new MyAutoDB(`t-${crypto.randomUUID()}`)
+  disk = new FakeDisk()
+  later = 0
+})
+afterEach(async () => {
+  await db.delete()
+})
 
 test('фото сжимается до 2000 и 320 px и ждёт загрузки', async () => {
   const s = store()
   const att = await s.addFile(owner, new File(['raw'], 'check.jpg', { type: 'image/jpeg' }))
-  expect(att).toMatchObject({ kind: 'photo', mime: 'image/jpeg', name: 'check.jpg', width: 2000, height: 1000, ownerId: 'r1' })
+  expect(att).toMatchObject({
+    kind: 'photo',
+    mime: 'image/jpeg',
+    name: 'check.jpg',
+    width: 2000,
+    height: 1000,
+    ownerId: 'r1',
+  })
   expect(compress).toHaveBeenCalledWith(expect.any(File), 2000, 0.82)
   expect(compress).toHaveBeenCalledWith(expect.any(File), 320, 0.7)
   expect(await s.pendingCount()).toBe(2)
@@ -34,7 +57,9 @@ test('PDF больше 20 МБ и неподдерживаемый тип — п
   const s = store()
   const big = new File([new Uint8Array(20 * 1024 * 1024 + 1)], 'scan.pdf', { type: 'application/pdf' })
   await expect(s.addFile(owner, big)).rejects.toThrow('PDF больше 20 МБ — сожмите файл')
-  await expect(s.addFile(owner, new File(['x'], 'a.txt', { type: 'text/plain' }))).rejects.toThrow('Можно прикрепить фото или PDF')
+  await expect(s.addFile(owner, new File(['x'], 'a.txt', { type: 'text/plain' }))).rejects.toThrow(
+    'Можно прикрепить фото или PDF',
+  )
 })
 
 test('загрузка на Диск снимает pending и ставит uploadedAt', async () => {
@@ -110,15 +135,38 @@ test('вложение удалили, пока оно грузилось, — u
   expect(row.uploadedAt).toBeUndefined()
 })
 
+test('удалили во время загрузки и вернули «Отменить» — следующая загрузка ставит uploadedAt', async () => {
+  const s = store()
+  const att = await s.addFile(owner, new File(['raw'], 'check.jpg', { type: 'image/jpeg' }))
+  let deleted = false
+  const deletingDisk: DiskClient = Object.assign(Object.create(disk) as FakeDisk, {
+    uploadBlob: async (path: string, blob: Blob) => {
+      await disk.uploadBlob(path, blob)
+      if (!deleted) await createRepos(db).attachments.remove(att.id)
+      deleted = true
+    },
+  })
+  await s.uploadPending(deletingDisk)
+  expect((await db.attachments.get(att.id))?.uploadedAt).toBeUndefined()
+
+  await createRepos(db).attachments.restore(att.id)
+  expect(await s.pendingCount()).toBe(2)
+  await s.uploadPending(disk)
+  expect((await db.attachments.get(att.id))?.uploadedAt).toBeTypeOf('number')
+  expect(await s.pendingCount()).toBe(0)
+  expect(disk.files.has(remotePaths(att).orig)).toBe(true)
+  expect(disk.files.has(remotePaths(att).thumb!)).toBe(true)
+})
+
 test('кеш вытесняет старые загруженные оригиналы, но не неотправленные', async () => {
   const s = store()
   const a = await s.addFile(owner, new File(['1'], 'a.jpg', { type: 'image/jpeg' }))
   await s.uploadPending(disk)
   const b = await s.addFile(owner, new File(['2'], 'b.jpg', { type: 'image/jpeg' }))
   await s.evictCache(1) // лимит 1 байт
-  expect(await db.blobs.get(`${a.id}:orig`)).toBeUndefined()   // загружен — можно вытеснить
-  expect(await db.blobs.get(`${a.id}:thumb`)).toBeDefined()     // превью не вытесняются
-  expect(await db.blobs.get(`${b.id}:orig`)).toBeDefined()      // не загружен — нельзя
+  expect(await db.blobs.get(`${a.id}:orig`)).toBeUndefined() // загружен — можно вытеснить
+  expect(await db.blobs.get(`${a.id}:thumb`)).toBeDefined() // превью не вытесняются
+  expect(await db.blobs.get(`${b.id}:orig`)).toBeDefined() // не загружен — нельзя
 })
 
 test('фото без интернета: обрыв посреди загрузки — докачивается следующим циклом', async () => {

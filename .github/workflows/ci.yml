@@ -2,13 +2,13 @@ name: CI
 on:
   push:
   pull_request:
+# Права по умолчанию — только чтение; публикация на Pages получает свои права в job `deploy`.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Ветки и PR: новый push отменяет старый прогон. main не отменяем — начатый деплой должен доехать.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -21,11 +21,22 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      # Оба проекта: mobile-chromium (корень `/`) и pages-base (сборка под `/myAuto/`).
+      - run: npm run test:e2e -- --project mobile-chromium --project pages-base
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment: { name: github-pages, url: '${{ steps.deployment.outputs.page_url }}' }
     steps:
       - uses: actions/checkout@v4

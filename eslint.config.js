@@ -20,7 +20,7 @@ const forbid = (layer, banned) => ({
 })
 
 export default tseslint.config(
-  { ignores: ['dist', 'dev-dist', 'coverage', 'playwright-report', 'test-results', '.claude'] },
+  { ignores: ['dist', 'dist-pages', 'dev-dist', 'coverage', 'playwright-report', 'test-results', '.claude'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

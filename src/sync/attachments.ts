@@ -67,7 +67,10 @@ export function createAttachmentStore(deps: AttachmentStoreDeps): AttachmentServ
     lastAccess: now(),
   })
 
-  async function save(draft: Omit<Attachment, 'createdAt' | 'updatedAt' | 'deleted'>, blobs: BlobRow[]): Promise<Attachment> {
+  async function save(
+    draft: Omit<Attachment, 'createdAt' | 'updatedAt' | 'deleted'>,
+    blobs: BlobRow[],
+  ): Promise<Attachment> {
     const att = await db.transaction('rw', db.attachments, db.blobs, async () => {
       await db.blobs.bulkPut(blobs)
       return repo.create(draft)
@@ -111,7 +114,9 @@ export function createAttachmentStore(deps: AttachmentStoreDeps): AttachmentServ
       const base = { id, ownerType: owner.ownerType, ownerId: owner.ownerId, name: file.name }
       if (isPdf(file)) {
         if (file.size > MAX_PDF_BYTES) throw new Error('PDF больше 20 МБ — сожмите файл')
-        return save({ ...base, kind: 'pdf', mime: 'application/pdf', size: file.size }, [blobRow(id, 'orig', file, 1)])
+        return save({ ...base, kind: 'pdf', mime: 'application/pdf', size: file.size }, [
+          blobRow(id, 'orig', file, 1),
+        ])
       }
       if (!file.type.startsWith('image/')) throw new Error('Можно прикрепить фото или PDF')
       let photo, thumb
@@ -123,7 +128,14 @@ export function createAttachmentStore(deps: AttachmentStoreDeps): AttachmentServ
         throw new Error('Не удалось прочитать фото — попробуйте другой снимок', { cause: e })
       }
       return save(
-        { ...base, kind: 'photo', mime: 'image/jpeg', size: photo.blob.size, width: photo.width, height: photo.height },
+        {
+          ...base,
+          kind: 'photo',
+          mime: 'image/jpeg',
+          size: photo.blob.size,
+          width: photo.width,
+          height: photo.height,
+        },
         [blobRow(id, 'orig', photo.blob, 1), blobRow(id, 'thumb', thumb.blob, 1)],
       )
     },
@@ -167,9 +179,11 @@ export function createAttachmentStore(deps: AttachmentStoreDeps): AttachmentServ
           await db.blobs.update(row.key, { pending: 0 })
         }
         // Проверка и правка — одной транзакцией: строку могли удалить, пока грузились её файлы.
-        await db.transaction('rw', db.attachments, async () => {
+        // Удалили — файлы снова ждут загрузки: «Отменить» вернёт строку, и следующий цикл поставит uploadedAt.
+        await db.transaction('rw', db.attachments, db.blobs, async () => {
           const current = await db.attachments.get(id)
           if (current && !current.deleted) await repo.update(id, { uploadedAt: now() })
+          else if (current) await db.blobs.where('attachmentId').equals(id).modify({ pending: 1 })
         })
         changed()
       }
