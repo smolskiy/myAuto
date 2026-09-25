@@ -104,6 +104,19 @@ test('месяцы с итогами и строки записей', async () =
   expect(screen.getByText('Мойка кузова')).toBeInTheDocument()
 })
 
+test('поиск с задержкой не сбрасывает чип, выбранный во время паузы', async () => {
+  await seed()
+  renderAt('/journal')
+  await screen.findByText('ТО-6')
+  await userEvent.type(screen.getByRole('searchbox', { name: 'Поиск по журналу' }), 'Мойка')
+  await userEvent.click(screen.getByRole('button', { name: 'Расход', pressed: false }))
+  await waitFor(() => expect(screen.queryByText('ТО-6')).not.toBeInTheDocument())
+  await new Promise((r) => setTimeout(r, 400))
+  expect(screen.getByRole('button', { name: 'Расход' })).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByRole('searchbox', { name: 'Поиск по журналу' })).toHaveValue('Мойка')
+  expect(screen.getByText('Мойка кузова')).toBeInTheDocument()
+})
+
 test('поиск по артикулу находит запись', async () => {
   await seed()
   renderAt('/journal')
@@ -188,6 +201,7 @@ test('период «Свой» ограничивает даты', async () => 
   await screen.findByText('ТО-6')
   await userEvent.click(screen.getByRole('button', { name: 'Фильтры' }))
   const sheet = await screen.findByRole('dialog', { name: 'Фильтры' })
+  expect(within(sheet).getByRole('button', { name: '12 месяцев' })).toBeInTheDocument()
   await userEvent.click(within(sheet).getByRole('button', { name: 'Свой' }))
   await userEvent.type(within(sheet).getByLabelText('С'), '2026-08-01')
   await userEvent.type(within(sheet).getByLabelText('По'), '2026-08-31')

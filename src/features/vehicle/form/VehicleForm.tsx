@@ -12,6 +12,7 @@ import {
   useDraftAttachments,
   useToday,
 } from '../../common'
+import { FUEL_GRADES } from '../../records/labels'
 import { FluidsEditor } from './FluidsEditor'
 import styles from './VehicleForm.module.css'
 import {
@@ -49,7 +50,6 @@ const options = <T extends string>(labels: Record<T, string>) => [
 const FUEL_OPTIONS = options<FuelType>(FUEL_TYPE_LABELS)
 const TRANSMISSION_OPTIONS = options<Transmission>(TRANSMISSION_LABELS)
 const DRIVE_OPTIONS = options<Drive>(DRIVE_LABELS)
-const GRADES = ['АИ-92', 'АИ-95', 'АИ-98', 'ДТ', 'Газ']
 const fromNone = <T extends string>(v: string) => (v === NONE ? undefined : (v as T))
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -114,7 +114,10 @@ export function VehicleForm({ initial, onSaved, submitLabel, title, intro }: Veh
   }
 
   const q = values.defaultFuelGrade.trim().toLowerCase()
-  const grades = GRADES.filter((g) => !q || g.toLowerCase().includes(q)).map((g) => ({ id: g, label: g }))
+  const grades = FUEL_GRADES.filter((g) => !q || g.toLowerCase().includes(q)).map((g) => ({
+    id: g,
+    label: g,
+  }))
 
   return (
     <FormPage
@@ -128,7 +131,6 @@ export function VehicleForm({ initial, onSaved, submitLabel, title, intro }: Veh
         value={values.vin}
         onChange={(vin) => set({ vin })}
         onApply={(info) => set(applyVin(values, info))}
-        error={errors.vin}
       />
       <TextField
         label="Марка"

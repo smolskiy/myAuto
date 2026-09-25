@@ -11,7 +11,7 @@ export type Period = 'all' | 'month' | '3m' | 'year' | 'custom'
 export const PERIOD_LABELS: Record<Period, string> = {
   month: 'Этот месяц',
   '3m': '3 месяца',
-  year: 'Год',
+  year: '12 месяцев',
   all: 'Всё время',
   custom: 'Свой',
 }

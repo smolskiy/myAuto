@@ -6,7 +6,7 @@ import type { CarRecord, ID, ISODate } from '../../../domain/types'
 import { Chip, DateField, NumberField } from '../../../ui'
 import styles from './RecordForm.module.css'
 import { suggestedDate } from './lastDate'
-import type { RecordForm } from './useRecordForm'
+import { changeDate, type RecordForm } from './useRecordForm'
 
 /** Всё, что форме нужно знать вокруг записи: история машины, сегодня, какая строка правится. */
 export interface FormContext {
@@ -47,12 +47,12 @@ export function odometerWarning(
 
 /** Дата с быстрыми чипами: «Сегодня», «Вчера» и дата прошлой записи сессии (ввод задним числом). */
 export function RecordDateField({ form, ctx, suggest }: FieldsProps & { suggest: boolean }) {
-  const { values, errors, set } = form
+  const { values, errors, update } = form
   const { today } = ctx
   const yesterday = addDays(today, -1)
   // Читаем один раз: дата прошлой записи не меняется, пока открыта форма.
   const [last] = useState(() => (suggest ? suggestedDate(today) : null))
-  const pick = (d: ISODate) => set({ date: d })
+  const pick = (d: ISODate) => update((v) => changeDate(v, d, today))
   return (
     <div className={styles.stack}>
       <DateField
@@ -63,7 +63,7 @@ export function RecordDateField({ form, ctx, suggest }: FieldsProps & { suggest:
         max={today}
         error={errors.date}
       />
-      <div className={styles.chips}>
+      <div className={styles.chips} role="group" aria-label="Дата — быстрый выбор">
         <Chip selected={values.date === today} onClick={() => pick(today)}>
           Сегодня
         </Chip>
@@ -94,7 +94,7 @@ export function RecordOdometerField({ form, ctx, label = 'Пробег' }: Field
     <NumberField
       label={label}
       value={values.odometer}
-      onChange={(odometer) => set({ odometer })}
+      onChange={(odometer) => set({ odometer, odometerPrefilled: false })}
       unit="км"
       decimals={0}
       min={0}

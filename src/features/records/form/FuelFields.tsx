@@ -1,11 +1,10 @@
 import { toKopecks, toRubles } from '../../../domain/money'
 import { Combobox, ListGroup, MoneyField, NumberField, Switch } from '../../../ui'
 import { PlacePicker } from '../../common'
+import { FUEL_GRADES } from '../labels'
 import { CommonFields, type FieldsProps } from './CommonFields'
 import styles from './RecordForm.module.css'
 import { editFuel, type FuelField } from './useRecordForm'
-
-const GRADES = ['АИ-92', 'АИ-95', 'АИ-98', 'ДТ', 'Газ']
 
 /** Заправка: литры, цена за литр и сумма — любые два считают третье; полный бак, марка топлива, АЗС. */
 export function FuelFields({ form, ctx, suggestDate }: FieldsProps & { suggestDate: boolean }) {
@@ -13,7 +12,10 @@ export function FuelFields({ form, ctx, suggestDate }: FieldsProps & { suggestDa
   const edit = (field: FuelField, value: number | undefined) => update((v) => editFuel(v, field, value))
 
   const q = values.fuelGrade.trim().toLowerCase()
-  const grades = GRADES.filter((g) => !q || g.toLowerCase().includes(q)).map((g) => ({ id: g, label: g }))
+  const grades = FUEL_GRADES.filter((g) => !q || g.toLowerCase().includes(q)).map((g) => ({
+    id: g,
+    label: g,
+  }))
 
   return (
     <>

@@ -30,12 +30,30 @@ test('VIN XTA210990Y2765432: «Заполнить» ставит марку и �
   expect(screen.getByLabelText('Модель')).toHaveValue('2109')
 })
 
-test('VIN с буквой O — ошибка у поля, заполнять нечего', async () => {
+test('VIN с буквой O — предупреждение у поля, заполнять нечего, сохранить можно', async () => {
   renderAt('/vehicle/new')
-  await userEvent.type(await screen.findByLabelText('VIN'), 'XTA2109O0Y2765432')
+  await userEvent.type(await screen.findByLabelText('Марка'), 'Toyota')
+  await userEvent.type(screen.getByLabelText('Модель'), 'Mark II')
+  await userEvent.type(screen.getByLabelText('VIN'), 'XTA2109O0Y2765432')
   expect(await screen.findByText('В VIN не бывает букв I, O, Q')).toBeInTheDocument()
+  expect(screen.getByLabelText('VIN')).not.toHaveAttribute('aria-invalid')
   expect(screen.queryByRole('button', { name: 'Заполнить' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Уточнить онлайн' })).not.toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(async () => expect(await others()).toHaveLength(1))
+  expect((await others())[0]).toMatchObject({ vin: 'XTA2109O0Y2765432', make: 'Toyota' })
+})
+
+test('номер рамы (не 17 знаков) сохраняется с предупреждением', async () => {
+  renderAt('/vehicle/new')
+  await userEvent.type(await screen.findByLabelText('Марка'), 'Toyota')
+  await userEvent.type(screen.getByLabelText('Модель'), 'Mark II')
+  await userEvent.type(screen.getByLabelText('VIN'), 'JZX110-6012345')
+  await userEvent.tab()
+  expect(await screen.findByText('VIN должен содержать 17 символов')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(async () => expect(await others()).toHaveLength(1))
+  expect((await others())[0]!.vin).toBe('JZX1106012345')
 })
 
 test('«Уточнить онлайн» без ответа — «Онлайн ничего не нашлось»', async () => {
@@ -43,7 +61,8 @@ test('«Уточнить онлайн» без ответа — «Онлайн �
   renderAt('/vehicle/new')
   await userEvent.type(await screen.findByLabelText('VIN'), 'XTA210990Y2765432')
   await userEvent.click(screen.getByRole('button', { name: 'Уточнить онлайн' }))
-  expect(await screen.findByText('Онлайн ничего не нашлось')).toBeInTheDocument()
+  const none = await screen.findByText('Онлайн ничего не нашлось')
+  expect(none.closest('[aria-live="polite"]')).not.toBeNull()
   expect(nhtsa.fetchNhtsa).toHaveBeenCalledWith('XTA210990Y2765432')
 })
 
@@ -100,6 +119,15 @@ test('дата продажи — подсказка про архив и archiv
   await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
   await waitFor(async () => expect(await others()).toHaveLength(1))
   expect((await others())[0]).toMatchObject({ archived: true, sale: { date: '2025-06-01' } })
+})
+
+test('«Добавить жидкость» без спецификации и объёма ничего не добавляет', async () => {
+  renderAt('/vehicle/new')
+  await userEvent.click(await screen.findByRole('button', { name: 'Добавить жидкость' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Жидкость' })
+  await userEvent.click(within(sheet).getByRole('button', { name: 'Готово' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Жидкость' })).not.toBeInTheDocument())
+  expect(screen.queryByText('Моторное масло')).not.toBeInTheDocument()
 })
 
 test('жидкость добавляется в список и сохраняется', async () => {

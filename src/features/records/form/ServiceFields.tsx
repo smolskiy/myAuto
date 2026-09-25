@@ -118,8 +118,10 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
   const source = empty ? repeatSource(ctx.records, values, ctx.editingId) : null
   const repeat = () => {
     if (!source) return
+    // Новые id строк — здесь, а не в функции-обновления: она должна быть чистой.
+    const lines = copyLines(source)
     update((v) => ({
-      ...copyLines(source),
+      ...lines,
       ...(!v.placeId && source.placeId
         ? { placeId: source.placeId, masterId: source.masterId, diy: source.diy }
         : {}),
@@ -236,7 +238,13 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
         ))}
       </RepeatableList>
 
-      <div className={styles.stack}>
+      <div
+        className={styles.stack}
+        onBlur={() => {
+          // Ручной итог стёрли и ушли с поля — снова считаем по строкам (а не сохраняем 0).
+          if (values.totalManual && values.total === undefined) set({ totalManual: false })
+        }}
+      >
         <MoneyField
           label="Итого"
           value={total}

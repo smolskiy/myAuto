@@ -1,6 +1,7 @@
 import { IconCloudUpload } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
+import { db } from '../../db/instance'
 import { repos } from '../../db/repos'
 import { BUILTIN_CATALOG, STARTER_REMINDER_ITEM_IDS } from '../../domain/catalog'
 import { formatKm } from '../../domain/format'
@@ -47,18 +48,21 @@ function RemindersStep({ vehicle, onDone }: { vehicle: Vehicle; onDone(): void }
     if (busy) return
     setBusy(true)
     try {
-      for (const item of STARTER_ITEMS) {
-        if (!checked.has(item.id)) continue
-        const odometer = lastKm[item.id]
-        await repos.reminders.create({
-          vehicleId: vehicle.id,
-          itemId: item.id,
-          intervalKm: item.defaultIntervalKm,
-          intervalMonths: item.defaultIntervalMonths,
-          baseline: odometer !== undefined ? { odometer } : undefined,
-          enabled: true,
-        })
-      }
+      // Все правила — одной транзакцией: сбой на середине не оставляет половину напоминаний.
+      await db.transaction('rw', db.reminderRules, async () => {
+        for (const item of STARTER_ITEMS) {
+          if (!checked.has(item.id)) continue
+          const odometer = lastKm[item.id]
+          await repos.reminders.create({
+            vehicleId: vehicle.id,
+            itemId: item.id,
+            intervalKm: item.defaultIntervalKm,
+            intervalMonths: item.defaultIntervalMonths,
+            baseline: odometer !== undefined ? { odometer } : undefined,
+            enabled: true,
+          })
+        }
+      })
       onDone()
     } catch (e) {
       if (!(e instanceof UserError)) console.error(e)
@@ -86,7 +90,7 @@ function RemindersStep({ vehicle, onDone }: { vehicle: Vehicle; onDone(): void }
                 {intervalText(item) && <p className={styles.interval}>{intervalText(item)}</p>}
                 {on && (
                   <NumberField
-                    label="Когда делали последний раз"
+                    label={`${item.name}: когда делали последний раз`}
                     unit="км"
                     value={lastKm[item.id]}
                     onChange={(v) => setLastKm((m) => ({ ...m, [item.id]: v }))}

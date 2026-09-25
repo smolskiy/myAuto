@@ -5,6 +5,7 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { AppProviders } from '../../app/providers'
 import { createAppRouter } from '../../app/routes'
 import { db } from '../../db/instance'
+import { repos } from '../../db/repos'
 import { BUILTIN_CATALOG, CATALOG_ID, STARTER_REMINDER_ITEM_IDS } from '../../domain/catalog'
 
 vi.setConfig({ testTimeout: 20_000 })
@@ -65,8 +66,7 @@ test('снятый флажок не создаёт правило; пробег
   renderAt('/onboarding')
   await addVehicleStep()
   await userEvent.click(screen.getByRole('checkbox', { name: 'Свечи зажигания' }))
-  const oil = screen.getByRole('group', { name: 'Моторное масло' })
-  await userEvent.type(within(oil).getByLabelText('Когда делали последний раз'), '140000')
+  await userEvent.type(screen.getByLabelText('Моторное масло: когда делали последний раз'), '140000')
   await userEvent.click(screen.getByRole('button', { name: 'Дальше' }))
   await screen.findByRole('heading', { name: 'Синхронизация' })
 
@@ -74,6 +74,22 @@ test('снятый флажок не создаёт правило; пробег
   expect(rules).toHaveLength(7)
   expect(rules.some((r) => r.itemId === CATALOG_ID.sparkPlugs)).toBe(false)
   expect(rules.find((r) => r.itemId === CATALOG_ID.engineOil)!.baseline).toEqual({ odometer: 140000 })
+})
+
+test('правила создаются одной транзакцией: сбой на середине не оставляет половину', async () => {
+  const create = repos.reminders.create
+  let n = 0
+  vi.spyOn(repos.reminders, 'create').mockImplementation(async (draft) => {
+    if (++n === 3) throw new Error('сбой записи')
+    return create(draft)
+  })
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  renderAt('/onboarding')
+  await addVehicleStep()
+  await userEvent.click(screen.getByRole('button', { name: 'Дальше' }))
+  expect(await screen.findByText('Не получилось сохранить — попробуйте ещё раз')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Что напоминать' })).toBeInTheDocument()
+  expect(await db.reminderRules.count()).toBe(0)
 })
 
 test('интервалы узлов подписаны из каталога', async () => {

@@ -32,15 +32,11 @@ import {
 } from '../common'
 import { linesTotal } from './form/serviceTotals'
 import { partMeta } from './lineText'
+import { DOC_NUMBER_LABEL } from './labels'
 import styles from './RecordPage.module.css'
 import { useRepeatRecord } from './repeat'
 
 const HAS_AMOUNT = new Set(['service', 'fuel', 'expense'])
-const DOC_NUMBER_LABEL: Partial<Record<ExpenseRecord['category'], string>> = {
-  osago: 'Номер полиса',
-  kasko: 'Номер полиса',
-  inspection: 'Номер диагностической карты',
-}
 
 /** Шапка: значок вида, название, дата и пробег, крупно — сумма (у пробега — сам пробег). */
 function Hero({ r }: { r: CarRecord }) {

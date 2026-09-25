@@ -233,6 +233,22 @@ test('ручной итог не пересчитывается, «Считат�
   expect((await savedServices())[0]?.total).toBe(220000)
 })
 
+test('стёртый «Итого» возвращает авторасчёт (а не 0)', async () => {
+  const router = renderAt('/record/new/service')
+  await typeTitle('Ремонт подвески')
+  await addWork('Стойки стабилизатора', '1500')
+  await userEvent.clear(screen.getByLabelText('Итого'))
+  await userEvent.type(screen.getByLabelText('Итого'), '2000')
+  expect(screen.getByRole('button', { name: 'Считать по строкам' })).toBeInTheDocument()
+  await userEvent.clear(screen.getByLabelText('Итого'))
+  await userEvent.tab()
+  expect(screen.getByLabelText('Итого')).toHaveValue('1\u00a0500')
+  expect(screen.queryByRole('button', { name: 'Считать по строкам' })).not.toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\//))
+  expect((await savedServices())[0]?.total).toBe(150000)
+})
+
 test('ручной итог сохраняется как введён', async () => {
   const router = renderAt('/record/new/service')
   await typeTitle('Кузовной ремонт')

@@ -1,6 +1,6 @@
 import type { Draft } from '../../../db/repo'
 import { isISODate } from '../../../domain/dates'
-import { decodeVin, applyVinToVehicle, type VinApplyInfo } from '../../../domain/vin/decode'
+import { applyVinToVehicle, type VinApplyInfo } from '../../../domain/vin/decode'
 import type { Drive, Fluid, FuelType, ISODate, Kopecks, Transmission, Vehicle } from '../../../domain/types'
 
 /** Значения формы машины: тексты — строки (как их держат поля), пустое — ''. */
@@ -110,10 +110,6 @@ export function validateVehicle(v: VehicleValues, today: ISODate): VehicleErrors
   if (v.year) {
     const y = Number(v.year)
     if (!Number.isInteger(y) || y < MIN_YEAR || y > Number(today.slice(0, 4)) + 1) e.year = 'Проверьте год'
-  }
-  if (v.vin) {
-    const info = decodeVin(v.vin)
-    if (!info.valid) e.vin = info.errors[0]
   }
   if (v.purchaseDate && !isISODate(v.purchaseDate)) e.purchaseDate = 'Проверьте дату'
   if (v.saleDate && !isISODate(v.saleDate)) e.saleDate = 'Проверьте дату'

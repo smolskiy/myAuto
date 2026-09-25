@@ -32,6 +32,8 @@ export interface RecordFormValues {
   vehicleId: ID
   date: ISODate
   odometer?: number
+  /** Пробег подставлен формой (текущий) и владелец его не трогал: уход даты в прошлое его стирает. */
+  odometerPrefilled: boolean
   total?: Kopecks
   placeId?: ID
   note: string
@@ -117,6 +119,7 @@ export function useRecordForm(initial: () => RecordFormValues): RecordForm {
 }
 
 const BLANK: Omit<RecordFormValues, 'kind' | 'vehicleId' | 'date'> = {
+  odometerPrefilled: false,
   note: '',
   title: '',
   category: 'other',
@@ -147,8 +150,19 @@ export function newRecordValues(
     vehicleId: vehicle.id,
     date: ctx.today,
     odometer: kind === 'note' ? undefined : (ctx.currentOdometer ?? undefined),
+    odometerPrefilled: kind !== 'note' && ctx.currentOdometer !== null,
     fuelGrade: vehicle.defaultFuelGrade ?? '',
   }
+}
+
+/**
+ * Смена даты. Запись уходит в прошлое, а пробег — нетронутый сегодняшний из формы: он там заведомо неверен,
+ * стираем (введённый владельцем пробег остаётся).
+ */
+export function changeDate(v: RecordFormValues, date: ISODate, today: ISODate): Partial<RecordFormValues> {
+  if (v.odometerPrefilled && isISODate(date) && date < today)
+    return { date, odometer: undefined, odometerPrefilled: false }
+  return { date }
 }
 
 /** Значения формы из сохранённой записи (правка). */
@@ -262,7 +276,7 @@ export function hasTireSwap(v: RecordFormValues): boolean {
 
 /** Итог ТО на экране и в записи: ручной — как введён, иначе сумма строк. */
 export function serviceTotal(v: RecordFormValues): Kopecks {
-  return v.totalManual ? (v.total ?? 0) : linesTotal(v.works, v.parts)
+  return v.totalManual && v.total !== undefined ? v.total : linesTotal(v.works, v.parts)
 }
 
 /** Ошибки у полей; пустой объект — можно сохранять. */

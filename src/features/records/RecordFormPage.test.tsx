@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test } from 'vitest'
 import { db } from '../../db/instance'
@@ -100,6 +100,25 @@ describe('хронология пробега', () => {
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\/[0-9a-f-]{36}$/))
     expect(await db.records.count()).toBe(2)
   })
+})
+
+test('дата в прошлом стирает нетронутый предзаполненный пробег, введённый — нет', async () => {
+  await repos.records.create({
+    vehicleId: vehicle.id,
+    kind: 'odometer',
+    date: '2026-02-01',
+    odometer: 148320,
+    total: 0,
+  })
+  renderAt('/record/new/odometer')
+  expect(await screen.findByLabelText('Пробег')).toHaveValue('148\u00a0320')
+  const quick = screen.getByRole('group', { name: 'Дата — быстрый выбор' })
+  await userEvent.click(within(quick).getByRole('button', { name: 'Вчера' }))
+  expect(screen.getByLabelText('Пробег')).toHaveValue('')
+  await userEvent.type(screen.getByLabelText('Пробег'), '148000')
+  await userEvent.click(within(quick).getByRole('button', { name: 'Сегодня' }))
+  await userEvent.click(within(quick).getByRole('button', { name: 'Вчера' }))
+  expect(screen.getByLabelText('Пробег')).toHaveValue('148\u00a0000')
 })
 
 test('новая запись предзаполняет текущий пробег, заметка — нет', async () => {

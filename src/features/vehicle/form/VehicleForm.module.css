@@ -71,6 +71,11 @@
   line-height: var(--leading-tight);
 }
 
+/* Пустая живая область не даёт лишнего отступа в карточке. */
+.vinLive:empty {
+  display: contents;
+}
+
 .vinMuted {
   color: var(--color-text-2);
   font-size: var(--text-sm);

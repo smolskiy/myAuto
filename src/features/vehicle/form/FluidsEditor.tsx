@@ -78,6 +78,8 @@ export function FluidsEditor({ value, onChange }: FluidsEditorProps) {
     if (!editing) return
     const { index } = editing
     setEditing({ ...editing, open: false })
+    // Новая строка без спецификации и объёма ничего не говорит — не добавляем.
+    if (index === null && !fluid.spec && fluid.volumeL === undefined) return
     onChange(index === null ? [...value, fluid] : value.map((f, i) => (i === index ? fluid : f)))
   }
 

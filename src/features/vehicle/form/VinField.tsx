@@ -12,8 +12,6 @@ export interface VinFieldProps {
   onChange(vin: string): void
   /** «Заполнить»: данные VIN уходят только в пустые поля формы. */
   onApply(info: VinApplyInfo): void
-  /** Ошибка проверки при сохранении. */
-  error?: string
 }
 
 const VIN_LENGTH = 17
@@ -40,10 +38,11 @@ function onlineText(i: VinOnlineInfo): string {
 }
 
 /**
- * VIN: верхний регистр без пробелов; на 17-м символе — офлайн-расшифровка («Lada · Россия · 2000» и «Заполнить»),
- * ошибки — у поля. «Уточнить онлайн» — NHTSA по явному нажатию; нет ответа или сети — тихое «Онлайн ничего не нашлось».
+ * VIN: верхний регистр без пробелов; на 17-м символе — офлайн-расшифровка («Lada · Россия · 2000» и «Заполнить»).
+ * Неверный VIN — предупреждение у поля, сохранить можно: у японских машин вместо VIN номер рамы.
+ * «Уточнить онлайн» — NHTSA по явному нажатию; нет ответа или сети — тихое «Онлайн ничего не нашлось».
  */
-export function VinField({ value, onChange, onApply, error }: VinFieldProps) {
+export function VinField({ value, onChange, onApply }: VinFieldProps) {
   const [touched, setTouched] = useState(false)
   const [online, setOnline] = useState<Online | null>(null)
   const complete = value.length >= VIN_LENGTH
@@ -51,7 +50,7 @@ export function VinField({ value, onChange, onApply, error }: VinFieldProps) {
     () => (value && (complete || touched) ? decodeVin(value) : null),
     [value, complete, touched],
   )
-  const decodeError = info && !info.valid ? info.errors[0] : undefined
+  const problem = info && !info.valid ? info.errors[0] : undefined
   // Ответ онлайн относится к тому VIN, для которого его спрашивали.
   const current = online?.vin === value ? online : null
 
@@ -80,7 +79,14 @@ export function VinField({ value, onChange, onApply, error }: VinFieldProps) {
         maxLength={VIN_LENGTH + 3}
         onChange={(e) => onChange(normalizeVin(e.target.value))}
         onBlur={() => setTouched(true)}
-        error={decodeError ?? error}
+        hint={
+          problem ? (
+            <span className={styles.vinWarning}>
+              <IconAlertTriangleFilled size={16} aria-hidden="true" />
+              {problem}
+            </span>
+          ) : undefined
+        }
       />
       {info?.valid && (
         <div className={styles.vinBox}>
@@ -102,14 +108,7 @@ export function VinField({ value, onChange, onApply, error }: VinFieldProps) {
               {w}
             </p>
           ))}
-          {current?.state === 'found' ? (
-            <div className={styles.vinRow}>
-              <span className={styles.vinText}>{onlineText(current.info)}</span>
-              <Button size="sm" variant="secondary" onClick={() => onApply(current.info)}>
-                Заполнить
-              </Button>
-            </div>
-          ) : (
+          {current?.state !== 'found' && (
             <div className={styles.vinRow}>
               <Button
                 size="sm"
@@ -120,9 +119,20 @@ export function VinField({ value, onChange, onApply, error }: VinFieldProps) {
               >
                 Уточнить онлайн
               </Button>
-              {current?.state === 'none' && <span className={styles.vinMuted}>Онлайн ничего не нашлось</span>}
             </div>
           )}
+          {/* Ответ онлайн приходит не сразу — объявляем его. */}
+          <div aria-live="polite" className={styles.vinLive}>
+            {current?.state === 'found' && (
+              <div className={styles.vinRow}>
+                <span className={styles.vinText}>{onlineText(current.info)}</span>
+                <Button size="sm" variant="secondary" onClick={() => onApply(current.info)}>
+                  Заполнить
+                </Button>
+              </div>
+            )}
+            {current?.state === 'none' && <p className={styles.vinMuted}>Онлайн ничего не нашлось</p>}
+          </div>
         </div>
       )}
     </div>

@@ -7,7 +7,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { AddRecordSheet } from '../../app/AddRecordSheet'
 import { useRecords } from '../../db/hooks'
@@ -81,12 +81,19 @@ function Journal({ vehicle }: { vehicle: Vehicle }) {
   const apply = (f: JournalFilter) => setParams(writeFilter(f), { replace: true })
 
   // Поиск — с задержкой: запрос к базе не на каждую букву.
+  // Фильтр на момент срабатывания задержки: чип, нажатый во время паузы, не должен пропасть.
+  const latest = useRef(filter)
   useEffect(() => {
-    if (text === filter.q) return
-    const t = setTimeout(() => apply({ ...filter, q: text }), SEARCH_DELAY)
+    latest.current = filter
+  })
+  useEffect(() => {
+    if (text === latest.current.q) return
+    const t = setTimeout(
+      () => setParams(writeFilter({ ...latest.current, q: text }), { replace: true }),
+      SEARCH_DELAY,
+    )
     return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ждём паузы в наборе, фильтр берём свежий
-  }, [text])
+  }, [text, setParams])
 
   const records = useRecords(vehicle.id, toRecordFilter(filter, today))
   const groups = useMemo(() => (records ? groupByMonth(records) : undefined), [records])

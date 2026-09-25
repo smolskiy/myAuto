@@ -1,6 +1,7 @@
 import type { ExpenseCategory, PlaceKind } from '../../../domain/types'
 import { DateField, MoneyField, Select, TextField } from '../../../ui'
 import { EXPENSE_CATEGORY_LABELS, PLACE_KIND_LABELS, PlacePicker } from '../../common'
+import { DOC_NUMBER_LABEL } from '../labels'
 import { CommonFields, type FieldsProps } from './CommonFields'
 import styles from './RecordForm.module.css'
 import { VALIDITY_CATEGORIES } from './useRecordForm'
@@ -26,12 +27,6 @@ const PLACE_KIND_BY_CATEGORY: Partial<Record<ExpenseCategory, PlaceKind>> = {
 function placeKinds(category: ExpenseCategory): PlaceKind[] {
   const primary = PLACE_KIND_BY_CATEGORY[category] ?? 'other'
   return [primary, ...ALL_PLACE_KINDS.filter((k) => k !== primary)]
-}
-
-const DOC_NUMBER_LABEL: Partial<Record<ExpenseCategory, string>> = {
-  osago: 'Номер полиса',
-  kasko: 'Номер полиса',
-  inspection: 'Номер диагностической карты',
 }
 
 /** Расход: категория и сумма первыми, срок действия — у полисов и диагностической карты. */
