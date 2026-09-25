@@ -16,7 +16,7 @@ import {
   useToday,
   VehicleGate,
 } from '../common'
-import { optional } from '../places/links'
+import { optional } from '../garage/kit'
 import styles from './documents.module.css'
 import { daysLeftText, DOCUMENT_KIND_OPTIONS, documentStatus, documentTitle } from './documentStatus'
 import { StatusMark } from './StatusMark'

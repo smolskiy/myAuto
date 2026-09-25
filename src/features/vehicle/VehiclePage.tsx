@@ -33,6 +33,7 @@ import {
   useToast,
 } from '../../ui'
 import { Page, recordRowProps, useLookup } from '../common'
+import { failureText } from '../garage/kit'
 import { OwnershipList } from './details/OwnershipList'
 import { FluidsList, SpecsList } from './details/SpecsList'
 import { useVehiclePhoto } from './details/useVehiclePhoto'
@@ -41,8 +42,6 @@ import styles from './details/VehiclePage.module.css'
 
 const RECENT = 3
 const RECORD_FORMS: [string, string, string] = ['запись', 'записи', 'записей']
-
-const errorText = (e: unknown) => (e instanceof Error && e.message) || 'Не удалось сохранить'
 
 /** Карточка машины: фото и паспорт, владение и расходы, архив, переходы в разделы машины. */
 export default function VehiclePage() {
@@ -72,7 +71,7 @@ function VehicleDetails({ vehicle }: { vehicle: Vehicle }) {
   const isActive = active?.id === vehicle.id
 
   const run = (action: () => Promise<void>) => {
-    action().catch((e: unknown) => toast.show({ text: errorText(e) }))
+    action().catch((e: unknown) => toast.show({ text: failureText(e) }))
   }
 
   const archive = () =>

@@ -137,9 +137,9 @@ describe('карточка комплекта', () => {
 
     const summary = await screen.findByRole('region', { name: 'Комплект' })
     await waitFor(() => expect(summary.textContent).toContain(`Пробег комплекта6${NBSP}000${NBSP}км`))
-    const history = screen.getByRole('list', { name: 'История' })
+    const history = await screen.findByRole('list', { name: 'История' })
+    await waitFor(() => expect(within(history).getAllByRole('button')).toHaveLength(2))
     const rows = within(history).getAllByRole('button')
-    expect(rows).toHaveLength(2)
     expect(rows[0]).toHaveTextContent('Сняты')
     expect(rows[1]).toHaveTextContent('Установлены')
     expect(screen.getByRole('textbox', { name: 'DOT' })).toHaveAccessibleDescription(`2023, 24${NBSP}неделя`)

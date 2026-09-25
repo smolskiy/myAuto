@@ -93,7 +93,8 @@ describe('список мест и мастеров', () => {
     await waitFor(() => expect(row.textContent).toContain(`2${NBSP}визита · 12${NBSP}500${NBSP}₽`))
     expect(within(row).getByRole('img', { name: 'Оценка: 4 из 5' })).toBeInTheDocument()
     const stations = screen.getByRole('list', { name: 'АЗС' })
-    expect(within(stations).getByRole('button', { name: /Лукойл/ })).toHaveTextContent('Нет визитов')
+    const station = within(stations).getByRole('button', { name: /Лукойл/ })
+    await waitFor(() => expect(station).toHaveTextContent('Нет визитов'))
   })
 
   test('мастера: имя, место и специализация; «Добавить мастера»', async () => {
@@ -120,9 +121,9 @@ describe('карточка места', () => {
     expect(stats.textContent).toContain(`Средний чек6${NBSP}250${NBSP}₽`)
     expect(stats).toHaveTextContent('Последний визит01.09.2026')
 
-    const visits = screen.getByRole('list', { name: 'Визиты' })
+    const visits = await screen.findByRole('list', { name: 'Визиты' })
+    await waitFor(() => expect(within(visits).getAllByRole('button')).toHaveLength(2))
     const rows = within(visits).getAllByRole('button')
-    expect(rows).toHaveLength(2)
     expect(rows[0]).toHaveTextContent('Химчистка салона')
     expect(rows[0]).toHaveTextContent('Рапид')
     expect(rows[1]).toHaveTextContent('ТО-7')
@@ -269,11 +270,11 @@ describe('карточка мастера', () => {
     const stats = await screen.findByRole('region', { name: 'Статистика' })
     await waitFor(() => expect(stats).toHaveTextContent('Визиты2'))
     expect(stats.textContent).toContain(`Всего потрачено10${NBSP}500${NBSP}₽`)
-    const visits = screen.getByRole('list', { name: 'Визиты' })
-    expect(within(visits).getAllByRole('button')).toHaveLength(2)
+    const visits = await screen.findByRole('list', { name: 'Визиты' })
+    await waitFor(() => expect(within(visits).getAllByRole('button')).toHaveLength(2))
     expect(visits).toHaveTextContent('Рапид')
     expect(screen.getByRole('link', { name: 'Позвонить' })).toHaveAttribute('href', 'tel:89161112233')
-    expect(screen.getByRole('combobox', { name: 'Место' })).toHaveValue('Автосервис')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Место' })).toHaveValue('Автосервис'))
   })
 
   test('новый мастер без имени — «Добавьте имя»; с местом из ссылки сохраняется', async () => {

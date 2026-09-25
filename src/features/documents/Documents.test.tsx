@@ -158,7 +158,7 @@ describe('карточка документа', () => {
     expect(await repos.documents.list()).toHaveLength(0)
   })
 
-  test('карточка: срок и статус, правка номера, удаление с «Отменить»', async () => {
+  test('карточка: срок и статус, правка номера', async () => {
     const v = await addVehicle()
     const until = addDays(todayISO(), 12)
     const doc = await addDocument(v.id, { kind: 'diagCard', number: '0001', validUntil: until })
@@ -174,9 +174,15 @@ describe('карточка документа', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
     await waitFor(async () => expect((await repos.documents.get(doc.id))?.number).toBe('0002'))
     await waitFor(() => expect(router.state.location.pathname).toBe('/documents'))
+  })
 
-    await router.navigate(`/documents/${doc.id}`)
+  test('карточка: удаление с «Отменить»', async () => {
+    const v = await addVehicle()
+    const doc = await addDocument(v.id, { kind: 'sts', number: '99 01 123456' })
+    const router = renderAt(`/documents/${doc.id}`, ['/documents'])
+
     await userEvent.click(await screen.findByRole('button', { name: 'Удалить документ' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/documents'))
     await waitFor(async () => expect(await repos.documents.get(doc.id)).toBeUndefined())
     expect(await screen.findByText('Документ удалён')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Отменить' }))

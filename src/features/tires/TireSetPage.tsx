@@ -43,7 +43,7 @@ import {
   useToday,
   VehicleGate,
 } from '../common'
-import { optional } from '../places/links'
+import { failureText, optional } from '../garage/kit'
 import { formatDot, makeOnlyInstalled, tireSetTitle } from './tireText'
 import styles from './tires.module.css'
 
@@ -233,7 +233,7 @@ function TireSetSummary({ set, onInstalled }: { set: TireSet; onInstalled(): voi
       onInstalled()
       toast.show({ text: stored > 0 ? 'Комплект установлен, прежний — на хранении' : 'Комплект установлен' })
     } catch (e) {
-      toast.show({ text: (e instanceof Error && e.message) || 'Не удалось сохранить' })
+      toast.show({ text: failureText(e) })
     }
   }
   return (

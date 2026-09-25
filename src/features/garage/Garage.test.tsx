@@ -187,7 +187,7 @@ describe('карточка машины', () => {
 
     expect(await screen.findByText('Продана 01.05.2025')).toBeInTheDocument()
     expect(await screen.findByText('Сняли магнитолу перед продажей')).toBeInTheDocument()
-    expect(screen.getByRole('list', { name: 'Владение' })).toHaveTextContent('Расходы за всё время')
+    expect(await screen.findByRole('list', { name: 'Владение' })).toHaveTextContent('Расходы за всё время')
     expect(screen.queryByRole('button', { name: 'Сделать активной' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Вернуть из архива' })).toBeInTheDocument()
     expect(await activeId()).not.toBe(sold.id)

@@ -11,9 +11,3 @@ export function mapsHref(address: string | undefined, url?: string): string | un
   const text = address?.trim()
   return text ? `https://yandex.ru/maps/?text=${encodeURIComponent(text)}` : undefined
 }
-
-/** Пустая строка поля — поле не заполнено. */
-export function optional(value: string): string | undefined {
-  const v = value.trim()
-  return v ? v : undefined
-}
