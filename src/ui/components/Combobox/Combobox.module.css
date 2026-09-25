@@ -21,8 +21,13 @@
   border-top: var(--border-width) solid var(--color-border);
 }
 
+/*
+ * Пункт под стрелкой (цель aria-activedescendant): фокус остаётся в поле, поэтому отметка своя —
+ * заливка и рамка 2 px акцентом внутрь (акцент на карточке 5.17 / 5.34, на заливке 4.61 / 4.77).
+ */
 .active {
   background: var(--color-accent-soft);
+  box-shadow: inset 0 0 0 var(--focus-width) var(--color-accent);
 }
 @media (hover: hover) {
   .option:hover {

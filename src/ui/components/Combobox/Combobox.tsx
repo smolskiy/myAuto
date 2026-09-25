@@ -101,6 +101,7 @@ export function Combobox(props: ComboboxProps) {
                   id={optionId(i)}
                   role="option"
                   aria-selected={i === active}
+                  data-active={i === active || undefined}
                   className={cx(styles.option, i === active && styles.active)}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => choose(item)}

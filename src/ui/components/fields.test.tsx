@@ -175,6 +175,29 @@ test('комбобокс: Escape закрывает список, активны
   expect(input).toHaveAttribute('aria-expanded', 'false')
 })
 
+test('комбобокс: пункт под стрелкой отмечен видимо, остальные — нет', async () => {
+  render(
+    <ComboWrap
+      options={() => [
+        { id: 'a', label: 'Автосервис' },
+        { id: 'b', label: 'Автомойка' },
+      ]}
+      onSelect={() => {}}
+      onCreate={() => {}}
+    />,
+  )
+  const input = screen.getByRole('combobox', { name: 'Место' })
+  await userEvent.type(input, 'Авто')
+  await userEvent.keyboard('{ArrowDown}{ArrowDown}')
+  const second = screen.getByRole('option', { name: 'Автомойка' })
+  expect(input).toHaveAttribute('aria-activedescendant', second.id)
+  expect(second).toHaveAttribute('data-active')
+  expect(second.className).toMatch(/active/)
+  const first = screen.getByRole('option', { name: 'Автосервис' })
+  expect(first).not.toHaveAttribute('data-active')
+  expect(first.className).not.toMatch(/active/)
+})
+
 test('пробег: последний известный — подсказка, нарушение хронологии — предупреждение', () => {
   render(
     <OdometerField
