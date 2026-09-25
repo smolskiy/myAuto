@@ -41,8 +41,14 @@ export function createRepos(database: MyAutoDB) {
         ...draft
       } = src
       if (draft.kind === 'service') {
+        const {
+          warrantyUntilDate: _warrantyUntilDate,
+          warrantyUntilKm: _warrantyUntilKm,
+          tireSwap: _tireSwap,
+          ...serviceDraft
+        } = draft
         return recordsRepo.create({
-          ...draft,
+          ...serviceDraft,
           date,
           works: draft.works.map((w) => ({ ...w, id: newId() })),
           parts: draft.parts.map((p) => ({ ...p, id: newId() })),

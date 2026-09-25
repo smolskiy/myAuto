@@ -81,7 +81,7 @@ test('каждая правка сообщает о локальном изме�
   expect(seen).toEqual(['masters', 'masters'])
 })
 
-test('повтор записи — копия с новыми id строк и без пробега', async () => {
+test('повтор записи — копия с новыми id строк, без пробега, гарантии и переобувки', async () => {
   const { records } = createRepos(db)
   const src = await records.create({
     vehicleId: 'v1',
@@ -94,12 +94,42 @@ test('повтор записи — копия с новыми id строк и 
     diy: false,
     works: [{ id: 'w1', name: 'Работа' }],
     parts: [],
+    warrantyUntilDate: '2027-01-01',
+    warrantyUntilKm: 50000,
+    tireSwap: { mountedSetId: 'ts1', removedSetId: 'ts2' },
   })
   const copy = await records.duplicate(src.id, '2026-09-25')
   expect(copy.id).not.toBe(src.id)
   expect(copy).toMatchObject({ date: '2026-09-25', total: 500, title: 'ТО' })
   expect(copy.odometer).toBeUndefined()
-  expect(copy.kind === 'service' && copy.works[0]!.id).not.toBe('w1')
+  expect(copy.kind).toBe('service')
+  if (copy.kind === 'service') {
+    expect(copy.works[0]!.id).not.toBe('w1')
+    expect(copy.warrantyUntilDate).toBeUndefined()
+    expect(copy.warrantyUntilKm).toBeUndefined()
+    expect(copy.tireSwap).toBeUndefined()
+  }
+})
+
+test('повтор записи заправки', async () => {
+  const { records } = createRepos(db)
+  const src = await records.create({
+    vehicleId: 'v1',
+    kind: 'fuel',
+    date: '2026-01-01',
+    odometer: 1000,
+    total: 3000,
+    liters: 40,
+    pricePerLiter: 75,
+    fullTank: true,
+    missedBefore: false,
+  })
+  const copy = await records.duplicate(src.id, '2026-09-25')
+  expect(copy.id).not.toBe(src.id)
+  expect(copy.kind).toBe('fuel')
+  expect(copy.date).toBe('2026-09-25')
+  expect(copy.odometer).toBeUndefined()
+  if (copy.kind === 'fuel') expect(copy.liters).toBe(40)
 })
 
 test('сид добавляет каталог один раз и не воскрешает удалённое', async () => {
