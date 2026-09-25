@@ -1,0 +1,65 @@
+/* Колонка главной внутри PullToRefresh: тот же ритм, что у каркаса страницы. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Быстрые кнопки: четыре плитки в ряд под карточкой машины. */
+.quick {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.quickAction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 84px;
+  padding: var(--space-3) var(--space-1);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.quickAction:active {
+  background: var(--color-surface-pressed);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+/* «Напоминаний нет»: строка с пояснением и кнопкой, без крупной заглушки — главная остаётся плотной. */
+.emptyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.emptyText {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+
+.emptyTitle {
+  font-weight: var(--weight-semibold);
+}
+
+.emptyHint {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
