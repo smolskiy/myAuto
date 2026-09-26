@@ -97,7 +97,7 @@ export const ROUTES: AppRoute[] = [
   },
   {
     path: '/places/directory',
-    title: 'Справочник СТО',
+    title: 'Справочник СТО и АЗС',
     load: () => import('../features/places/DirectoryPage'),
   },
   { path: '/places/:id', title: 'Место', load: () => import('../features/places/PlacePage') },

@@ -8,7 +8,7 @@ const CITY_OPTIONS = [
   ...DIRECTORY_CITIES.map((c) => ({ value: c.id, label: c.name })),
 ]
 
-/** «Город» справочника СТО — на странице справочника и в настройках; выбор сразу видят все экраны. */
+/** «Город» справочника СТО и АЗС — на странице справочника и в настройках; выбор сразу видят все экраны. */
 export function DirectoryCityField({ hint }: { hint?: string }) {
   const city = useDirectoryCity()
   return (

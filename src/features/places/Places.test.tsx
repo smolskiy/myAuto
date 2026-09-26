@@ -388,11 +388,17 @@ describe('справочник СТО', () => {
     expect(router.state.location.pathname).toBe(`/places/${mine.id}`)
   })
 
-  test('вид «Шины» — только шиномонтажи', async () => {
+  test('вид «Шины» — только шиномонтажи, «АЗС» — только заправки', async () => {
     setDirectoryCity('evpatoria')
-    const tires = (evpatoria as unknown as DirectoryFile).places.filter((row) => row[3] === 't').length
+    const rows = (evpatoria as unknown as DirectoryFile).places
+    const count = (kind: string) => rows.filter((row) => row[3] === kind).length
     renderAt('/places/directory')
     await userEvent.click(await screen.findByRole('radio', { name: 'Шины' }))
-    expect(await screen.findByRole('list')).toHaveAccessibleName(new RegExp(`^${tires}\\s`))
+    expect(await screen.findByRole('list')).toHaveAccessibleName(new RegExp(`^${count('t')}\\s`))
+    await userEvent.click(screen.getByRole('radio', { name: 'АЗС' }))
+    await waitFor(() =>
+      expect(screen.getByRole('list')).toHaveAccessibleName(new RegExp(`^${count('f')}\\s`)),
+    )
+    expect(screen.getAllByRole('button', { name: /АТАН/ }).length).toBeGreaterThan(0)
   })
 })

@@ -7,7 +7,7 @@ import {
   type DirectoryPlace,
 } from '../../domain/placeDirectory'
 
-/** Город справочника СТО — на этом устройстве, как тема. */
+/** Город справочника СТО и АЗС — на этом устройстве, как тема. */
 export const DIRECTORY_CITY_KEY = 'myauto.directory.city'
 
 const listeners = new Set<() => void>()
@@ -39,7 +39,7 @@ const subscribe = (l: () => void) => {
   return () => listeners.delete(l)
 }
 
-/** Выбранный город справочника СТО; не выбран — undefined (подсказок нет). */
+/** Выбранный город справочника СТО и АЗС; не выбран — undefined (подсказок нет). */
 export function useDirectoryCity(): DirectoryCityId | undefined {
   return useSyncExternalStore(subscribe, () => readCity() ?? memory)
 }

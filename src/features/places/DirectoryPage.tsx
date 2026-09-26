@@ -1,4 +1,12 @@
-import { IconMapPin, IconMapSearch, IconPhone, IconPlus, IconTool, IconWheel } from '@tabler/icons-react'
+import {
+  IconGasStation,
+  IconMapPin,
+  IconMapSearch,
+  IconPhone,
+  IconPlus,
+  IconTool,
+  IconWheel,
+} from '@tabler/icons-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { usePlaces } from '../../db/hooks'
@@ -34,17 +42,24 @@ const KIND_OPTIONS: { value: KindFilter; label: string }[] = [
   { value: 'all', label: 'Все' },
   { value: 'service', label: 'СТО' },
   { value: 'tire', label: 'Шины' },
+  { value: 'fuel', label: 'АЗС' },
 ]
+
+const KIND_ICON: Record<DirectoryKind, typeof IconTool> = {
+  service: IconTool,
+  tire: IconWheel,
+  fuel: IconGasStation,
+}
 
 /** Строк в списке — не больше: дальше находится поиском. */
 const LIMIT = 50
 const PLACE_FORMS: [string, string, string] = ['место', 'места', 'мест']
 
-/** `/places/directory` — СТО и шиномонтажи города из Яндекс Карт: поиск, звонок, карта, «Добавить в мои места». */
+/** `/places/directory` — СТО, шиномонтажи и АЗС города из Яндекс Карт: поиск, звонок, карта, «Добавить в мои места». */
 export default function DirectoryPage() {
   const city = useDirectoryCity()
   return (
-    <Page title="Справочник СТО" back="/places">
+    <Page title="Справочник СТО и АЗС" back="/places">
       <DirectoryCityField />
       {city ? (
         <CityDirectory key={city} city={city} />
@@ -52,7 +67,7 @@ export default function DirectoryPage() {
         <EmptyState
           icon={<IconMapSearch />}
           title="Выберите город"
-          text="Покажем автосервисы и шиномонтажи с адресами и телефонами, а при вводе места в записи — подскажем их."
+          text="Покажем автосервисы, шиномонтажи и заправки с адресами и телефонами, а при вводе места в записи — подскажем их."
         />
       )}
     </Page>
@@ -87,7 +102,7 @@ function CityDirectory({ city }: { city: DirectoryCityId }) {
           {shown.map((e) => (
             <ListItem
               key={e.id}
-              leading={<Icon icon={e.kind === 'tire' ? IconWheel : IconTool} tone="accent" circle />}
+              leading={<Icon icon={KIND_ICON[e.kind]} tone="accent" circle />}
               title={e.name}
               subtitle={e.address || e.phones[0]}
               value={isKnownPlace(e, places) ? 'В моих' : undefined}

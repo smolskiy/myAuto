@@ -64,7 +64,7 @@ function UpdateItem() {
   )
 }
 
-/** Настройки: тема, город справочника СТО, ссылки на синхронизацию и выгрузки, версия приложения и обновление. */
+/** Настройки: тема, город справочника СТО и АЗС, ссылки на синхронизацию и выгрузки, версия приложения и обновление. */
 export default function SettingsPage() {
   const navigate = useNavigate()
   const { preference, setPreference } = useTheme()
@@ -80,8 +80,8 @@ export default function SettingsPage() {
       </section>
 
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Справочник СТО</h2>
-        <DirectoryCityField hint="Подсказываем автосервисы и шиномонтажи этого города при вводе места" />
+        <h2 className={styles.sectionTitle}>Справочник СТО и АЗС</h2>
+        <DirectoryCityField hint="Подсказываем автосервисы, шиномонтажи и заправки этого города при вводе места" />
       </section>
 
       <ListGroup title="Данные">

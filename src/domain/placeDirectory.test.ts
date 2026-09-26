@@ -25,6 +25,7 @@ const FILE: DirectoryFile = {
     ],
     ['Ёлка-Сервис', 'Ёлочная ул., 1', '', 's', '42', ''],
     ['Автосервис', '', '+7 (900) 000-00-00', 's', '43', 'avtoservis'],
+    ['Роснефть', 'Привокзальная площадь, 3', '8 (800) 775-75-88', 'f', '1023684618', 'rosneft'],
   ],
 }
 
@@ -68,12 +69,13 @@ describe('searchDirectory', () => {
   })
 
   test('пустой запрос — всё в порядке файла; `limit` обрезает', () => {
-    expect(searchDirectory(places, '  ')).toHaveLength(4)
+    expect(searchDirectory(places, '  ')).toHaveLength(5)
     expect(searchDirectory(places, '', 2).map((p) => p.name)).toEqual(['ПихтинАвто', 'Шинный Дом'])
   })
 
-  test('вид: только шины', () => {
+  test('вид: только шины, только АЗС', () => {
     expect(searchDirectory(places, '', undefined, 'tire').map((p) => p.name)).toEqual(['Шинный Дом'])
+    expect(searchDirectory(places, '', undefined, 'fuel').map((p) => p.name)).toEqual(['Роснефть'])
   })
 })
 

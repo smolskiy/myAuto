@@ -1,5 +1,5 @@
 /**
- * Справочник СТО по городам: автосервисы и шиномонтажи с адресами и телефонами из Яндекс Карт. Только подсказки —
+ * Справочник СТО и АЗС по городам: автосервисы, шиномонтажи и заправки с адресами и телефонами из Яндекс Карт. Только подсказки —
  * выбранное становится своим местом. Данные — `directory/<город>.json` (грузятся по требованию, `tools/place-directory.py`).
  */
 import type { Place, PlaceKind } from './types'
@@ -17,10 +17,10 @@ export const directoryCityName = (id: DirectoryCityId): string =>
   DIRECTORY_CITIES.find((c) => c.id === id)?.name ?? id
 
 /**
- * Строка файла: название, адрес (без города), телефоны через «; », вид ('s' — СТО, 't' — шины), id организации на
+ * Строка файла: название, адрес (без города), телефоны через «; », вид ('s' — СТО, 't' — шины, 'f' — АЗС), id организации на
  * Яндекс Картах, её seoname (для ссылки). Популярные (по числу оценок) — первыми.
  */
-export type DirectoryRow = [string, string, string, 's' | 't', string, string]
+export type DirectoryRow = [string, string, string, 's' | 't' | 'f', string, string]
 
 export interface DirectoryFile {
   city: string
@@ -30,7 +30,7 @@ export interface DirectoryFile {
   places: DirectoryRow[]
 }
 
-export type DirectoryKind = 'service' | 'tire'
+export type DirectoryKind = 'service' | 'tire' | 'fuel'
 
 export interface DirectoryPlace {
   /** id организации на Яндекс Картах. */
@@ -44,13 +44,15 @@ export interface DirectoryPlace {
   url: string
 }
 
+const KINDS: Record<DirectoryRow[3], DirectoryKind> = { s: 'service', t: 'tire', f: 'fuel' }
+
 export function parseDirectory(file: DirectoryFile): DirectoryPlace[] {
   return file.places.map(([name, address, phones, kind, id, seo]) => ({
     id,
     name,
     address,
     phones: phones ? phones.split('; ') : [],
-    kind: kind === 't' ? 'tire' : 'service',
+    kind: KINDS[kind],
     url: `https://yandex.ru/maps/org/${seo || 'org'}/${id}/`,
   }))
 }

@@ -76,16 +76,16 @@ export default function PlacesPage() {
   )
 }
 
-/** Вход в справочник СТО: город выбран — его название, нет — приглашение выбрать. */
+/** Вход в справочник СТО и АЗС: город выбран — его название, нет — приглашение выбрать. */
 function DirectoryEntry({ onOpen }: { onOpen(): void }) {
   const city = useDirectoryCity()
   return (
     <ListGroup>
       <ListItem
         leading={<Icon icon={IconMapSearch} tone="accent" circle />}
-        title="Справочник СТО"
+        title="Справочник СТО и АЗС"
         subtitle={
-          city ? `${directoryCityName(city)} · Яндекс Карты` : 'Выберите город — подскажем СТО и шиномонтажи'
+          city ? `${directoryCityName(city)} · Яндекс Карты` : 'Выберите город — подскажем СТО и заправки'
         }
         chevron
         onClick={onOpen}

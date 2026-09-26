@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test'
 import { onboard, startRecord } from './helpers'
 
-test('справочник СТО: город, поиск, звонок и карта, «Добавить в мои места»', async ({ page }) => {
+test('справочник СТО и АЗС: город, поиск, звонок и карта, «Добавить в мои места»', async ({ page }) => {
   await onboard(page)
   await page.goto('./#/places')
-  await page.getByRole('button', { name: /Справочник СТО/ }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Справочник СТО' })).toBeVisible()
+  await page.getByRole('button', { name: /Справочник СТО и АЗС/ }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Справочник СТО и АЗС' })).toBeVisible()
   await expect(page.getByText('Выберите город')).toBeVisible()
 
   await page.getByRole('combobox', { name: 'Город' }).selectOption('Ростов-на-Дону')
@@ -39,4 +39,22 @@ test('город выбран в настройках — поле «Место�
   await page.getByRole('button', { name: 'Сохранить' }).click()
   await expect(page).toHaveURL(/#\/record\/[^/]+$/)
   await expect(page.getByText('Автолидер')).toBeVisible()
+})
+
+test('заправка: сеть из подсказок без города, АЗС города — с адресом', async ({ page }) => {
+  await onboard(page)
+  await startRecord(page, 'Заправка')
+  const station = page.getByLabel('АЗС', { exact: true })
+  await station.fill('атан')
+  await expect(page.getByRole('option', { name: /АТАН.*Сеть АЗС · Крым/ })).toBeVisible()
+  await page.getByRole('option', { name: /АТАН/ }).click()
+  await expect(station).toHaveValue('АТАН')
+
+  await page.goto('./#/settings')
+  await page.getByRole('combobox', { name: 'Город' }).selectOption('Ростов-на-Дону')
+  await page.goto('./')
+  await startRecord(page, 'Заправка')
+  await page.getByLabel('АЗС', { exact: true }).fill('роснефть привокзальная')
+  await page.getByRole('option', { name: /Роснефть, Привокзальная площадь, 3/ }).click()
+  await expect(page.getByLabel('АЗС', { exact: true })).toHaveValue('Роснефть')
 })

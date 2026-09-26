@@ -26,7 +26,7 @@ describe.each(DIRECTORY_CITIES)('справочник СТО: $name', ({ id, nam
       const [title, address, phones, kind, orgId] = row
       expect(title.trim()).toBe(title)
       expect(title).not.toBe('')
-      expect(['s', 't']).toContain(kind)
+      expect(['s', 't', 'f']).toContain(kind)
       expect(orgId).toMatch(/^\d+$/)
       // Город в адресе не повторяется — он в шапке файла.
       expect(address).not.toContain(name)
@@ -34,10 +34,11 @@ describe.each(DIRECTORY_CITIES)('справочник СТО: $name', ({ id, nam
     }
   })
 
-  test('организация — один раз; есть и СТО, и шины', () => {
+  test('организация — один раз; есть СТО, шины и АЗС', () => {
     const places = parseDirectory(file)
     expect(new Set(places.map((p) => p.id)).size).toBe(places.length)
     expect(places.some((p) => p.kind === 'service')).toBe(true)
     expect(places.some((p) => p.kind === 'tire')).toBe(true)
+    expect(places.some((p) => p.kind === 'fuel')).toBe(true)
   })
 })

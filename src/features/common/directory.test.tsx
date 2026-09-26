@@ -137,7 +137,7 @@ describe('PlacePicker и справочник СТО', () => {
     expect(options.at(-1)).toHaveTextContent('Создать «пихтин нансена»')
   })
 
-  test('без города, для АЗС и в фильтре журнала справочника нет', async () => {
+  test('без города, чужого вида (СТО в поле АЗС) и в фильтре журнала справочника нет', async () => {
     const { unmount } = inApp(<PlaceHarness />)
     await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'пихтин')
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Создать «пихтин»'])
@@ -152,5 +152,51 @@ describe('PlacePicker и справочник СТО', () => {
     inApp(<PlaceHarness allowCreate={false} />)
     await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'пихтин')
     expect(screen.queryAllByRole('option')).toHaveLength(0)
+  })
+
+  test('в поле ТО заправок из справочника нет', async () => {
+    act(() => setDirectoryCity('rostov'))
+    inApp(<PlaceHarness />)
+    await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'роснефть привокзальная')
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Создать «роснефть привокзальная»',
+    ])
+  })
+})
+
+describe('PlacePicker и АЗС', () => {
+  test('сети юга и Крыма подсказываются и без города; выбор заводит АЗС с именем сети', async () => {
+    const onChange = vi.fn()
+    inApp(<PlaceHarness kinds={['fuel']} onChange={onChange} />)
+    await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'лук')
+    const brand = await screen.findByRole('option', { name: /^Лукойл/ })
+    expect(brand).toHaveTextContent('Сеть АЗС · юг России')
+    await userEvent.click(brand)
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expect.any(String)))
+    expect(await repos.places.get(onChange.mock.lastCall![0] as ID)).toMatchObject({
+      kind: 'fuel',
+      name: 'Лукойл',
+    })
+  })
+
+  test('сеть, которая уже есть среди своих АЗС, второй раз не предлагается', async () => {
+    await repos.places.create({ kind: 'fuel', name: 'АТАН' })
+    inApp(<PlaceHarness kinds={['fuel']} />)
+    await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'атан')
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['АТАН'])
+  })
+
+  test('город выбран — заправки города с адресом; выбор заводит АЗС с адресом', async () => {
+    act(() => setDirectoryCity('rostov'))
+    const onChange = vi.fn()
+    inApp(<PlaceHarness kinds={['fuel']} onChange={onChange} />)
+    await userEvent.type(screen.getByRole('combobox', { name: 'Место' }), 'роснефть привокзальная')
+    await userEvent.click(await screen.findByRole('option', { name: /Роснефть, Привокзальная площадь, 3/ }))
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expect.any(String)))
+    expect(await repos.places.get(onChange.mock.lastCall![0] as ID)).toMatchObject({
+      kind: 'fuel',
+      name: 'Роснефть',
+      address: 'Привокзальная площадь, 3',
+    })
   })
 })
