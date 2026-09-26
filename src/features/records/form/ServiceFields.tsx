@@ -1,5 +1,5 @@
-import { IconCopy } from '@tabler/icons-react'
-import { useMemo, useRef, useState } from 'react'
+import { IconCopy, IconListDetails } from '@tabler/icons-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLastPart, useTireSets } from '../../../db/hooks'
 import { lineTotal } from '../../../domain/calc/lines'
 import { formatDate, formatMoney } from '../../../domain/format'
@@ -33,6 +33,7 @@ import {
   titleOptions,
   type PartDraft,
 } from './serviceLines'
+import { hasServiceDetails } from './serviceDetails'
 import { linesTotal } from './serviceTotals'
 import { serviceTotal } from './useRecordForm'
 
@@ -47,6 +48,10 @@ const tireSetLabel = (s: TireSet) =>
   [TIRE_SEASON_LABELS[s.season], s.brand, s.model].filter(Boolean).join(' ') + (s.size ? `, ${s.size}` : '')
 
 const normalize = (s: string) => s.trim().toLowerCase().replaceAll('ё', 'е')
+
+/** Первое поле раскрытых подробностей — сюда уходит фокус с исчезнувшей кнопки. */
+const FIRST_CONTROL =
+  'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])'
 
 /** Открытая шторка строки; `seq` растёт с каждым открытием — ключ шторки, чтобы черновик брался из строки заново. */
 type Sheet<T> = { line: T; isNew: boolean; open: boolean; seq: number } | null
@@ -80,7 +85,10 @@ function PartRow({
   )
 }
 
-/** ТО и ремонт: название, тип, место и мастер, строки работ и запчастей, итог, шины, гарантия. */
+/**
+ * ТО и ремонт. Коротко: название, тип, стоимость, дата, пробег, место (и комплекты шин у переобувки). По «Расписать
+ * работы и запчасти» — «Делал сам», мастер, строки работ и запчастей, гарантия.
+ */
 export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { suggestDate: boolean }) {
   const { values, errors, set, update } = form
   const lookup = useLookup()
@@ -92,6 +100,26 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
     setWorkSheet({ line, isNew, open: true, seq: ++openSeq.current })
   const openPart = (line: PartDraft, isNew: boolean) =>
     setPartSheet({ line, isNew, open: true, seq: ++openSeq.current })
+
+  // ——— Подробности ———
+  // Правка и копия с подробностями открываются сразу с ними. Сами не прячутся: удалили последнюю строку —
+  // раздел остаётся, где владелец его оставил.
+  const [detailed, setDetailed] = useState(() => hasServiceDetails(values))
+  const detailsRef = useRef<HTMLDivElement>(null)
+  // Счётчик раскрытий («Расписать…» или «Повторить»): нажатая кнопка исчезает — фокус переходит в подробности,
+  // а не падает на body; ненулевой — поля раздела проявляются.
+  const [revealed, setRevealed] = useState(0)
+  useEffect(() => {
+    if (!revealed) return
+    const first = detailsRef.current?.querySelector<HTMLElement>(FIRST_CONTROL)
+    // Раздел — к середине экрана: у нижнего края, над «Сохранить», из него виден только краешек.
+    first?.focus({ preventScroll: true })
+    first?.scrollIntoView?.({ block: 'center' })
+  }, [revealed])
+  const showDetails = () => {
+    setDetailed(true)
+    setRevealed((n) => n + 1)
+  }
 
   // ——— Название: «ТО-N» и прошлые ———
   const titles = useMemo(() => titleOptions(ctx.records, ctx.editingId), [ctx.records, ctx.editingId])
@@ -126,6 +154,8 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
         ? { placeId: source.placeId, masterId: source.masterId, diy: source.diy }
         : {}),
     }))
+    // Скопированные строки видны сразу; кнопка «Повторить» исчезает — фокус уходит в подробности.
+    showDetails()
   }
 
   // ——— Строки ———
@@ -148,9 +178,15 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
   const worksSum = linesTotal(values.works, [])
   const partsSum = linesTotal([], values.parts)
 
-  // ——— Итог ———
+  // ——— Стоимость ———
   const byLines = linesTotal(values.works, values.parts)
   const total = values.totalManual ? values.total : serviceTotal(values) || undefined
+  // Без строк сверять не с чем: ни подсказки, ни «Считать по строкам».
+  const totalHint = empty
+    ? undefined
+    : values.totalManual
+      ? `По работам и запчастям: ${formatMoney(byLines)}`
+      : 'Сумма работ и запчастей; можно ввести вручную'
 
   return (
     <>
@@ -173,89 +209,20 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
         options={TYPE_OPTIONS}
         onChange={(serviceType) => set({ serviceType })}
       />
-      <RecordDateField form={form} ctx={ctx} suggest={suggestDate} />
-      <RecordOdometerField form={form} ctx={ctx} />
-      <PlacePicker label="Место" kinds={[...placeKinds]} value={values.placeId} onChange={changePlace} />
-      <ListGroup>
-        <Switch
-          label="Делал сам"
-          checked={values.diy}
-          onChange={(diy) => set(diy ? { diy, masterId: undefined } : { diy })}
-        />
-      </ListGroup>
-      {!values.diy && (
-        <MasterPicker placeId={values.placeId} value={values.masterId} onChange={changeMaster} />
-      )}
-
-      {source && (
-        <div className={styles.stack}>
-          <Button variant="secondary" block icon={<IconCopy />} onClick={repeat}>
-            Повторить прошлое ТО
-          </Button>
-          <p className={styles.caption}>
-            {`Строки из «${source.title || SERVICE_TYPE_LABELS[source.serviceType]}», ${formatDate(source.date)}`}
-          </p>
-        </div>
-      )}
-
-      <RepeatableList
-        title="Работы"
-        addLabel="Добавить работу"
-        onAdd={() => openWork(blankWork(), true)}
-        total={worksSum ? formatMoney(worksSum) : undefined}
-      >
-        {values.works.map((w) => (
-          <LineItemRow
-            key={w.id}
-            title={w.name}
-            meta={w.masterId ? lookup?.masters.get(w.masterId)?.name : undefined}
-            amount={w.price !== undefined ? formatMoney(w.price) : undefined}
-            onEdit={() => openWork(w, false)}
-            onRemove={() => update((v) => ({ works: v.works.filter((x) => x.id !== w.id) }))}
-          />
-        ))}
-      </RepeatableList>
-
-      <RepeatableList
-        title="Запчасти"
-        addLabel="Добавить запчасть"
-        onAdd={() => openPart(blankPart(values.diy), true)}
-        total={partsSum ? formatMoney(partsSum) : undefined}
-      >
-        {values.parts.map((p) => (
-          <PartRow
-            key={p.id}
-            line={p}
-            vehicleId={values.vehicleId}
-            onEdit={() => openPart(p, false)}
-            onRemove={() => update((v) => ({ parts: v.parts.filter((x) => x.id !== p.id) }))}
-            onApply={(last) =>
-              update((v) => ({
-                parts: v.parts.map((x) => (x.id === p.id ? { ...applyLastPart(x, last), qty: last.qty } : x)),
-              }))
-            }
-          />
-        ))}
-      </RepeatableList>
-
       <div
         className={styles.stack}
         onBlur={() => {
-          // Ручной итог стёрли и ушли с поля — снова считаем по строкам (а не сохраняем 0).
+          // Ручную стоимость стёрли и ушли с поля — снова считаем по строкам (а не сохраняем 0).
           if (values.totalManual && values.total === undefined) set({ totalManual: false })
         }}
       >
         <MoneyField
-          label="Итого"
+          label="Стоимость"
           value={total}
           onChange={(k) => set({ total: k, totalManual: true })}
-          hint={
-            values.totalManual
-              ? `Итог по строкам: ${formatMoney(byLines)}`
-              : 'Сумма строк; можно ввести вручную'
-          }
+          hint={totalHint}
         />
-        {values.totalManual && (
+        {values.totalManual && !empty && (
           <div>
             <Button
               variant="secondary"
@@ -267,6 +234,9 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
           </div>
         )}
       </div>
+      <RecordDateField form={form} ctx={ctx} suggest={suggestDate} />
+      <RecordOdometerField form={form} ctx={ctx} />
+      <PlacePicker label="Место" kinds={[...placeKinds]} value={values.placeId} onChange={changePlace} />
 
       {values.serviceType === 'tires' && (
         <>
@@ -286,22 +256,94 @@ export function ServiceFields({ form, ctx, suggestDate }: FieldsProps & { sugges
         </>
       )}
 
-      <div className={styles.pair}>
-        <DateField
-          label="Гарантия до"
-          value={values.warrantyUntilDate}
-          onChange={(warrantyUntilDate) => set({ warrantyUntilDate })}
-          today={ctx.today}
-        />
-        <NumberField
-          label="Гарантия до пробега"
-          value={values.warrantyUntilKm}
-          onChange={(warrantyUntilKm) => set({ warrantyUntilKm })}
-          unit="км"
-          decimals={0}
-          min={0}
-        />
-      </div>
+      {source && (
+        <div className={styles.stack}>
+          <Button variant="secondary" block icon={<IconCopy />} onClick={repeat}>
+            Повторить прошлое ТО
+          </Button>
+          <p className={styles.caption}>
+            {`Строки из «${source.title || SERVICE_TYPE_LABELS[source.serviceType]}», ${formatDate(source.date)}`}
+          </p>
+        </div>
+      )}
+
+      {detailed ? (
+        <div ref={detailsRef} className={revealed ? `${styles.details} ${styles.revealed}` : styles.details}>
+          <ListGroup>
+            <Switch
+              label="Делал сам"
+              checked={values.diy}
+              onChange={(diy) => set(diy ? { diy, masterId: undefined } : { diy })}
+            />
+          </ListGroup>
+          {!values.diy && (
+            <MasterPicker placeId={values.placeId} value={values.masterId} onChange={changeMaster} />
+          )}
+
+          <RepeatableList
+            title="Работы"
+            addLabel="Добавить работу"
+            onAdd={() => openWork(blankWork(), true)}
+            total={worksSum ? formatMoney(worksSum) : undefined}
+          >
+            {values.works.map((w) => (
+              <LineItemRow
+                key={w.id}
+                title={w.name}
+                meta={w.masterId ? lookup?.masters.get(w.masterId)?.name : undefined}
+                amount={w.price !== undefined ? formatMoney(w.price) : undefined}
+                onEdit={() => openWork(w, false)}
+                onRemove={() => update((v) => ({ works: v.works.filter((x) => x.id !== w.id) }))}
+              />
+            ))}
+          </RepeatableList>
+
+          <RepeatableList
+            title="Запчасти"
+            addLabel="Добавить запчасть"
+            onAdd={() => openPart(blankPart(values.diy), true)}
+            total={partsSum ? formatMoney(partsSum) : undefined}
+          >
+            {values.parts.map((p) => (
+              <PartRow
+                key={p.id}
+                line={p}
+                vehicleId={values.vehicleId}
+                onEdit={() => openPart(p, false)}
+                onRemove={() => update((v) => ({ parts: v.parts.filter((x) => x.id !== p.id) }))}
+                onApply={(last) =>
+                  update((v) => ({
+                    parts: v.parts.map((x) =>
+                      x.id === p.id ? { ...applyLastPart(x, last), qty: last.qty } : x,
+                    ),
+                  }))
+                }
+              />
+            ))}
+          </RepeatableList>
+
+          <div className={styles.pair}>
+            <DateField
+              label="Гарантия до"
+              value={values.warrantyUntilDate}
+              onChange={(warrantyUntilDate) => set({ warrantyUntilDate })}
+              today={ctx.today}
+            />
+            <NumberField
+              label="Гарантия до пробега"
+              value={values.warrantyUntilKm}
+              onChange={(warrantyUntilKm) => set({ warrantyUntilKm })}
+              unit="км"
+              decimals={0}
+              min={0}
+            />
+          </div>
+        </div>
+      ) : (
+        <Button variant="secondary" block icon={<IconListDetails />} onClick={showDetails}>
+          Расписать работы и запчасти
+        </Button>
+      )}
 
       {workSheet && (
         <WorkSheet

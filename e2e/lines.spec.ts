@@ -7,6 +7,7 @@ test('строки ТО: узел из расширенного каталога
   await onboard(page)
   await startRecord(page, 'ТО и ремонт')
   await page.getByLabel('Название', { exact: true }).fill('Подвеска')
+  await page.getByRole('button', { name: 'Расписать работы и запчасти' }).click()
 
   // «рычаг перед лев» находит «Рычаг передний нижний левый».
   await page.getByRole('button', { name: 'Добавить запчасть' }).click()

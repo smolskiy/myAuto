@@ -27,6 +27,22 @@
   }
 }
 
+/* Подробности ТО (мастер, строки, гарантия) — в общей колонке формы, с тем же шагом между полями. */
+.details {
+  display: contents;
+}
+
+/* Раскрыли кнопкой — новые поля проявляются: видно, что добавилось. */
+.revealed > * {
+  animation: details-in var(--dur-base) var(--ease-out);
+}
+
+@keyframes details-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Тело шторки строки: поля с тем же шагом, что на экране формы. */
 .sheetBody {
   display: flex;

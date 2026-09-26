@@ -45,6 +45,9 @@ test('ТО с тремя запчастями: итог, карточка зап
   await page.getByRole('option', { name: 'Создать «Автосервис»' }).click()
   await expect(place).toHaveValue('Автосервис')
 
+  // Форма короткая: строки — по «Расписать работы и запчасти».
+  await expect(page.getByRole('button', { name: 'Добавить запчасть' })).toBeHidden()
+  await page.getByRole('button', { name: 'Расписать работы и запчасти' }).click()
   await addPart(page, {
     item: 'Моторное масло',
     brand: 'Motul',
@@ -64,7 +67,7 @@ test('ТО с тремя запчастями: итог, карточка зап
   const parts = page.getByRole('region', { name: 'Запчасти' })
   await expect(parts.getByRole('listitem')).toHaveCount(3)
   await expect(parts.getByText(nb('5 450 ₽'), { exact: true })).toBeVisible()
-  await expect(page.getByLabel('Итого', { exact: true })).toHaveValue(nb('5 450'))
+  await expect(page.getByLabel('Стоимость', { exact: true })).toHaveValue(nb('5 450'))
 
   await page.getByRole('button', { name: 'Сохранить' }).click()
 
@@ -88,6 +91,7 @@ test('ТО с тремя запчастями: итог, карточка зап
 
   // Вторая запись ТО: у масляного фильтра — подсказка из прошлой записи, одно касание заполняет строку.
   await startRecord(page, 'ТО и ремонт')
+  await page.getByRole('button', { name: 'Расписать работы и запчасти' }).click()
   await page.getByRole('button', { name: 'Добавить запчасть' }).click()
   const sheet = page.getByRole('dialog', { name: 'Запчасть' })
   await pickOption(sheet.getByLabel('Узел', { exact: true }), 'Масляный', 'Масляный фильтр')

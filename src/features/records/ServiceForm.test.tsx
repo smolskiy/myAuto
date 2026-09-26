@@ -65,6 +65,14 @@ async function typeTitle(title: string) {
   await userEvent.type(await screen.findByRole('combobox', { name: 'Название' }), title)
 }
 
+const DETAILS = 'Расписать работы и запчасти'
+const LINES_HINT = 'Сумма работ и запчастей; можно ввести вручную'
+
+/** Короткая форма ТО → подробная: «Делал сам», мастер, работы, запчасти, гарантия. */
+async function showDetails() {
+  await userEvent.click(await screen.findByRole('button', { name: DETAILS }))
+}
+
 async function addWork(name: string, price: string) {
   await userEvent.click(screen.getByRole('button', { name: 'Добавить работу' }))
   const sheet = await screen.findByRole('dialog', { name: 'Работа' })
@@ -103,10 +111,115 @@ describe('linesTotal', () => {
   })
 })
 
+describe('короткая форма ТО', () => {
+  test('новое ТО — название, тип и стоимость; строки, мастер и гарантия — по «Расписать работы и запчасти»', async () => {
+    renderAt('/record/new/service')
+    const details = await screen.findByRole('button', { name: DETAILS })
+    const fields = ['Название', 'Тип работ', 'Стоимость', 'Дата', 'Пробег', 'Место'].map((label) =>
+      screen.getByLabelText(label),
+    )
+    // Порядок в форме — как в списке: каждое поле после предыдущего.
+    for (let i = 1; i < fields.length; i++) {
+      const after = fields[i - 1]!.compareDocumentPosition(fields[i]!)
+      expect(after & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+    expect(screen.getByLabelText('Стоимость')).not.toHaveAccessibleDescription()
+    expect(screen.queryByRole('button', { name: 'Добавить работу' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Добавить запчасть' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Делал сам' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Мастер' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Гарантия до')).not.toBeInTheDocument()
+
+    await userEvent.click(details)
+    expect(screen.getByRole('button', { name: 'Добавить работу' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Добавить запчасть' })).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Делал сам' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Мастер' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Гарантия до')).toBeInTheDocument()
+    expect(screen.getByLabelText('Гарантия до пробега')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: DETAILS })).not.toBeInTheDocument()
+  })
+
+  test('название, тип и цена — запись со стоимостью и без строк', async () => {
+    const router = renderAt('/record/new/service')
+    await typeTitle('Замена ремня ГРМ')
+    await userEvent.selectOptions(screen.getByLabelText('Тип работ'), 'repair')
+    await userEvent.type(screen.getByLabelText('Стоимость'), '18500')
+    // Строк нет — нечего и сверять: без подсказки и без «Считать по строкам».
+    expect(screen.getByLabelText('Стоимость')).not.toHaveAccessibleDescription()
+    expect(screen.queryByRole('button', { name: 'Считать по строкам' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\/[0-9a-f-]{36}$/))
+    const [r] = await savedServices()
+    expect(r).toMatchObject({
+      title: 'Замена ремня ГРМ',
+      serviceType: 'repair',
+      total: 1850000,
+      works: [],
+      parts: [],
+      diy: false,
+    })
+    expect(r!.masterId).toBeUndefined()
+  })
+
+  test('после «Расписать работы и запчасти» фокус — на первом поле подробностей', async () => {
+    renderAt('/record/new/service')
+    ;(await screen.findByRole('button', { name: DETAILS })).focus()
+    await userEvent.keyboard('{Enter}')
+    expect(screen.getByRole('switch', { name: 'Делал сам' })).toHaveFocus()
+  })
+
+  test('правка ТО без подробностей — короткая форма со стоимостью', async () => {
+    const rec = await pastService({ total: 1200000 })
+    renderAt(`/record/${rec.id}/edit`)
+    expect(await screen.findByRole('button', { name: DETAILS })).toBeInTheDocument()
+    expect(screen.getByLabelText('Стоимость')).toHaveValue('12\u00a0000')
+    expect(screen.queryByRole('region', { name: 'Работы' })).not.toBeInTheDocument()
+  })
+
+  test('правка ТО со строками — строки видны сразу; удаление последней строки подробности не прячет', async () => {
+    const rec = await pastService({ works: [work('Замена масла', 150000)], total: 150000 })
+    renderAt(`/record/${rec.id}/edit`)
+    const works = await screen.findByRole('region', { name: 'Работы' })
+    expect(within(works).getByText('Замена масла')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: DETAILS })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Стоимость')).toHaveAccessibleDescription(LINES_HINT)
+
+    await userEvent.click(within(works).getByRole('button', { name: 'Удалить «Замена масла»' }))
+    expect(within(works).queryByText('Замена масла')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Добавить работу' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: DETAILS })).not.toBeInTheDocument()
+  })
+
+  test('«Повторить прошлое ТО» раскрывает скопированные строки', async () => {
+    await pastService({
+      works: [work('Замена масла', 150000)],
+      parts: [part({ name: 'Масло 5W-30', unitPrice: 90000 })],
+    })
+    renderAt('/record/new/service')
+    await typeTitle('ТО-2')
+    expect(screen.queryByRole('region', { name: 'Работы' })).not.toBeInTheDocument()
+    const repeat = screen.getByRole('button', { name: 'Повторить прошлое ТО' })
+    repeat.focus()
+    await userEvent.keyboard('{Enter}')
+    const works = screen.getByRole('region', { name: 'Работы' })
+    expect(within(works).getByText('Замена масла')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: 'Запчасти' })).getByText('Масло 5W-30'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Стоимость')).toHaveValue('2\u00a0400')
+    expect(screen.queryByRole('button', { name: DETAILS })).not.toBeInTheDocument()
+    // Кнопка исчезла — фокус остаётся в форме, а не падает на body.
+    expect(document.body).not.toHaveFocus()
+  })
+})
+
 test('ТО с двумя запчастями и работой: итог — сумма строк, строки сохраняются', async () => {
   const router = renderAt('/record/new/service')
   await typeTitle('ТО-7')
+  await showDetails()
   await addWork('Замена масла', '1500')
+  expect(screen.getByLabelText('Стоимость')).toHaveAccessibleDescription(LINES_HINT)
 
   let sheet = await openPart()
   await pickNode(sheet, 'Масляный', 'Масляный фильтр')
@@ -124,7 +237,7 @@ test('ТО с двумя запчастями и работой: итог — с
   await userEvent.type(within(sheet).getByLabelText('Цена за л'), '900')
   await closeSheet(sheet)
 
-  expect(screen.getByLabelText('Итого')).toHaveValue('5\u00a0750')
+  expect(screen.getByLabelText('Стоимость')).toHaveValue('5\u00a0750')
   await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
   await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\/[0-9a-f-]{36}$/))
 
@@ -165,6 +278,7 @@ test('подсказка на строке, потом повторное отк
   })
   const router = renderAt('/record/new/service')
   await typeTitle('ТО-2')
+  await showDetails()
   let sheet = await openPart()
   await pickNode(sheet, 'Масляный', 'Масляный фильтр')
   await closeSheet(sheet)
@@ -200,7 +314,7 @@ test('подсказка «в прошлый раз» для узла с ист�
     ],
   })
   renderAt('/record/new/service')
-  await screen.findByRole('combobox', { name: 'Название' })
+  await showDetails()
   const sheet = await openPart()
   await pickNode(sheet, 'Масляный', 'Масляный фильтр')
   await userEvent.click(
@@ -211,21 +325,22 @@ test('подсказка «в прошлый раз» для узла с ист�
   expect(within(sheet).getByLabelText('Цена за шт')).toHaveValue('650')
 })
 
-test('ручной итог не пересчитывается, «Считать по строкам» возвращает авторасчёт', async () => {
+test('ручная стоимость не пересчитывается, «Считать по строкам» возвращает авторасчёт', async () => {
   const router = renderAt('/record/new/service')
   await typeTitle('Ремонт подвески')
+  await showDetails()
   await addWork('Стойки стабилизатора', '1500')
-  expect(screen.getByLabelText('Итого')).toHaveValue('1\u00a0500')
+  expect(screen.getByLabelText('Стоимость')).toHaveValue('1\u00a0500')
 
-  await userEvent.clear(screen.getByLabelText('Итого'))
-  await userEvent.type(screen.getByLabelText('Итого'), '2000')
-  expect(await screen.findByText('Итог по строкам: 1 500 ₽')).toBeInTheDocument()
+  await userEvent.clear(screen.getByLabelText('Стоимость'))
+  await userEvent.type(screen.getByLabelText('Стоимость'), '2000')
+  expect(await screen.findByText('По работам и запчастям: 1 500 ₽')).toBeInTheDocument()
 
   await addWork('Развал-схождение', '700')
-  expect(screen.getByLabelText('Итого')).toHaveValue('2\u00a0000')
+  expect(screen.getByLabelText('Стоимость')).toHaveValue('2\u00a0000')
 
   await userEvent.click(screen.getByRole('button', { name: 'Считать по строкам' }))
-  expect(screen.getByLabelText('Итого')).toHaveValue('2\u00a0200')
+  expect(screen.getByLabelText('Стоимость')).toHaveValue('2\u00a0200')
   expect(screen.queryByRole('button', { name: 'Считать по строкам' })).not.toBeInTheDocument()
 
   await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
@@ -233,26 +348,27 @@ test('ручной итог не пересчитывается, «Считат�
   expect((await savedServices())[0]?.total).toBe(220000)
 })
 
-test('стёртый «Итого» возвращает авторасчёт (а не 0)', async () => {
+test('стёртая «Стоимость» возвращает авторасчёт (а не 0)', async () => {
   const router = renderAt('/record/new/service')
   await typeTitle('Ремонт подвески')
+  await showDetails()
   await addWork('Стойки стабилизатора', '1500')
-  await userEvent.clear(screen.getByLabelText('Итого'))
-  await userEvent.type(screen.getByLabelText('Итого'), '2000')
+  await userEvent.clear(screen.getByLabelText('Стоимость'))
+  await userEvent.type(screen.getByLabelText('Стоимость'), '2000')
   expect(screen.getByRole('button', { name: 'Считать по строкам' })).toBeInTheDocument()
-  await userEvent.clear(screen.getByLabelText('Итого'))
+  await userEvent.clear(screen.getByLabelText('Стоимость'))
   await userEvent.tab()
-  expect(screen.getByLabelText('Итого')).toHaveValue('1\u00a0500')
+  expect(screen.getByLabelText('Стоимость')).toHaveValue('1\u00a0500')
   expect(screen.queryByRole('button', { name: 'Считать по строкам' })).not.toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
   await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\//))
   expect((await savedServices())[0]?.total).toBe(150000)
 })
 
-test('ручной итог сохраняется как введён', async () => {
+test('ручная стоимость сохраняется как введена', async () => {
   const router = renderAt('/record/new/service')
   await typeTitle('Кузовной ремонт')
-  await userEvent.type(screen.getByLabelText('Итого'), '12000')
+  await userEvent.type(screen.getByLabelText('Стоимость'), '12000')
   await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
   await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/record\//))
   expect((await savedServices())[0]?.total).toBe(1200000)
@@ -346,6 +462,7 @@ test('смена места снимает мастера', async () => {
   await repos.masters.create({ name: 'Сергей', placeId: a.id })
   renderAt('/record/new/service')
   const place = await screen.findByRole('combobox', { name: 'Место' })
+  await showDetails()
   await userEvent.type(place, 'Ленина')
   await userEvent.click(await screen.findByRole('option', { name: 'Автосервис на Ленина' }))
   await userEvent.click(screen.getByRole('combobox', { name: 'Мастер' }))
@@ -360,6 +477,7 @@ test('смена места снимает мастера', async () => {
 
 test('«Делал сам» прячет мастера', async () => {
   renderAt('/record/new/service')
+  await showDetails()
   await screen.findByRole('combobox', { name: 'Мастер' })
   await userEvent.click(screen.getByRole('switch', { name: 'Делал сам' }))
   expect(screen.queryByRole('combobox', { name: 'Мастер' })).not.toBeInTheDocument()
@@ -522,6 +640,7 @@ describe('смена шин обновляет состояние комплек
 test('гарантия сохраняется датой и пробегом', async () => {
   const router = renderAt('/record/new/service')
   await typeTitle('Замена помпы')
+  await showDetails()
   await userEvent.type(screen.getByLabelText('Гарантия до'), '2027-09-25')
   await userEvent.type(screen.getByLabelText('Гарантия до пробега'), '180000')
   await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
@@ -536,6 +655,7 @@ describe('строка, узла которой нет в каталоге', () 
   test('набранное в «Узел» становится названием работы', async () => {
     renderAt('/record/new/service')
     await typeTitle('Ремонт подвески')
+    await showDetails()
     await userEvent.click(screen.getByRole('button', { name: 'Добавить работу' }))
     const sheet = await screen.findByRole('dialog', { name: 'Работа' })
     await userEvent.type(within(sheet).getByRole('combobox', { name: 'Узел' }), 'Рычаг кривой')
@@ -547,7 +667,7 @@ describe('строка, узла которой нет в каталоге', () 
 
   test('пустая строка по «Готово» не пропадает молча — шторка остаётся с подсказкой', async () => {
     renderAt('/record/new/service')
-    await screen.findByRole('combobox', { name: 'Название' })
+    await showDetails()
     const sheet = await openPart()
     await userEvent.click(within(sheet).getByRole('button', { name: 'Готово' }))
     expect(within(sheet).getByText('Выберите узел или впишите название')).toBeInTheDocument()
@@ -557,6 +677,7 @@ describe('строка, узла которой нет в каталоге', () 
   test('поиск в «Узел» и закрытие крестиком — новой строки нет, прежняя строка цела', async () => {
     renderAt('/record/new/service')
     await typeTitle('ТО')
+    await showDetails()
     await addWork('Замена масла', '1500')
     const works = screen.getByRole('region', { name: 'Работы' })
     await userEvent.click(within(works).getByRole('button', { name: /^Замена масла/ }))
@@ -578,6 +699,7 @@ describe('строка, узла которой нет в каталоге', () 
   test('точное название узла без выбора из списка — строка привязана к узлу', async () => {
     renderAt('/record/new/service')
     await typeTitle('ТО')
+    await showDetails()
     const sheet = await openPart()
     await userEvent.type(within(sheet).getByRole('combobox', { name: 'Узел' }), 'моторное масло')
     await closeSheet(sheet)
@@ -589,7 +711,7 @@ describe('строка, узла которой нет в каталоге', () 
 
   test('«Создать» в выборе узла заводит свой узел и выбирает его', async () => {
     renderAt('/record/new/service')
-    await screen.findByRole('combobox', { name: 'Название' })
+    await showDetails()
     const sheet = await openPart()
     await userEvent.type(within(sheet).getByRole('combobox', { name: 'Узел' }), 'Рычаг кривой')
     await userEvent.click(await within(sheet).findByRole('option', { name: 'Создать «Рычаг кривой»' }))

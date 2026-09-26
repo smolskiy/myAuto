@@ -119,7 +119,7 @@ export async function addFill(page: Page, fill: FillInput) {
   await expect(page).toHaveURL(/#\/record\/[^/]+$/)
 }
 
-/** «+» → «ТО и ремонт» с названием и новым местом, без строк; итог вводится вручную → карточка. */
+/** «+» → «ТО и ремонт» коротко: название, новое место и стоимость, без строк → карточка. */
 export async function addService(page: Page, input: { title: string; place: string; total: string }) {
   await startRecord(page, 'ТО и ремонт')
   await expect(page.getByRole('heading', { level: 1, name: 'ТО и ремонт' })).toBeVisible()
@@ -127,7 +127,7 @@ export async function addService(page: Page, input: { title: string; place: stri
   await page.getByLabel('Место', { exact: true }).fill(input.place)
   await page.getByRole('option', { name: `Создать «${input.place}»` }).click()
   await expect(page.getByLabel('Место', { exact: true })).toHaveValue(input.place)
-  await page.getByLabel('Итого', { exact: true }).fill(input.total)
+  await page.getByLabel('Стоимость', { exact: true }).fill(input.total)
   await page.getByRole('button', { name: 'Сохранить' }).click()
   await expect(page).toHaveURL(/#\/record\/[^/]+$/)
 }
