@@ -95,6 +95,11 @@ export const ROUTES: AppRoute[] = [
     load: () => import('../features/places/PlacePage'),
     hideTabBar: true,
   },
+  {
+    path: '/places/directory',
+    title: 'Справочник СТО',
+    load: () => import('../features/places/DirectoryPage'),
+  },
   { path: '/places/:id', title: 'Место', load: () => import('../features/places/PlacePage') },
   {
     path: '/masters/new',

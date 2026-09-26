@@ -55,6 +55,14 @@ test('карточка машины: переключатель машин — �
 test('строка-ссылка с href — это ссылка, а не кнопка', () => {
   render(<ListItem title="Статистика" href="#/stats" chevron />)
   expect(screen.getByRole('link', { name: /Статистика/ })).toHaveAttribute('href', '#/stats')
+  expect(screen.getByRole('link', { name: /Статистика/ })).not.toHaveAttribute('target')
+})
+
+test('внешняя строка-ссылка открывается в новой вкладке', () => {
+  render(<ListItem title="Открыть на карте" href="https://yandex.ru/maps/org/x/1/" external />)
+  const link = screen.getByRole('link', { name: 'Открыть на карте' })
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link).toHaveAttribute('rel', 'noreferrer')
 })
 
 test('строка журнала с обработчиком — кнопка с понятным именем', async () => {

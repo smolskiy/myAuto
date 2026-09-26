@@ -1,10 +1,11 @@
-import { IconMapPin, IconPlus, IconUser } from '@tabler/icons-react'
+import { IconMapPin, IconMapSearch, IconPlus, IconUser } from '@tabler/icons-react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useMasters, usePlaces, usePlaceStats } from '../../db/hooks'
 import { formatMoney, formatNumber, NBSP, pluralize } from '../../domain/format'
 import type { Master, Place, PlaceKind } from '../../domain/types'
-import { Button, EmptyState, ListGroup, ListItem, SegmentedControl } from '../../ui'
-import { MISSING_PLACE, Page, PLACE_KIND_LABELS } from '../common'
+import { directoryCityName } from '../../domain/placeDirectory'
+import { Button, EmptyState, Icon, ListGroup, ListItem, SegmentedControl } from '../../ui'
+import { MISSING_PLACE, Page, PLACE_KIND_LABELS, useDirectoryCity } from '../common'
 import { RatingMark } from '../garage/RowText'
 
 type Tab = 'places' | 'masters'
@@ -58,10 +59,13 @@ export default function PlacesPage() {
     <Page title="Места и мастера" back="/more">
       <SegmentedControl ariaLabel="Раздел" value={tab} options={TABS} onChange={setTab} />
       {tab === 'places' ? (
-        <PlacesList
-          onOpen={(id) => void navigate(`/places/${id}`)}
-          onAdd={() => void navigate('/places/new')}
-        />
+        <>
+          <DirectoryEntry onOpen={() => void navigate('/places/directory')} />
+          <PlacesList
+            onOpen={(id) => void navigate(`/places/${id}`)}
+            onAdd={() => void navigate('/places/new')}
+          />
+        </>
       ) : (
         <MastersList
           onOpen={(id) => void navigate(`/masters/${id}`)}
@@ -69,6 +73,24 @@ export default function PlacesPage() {
         />
       )}
     </Page>
+  )
+}
+
+/** Вход в справочник СТО: город выбран — его название, нет — приглашение выбрать. */
+function DirectoryEntry({ onOpen }: { onOpen(): void }) {
+  const city = useDirectoryCity()
+  return (
+    <ListGroup>
+      <ListItem
+        leading={<Icon icon={IconMapSearch} tone="accent" circle />}
+        title="Справочник СТО"
+        subtitle={
+          city ? `${directoryCityName(city)} · Яндекс Карты` : 'Выберите город — подскажем СТО и шиномонтажи'
+        }
+        chevron
+        onClick={onOpen}
+      />
+    </ListGroup>
   )
 }
 

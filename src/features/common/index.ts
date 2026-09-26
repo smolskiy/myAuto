@@ -13,6 +13,7 @@ export { PlacePicker, type PlacePickerProps } from './PlacePicker'
 export { MasterPicker, type MasterPickerProps } from './MasterPicker'
 export { CatalogItemPicker, type CatalogItemPickerProps } from './CatalogItemPicker'
 export { TireSizeField, type TireSizeFieldProps } from './TireSizeField'
+export { DirectoryCityField } from './DirectoryCityField'
 
 // Ошибки для владельца: throw new UserError('Укажите пробег') — текст уйдёт в уведомление
 export { UserError } from './errors'
@@ -21,6 +22,13 @@ export { UserError } from './errors'
 export { useToday } from './useToday'
 export { useSoftDelete, type SoftDeleteOptions } from './useSoftDelete'
 export { useLookup, type Lookup } from './useLookup'
+export {
+  DIRECTORY_CITY_KEY,
+  setDirectoryCity,
+  useDirectory,
+  useDirectoryCity,
+  type Directory,
+} from './directory'
 
 // Подписи и представление записей
 export {

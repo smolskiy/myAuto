@@ -16,6 +16,8 @@ export interface ListItemProps {
   chevron?: boolean
   onClick?(): void
   href?: string
+  /** Ссылка наружу (карты, сайт) — в новой вкладке, приложение остаётся открытым. */
+  external?: boolean
   /** Разрушительное действие («Удалить машину») — заголовок красным. */
   danger?: boolean
 }
@@ -29,6 +31,7 @@ export function ListItem({
   chevron,
   onClick,
   href,
+  external,
   danger,
 }: ListItemProps) {
   const body = (
@@ -50,7 +53,12 @@ export function ListItem({
   const cls = cx(styles.item, danger && styles.danger, (href || onClick) && styles.interactive)
   if (href) {
     return (
-      <a className={cls} href={href} onClick={onClick}>
+      <a
+        className={cls}
+        href={href}
+        onClick={onClick}
+        {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
+      >
         {body}
       </a>
     )

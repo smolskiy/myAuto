@@ -13,7 +13,7 @@ import {
   useToast,
   type ThemePreference,
 } from '../../ui'
-import { Page } from '../common'
+import { DirectoryCityField, Page } from '../common'
 import styles from './Settings.module.css'
 import { syncStateText } from './syncText'
 import { useNow } from './useNow'
@@ -64,7 +64,7 @@ function UpdateItem() {
   )
 }
 
-/** Настройки: тема, ссылки на синхронизацию и выгрузки, версия приложения и обновление. */
+/** Настройки: тема, город справочника СТО, ссылки на синхронизацию и выгрузки, версия приложения и обновление. */
 export default function SettingsPage() {
   const navigate = useNavigate()
   const { preference, setPreference } = useTheme()
@@ -77,6 +77,11 @@ export default function SettingsPage() {
         <div className={styles.segments}>
           <SegmentedControl ariaLabel="Тема" value={preference} options={THEMES} onChange={setPreference} />
         </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Справочник СТО</h2>
+        <DirectoryCityField hint="Подсказываем автосервисы и шиномонтажи этого города при вводе места" />
       </section>
 
       <ListGroup title="Данные">

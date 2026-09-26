@@ -51,3 +51,13 @@
 .hintLink svg {
   flex-shrink: 0;
 }
+
+/* Подпись под справочником СТО: откуда данные и насколько им верить. */
+.caption {
+  margin: 0;
+  padding: 0 var(--space-4);
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+  text-align: center;
+}

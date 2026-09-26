@@ -5,6 +5,10 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { db } from '../../db/instance'
 import { repos } from '../../db/repos'
 import { ToastProvider } from '../../ui'
+import evpatoria from '../../domain/directory/evpatoria.json'
+import type { DirectoryFile } from '../../domain/placeDirectory'
+import { setDirectoryCity } from '../common'
+import DirectoryPage from './DirectoryPage'
 import MasterPage from './MasterPage'
 import PlacePage from './PlacePage'
 import PlacesPage from './PlacesPage'
@@ -16,6 +20,7 @@ beforeEach(async () => {
 })
 afterEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  setDirectoryCity(undefined)
 })
 
 /** Быстрый ввод: вставка вместо посимвольного набора (длинные строки в jsdom набираются секундами). */
@@ -29,6 +34,7 @@ function renderAt(path: string, history: string[] = []) {
     [
       { path: '/places', element: <PlacesPage /> },
       { path: '/places/new', element: <PlacePage /> },
+      { path: '/places/directory', element: <DirectoryPage /> },
       { path: '/places/:id', element: <PlacePage /> },
       { path: '/masters/new', element: <MasterPage /> },
       { path: '/masters/:id', element: <MasterPage /> },
@@ -327,5 +333,66 @@ describe('карточка мастера', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Удалить мастера' }))
     await waitFor(async () => expect(await repos.masters.get(master.id)).toBeUndefined())
     expect(await screen.findByText('Мастер удалён')).toBeInTheDocument()
+  })
+})
+
+describe('справочник СТО', () => {
+  test('из «Мест» — в справочник; без города — приглашение выбрать', async () => {
+    const router = renderAt('/places')
+    const entry = await screen.findByRole('button', { name: /Справочник СТО/ })
+    expect(entry).toHaveTextContent('Выберите город')
+    await userEvent.click(entry)
+    expect(router.state.location.pathname).toBe('/places/directory')
+    expect(await screen.findByText('Выберите город')).toBeInTheDocument()
+  })
+
+  test('город, поиск, вид; карточка с картой и звонком; «Добавить в мои места» открывает место', async () => {
+    const router = renderAt('/places/directory', ['/places'])
+    await userEvent.selectOptions(await screen.findByRole('combobox', { name: 'Город' }), 'Евпатория')
+    const list = await screen.findByRole('list', { name: /места?|мест/ })
+    expect(list).toHaveAccessibleName(/^\d+\sмест/)
+    expect(screen.getByText(/Данные Яндекс Карт на 26 сентября 2026/)).toBeInTheDocument()
+
+    await fill(screen.getByRole('searchbox', { name: 'Название или улица' }), 'Автолидер Победы')
+    await waitFor(() => expect(within(screen.getByRole('list')).getAllByRole('button')).toHaveLength(1))
+    await userEvent.click(screen.getByRole('button', { name: /Автолидер/ }))
+
+    const sheet = await screen.findByRole('dialog', { name: 'Автолидер' })
+    expect(within(sheet).getByRole('link', { name: /просп\. Победы, 75/ })).toHaveAttribute(
+      'href',
+      'https://yandex.ru/maps/org/avtolider/1680509819/',
+    )
+    expect(within(sheet).getByRole('link', { name: /\+7 \(978\) 085-20-06/ })).toHaveAttribute(
+      'href',
+      'tel:+79780852006',
+    )
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Добавить в мои места' }))
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/places\/[^/]+$/))
+    expect(await screen.findByRole('textbox', { name: 'Название' })).toHaveValue('Автолидер')
+    expect(screen.getByRole('textbox', { name: 'Адрес' })).toHaveValue('просп. Победы, 75')
+  })
+
+  test('своё место из справочника помечено «В моих» и открывается из карточки', async () => {
+    setDirectoryCity('evpatoria')
+    const mine = await repos.places.create({
+      kind: 'service',
+      name: 'Автолидер',
+      address: 'просп. Победы, 75',
+    })
+    const router = renderAt('/places/directory', ['/places'])
+    await fill(await screen.findByRole('searchbox', { name: 'Название или улица' }), 'Автолидер Победы')
+    const row = await screen.findByRole('button', { name: /Автолидер/ })
+    expect(row).toHaveTextContent('В моих')
+    await userEvent.click(row)
+    await userEvent.click(await screen.findByRole('button', { name: 'Открыть в моих местах' }))
+    expect(router.state.location.pathname).toBe(`/places/${mine.id}`)
+  })
+
+  test('вид «Шины» — только шиномонтажи', async () => {
+    setDirectoryCity('evpatoria')
+    const tires = (evpatoria as unknown as DirectoryFile).places.filter((row) => row[3] === 't').length
+    renderAt('/places/directory')
+    await userEvent.click(await screen.findByRole('radio', { name: 'Шины' }))
+    expect(await screen.findByRole('list')).toHaveAccessibleName(new RegExp(`^${tires}\\s`))
   })
 })
